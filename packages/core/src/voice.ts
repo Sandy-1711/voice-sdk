@@ -26,6 +26,9 @@ export class Voice<
     constructor(config: VoiceConfig<TProvider, options>) {
         this.#provider = config.provider;
         this.#options = config.options;
+
+        // Initialize the provider
+        this.#provider.init?.();
     }
     get tts(): TProvider['tts'] {
         return this.#provider.tts;
@@ -38,6 +41,12 @@ export class Voice<
     }
     get provider(): TProvider {
         return this.#provider;
+    }
+
+    async speak(text: string): Promise<void> {
+        if (!this.#provider.tts) {
+            throw new Error(`Provider "${this.#provider.name}" does not support TTS.`);
+        }
     }
 
 }
