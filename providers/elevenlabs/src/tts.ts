@@ -9,6 +9,7 @@ import type {
 import { VoiceError } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { toElevenOutputFormat, toVoiceSettings, resolveFormat } from "./config";
+import { authHeaders, ensureOk } from "./internal/http";
 import { ElevenLabsTTSSession } from "./tts-session";
 
 export class ElevenLabsTTS implements TTSEngine {
@@ -55,28 +56,23 @@ export class ElevenLabsTTS implements TTSEngine {
     );
     if (fmt) url.searchParams.set("output_format", fmt);
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "xi-api-key": this.#config.apiKey,
-        "content-type": "application/json",
-        accept: "audio/mpeg",
-      },
-      body: JSON.stringify({
-        text: input.text,
-        model_id: model,
-        language_code: input.language,
-        voice_settings: toVoiceSettings(input.conditioning),
-        ...(input.providerOptions ?? {}),
+    return ensureOk(
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          ...authHeaders(this.#config),
+          "content-type": "application/json",
+          accept: "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text: input.text,
+          model_id: model,
+          language_code: input.language,
+          voice_settings: toVoiceSettings(input.conditioning),
+          ...(input.providerOptions ?? {}),
+        }),
       }),
-    });
-
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new VoiceError(
-        `ElevenLabs TTS failed: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`,
-      );
-    }
-    return res;
+      "TTS",
+    );
   }
 }
