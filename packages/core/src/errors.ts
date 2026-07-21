@@ -1,4 +1,4 @@
-import { CapKey } from "./provider";
+import type { CapKey } from "./provider";
 export class VoiceError extends Error {
     constructor(message: string) {
         super(message);
