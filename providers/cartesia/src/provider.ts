@@ -1,15 +1,11 @@
 import { Cartesia, toFile } from '@cartesia/cartesia-js';
-import { ConfigError, ValidationError, type VoiceProvider } from "@voice-sdk/core";
-import type { SynthesizeInput, SynthesizeOutput, TranscribeInput, Transcription, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput, AudioFormat, RequestContext } from "@voice-sdk/core";
+import { collectAudio, ConfigError, ValidationError, type VoiceProvider } from "@voice-sdk/core";
+import type { TranscribeInput, Transcription, AudioEncoding, AudioFormat, RequestContext } from "@voice-sdk/core";
 
-/**
- * Core names the bare codec (`mulaw`); Cartesia prefixes everything with `pcm_`.
- * `STTEncoding` is a sealed union, so anything missing here has no Cartesia
- * equivalent and must be rejected rather than passed through. Typing the value
- * side against the SDK means a codec Cartesia drops fails this file to compile.
- */
-const STT_ENCODING: Record<AudioFormat["encoding"], Cartesia.STTEncoding> = {
+/** Core names the bare codec (`mulaw`); Cartesia prefixes everything with `pcm_`. */
+const STT_ENCODING: Partial<Record<AudioEncoding, Cartesia.STTEncoding>> = {
     pcm_s16le: "pcm_s16le",
+    pcm_s32le: "pcm_s32le",
     pcm_f32le: "pcm_f32le",
     mulaw: "pcm_mulaw",
     alaw: "pcm_alaw",
@@ -17,7 +13,7 @@ const STT_ENCODING: Record<AudioFormat["encoding"], Cartesia.STTEncoding> = {
 
 /** Resolves a core encoding to Cartesia's spelling, or throws naming the field. */
 function toSTTEncoding(format: AudioFormat | undefined) {
-    if (!format) return undefined;
+    if (!format?.encoding) return undefined;
 
     const encoding = STT_ENCODING[format.encoding];
     if (!encoding) {
@@ -27,7 +23,7 @@ function toSTTEncoding(format: AudioFormat | undefined) {
             `"${format.encoding}" has no Cartesia equivalent. Supported: ${Object.keys(STT_ENCODING).join(", ")}.`,
         );
     }
-    if (!Number.isFinite(format.sampleRate) || format.sampleRate <= 0) {
+    if (format.sampleRate !== undefined && !(format.sampleRate > 0)) {
         throw new ValidationError("cartesia", "format.sampleRate", `Expected a positive number, got ${format.sampleRate}.`);
     }
     return encoding;
@@ -59,7 +55,7 @@ export class CartesiaProvider implements VoiceProvider {
 
         const response = await this.#client.stt.transcribe(
             {
-                file: await toFile(input.audio, "audio"),
+                file: await toFile(await collectAudio(input.audio), "audio"),
                 model: input.model,
                 language: input.language,
                 encoding: toSTTEncoding(input.format),

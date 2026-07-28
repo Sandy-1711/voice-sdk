@@ -1,6 +1,7 @@
 import type { VoiceProvider } from "./provider";
 import { CapabilityError } from "./errors";
-import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput, RequestContext } from "./types";
+import type { AudioChunk } from "./audio";
+import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput, RequestContext } from "./types";
 
 export interface Logger {
     debug(message: string, ...args: unknown[]): void;

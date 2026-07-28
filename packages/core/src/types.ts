@@ -1,3 +1,5 @@
+import type { AudioChunk, AudioFormat, AudioSource } from "./audio";
+
 export interface SynthesizeInput {
     model_id: string;
     text: string;
@@ -6,39 +8,8 @@ export interface SynthesizeInput {
     language?: string;
 }
 
-
-export interface AudioChunk {
-    data: Uint8Array;
-
-    sampleRate: number;
-
-    channels: number;
-
-    encoding:
-    | "pcm_s16le"
-    | "pcm_f32le"
-    | "mulaw"
-    | "alaw"
-    | "opus"
-    | "mp3"
-    | "wav";
-
-    timestamp?: number;
-}
-
 export interface SynthesizeOutput {
     audio: AudioChunk;
-
-}
-
-
-export type AudioSource = Uint8Array | ArrayBuffer | Blob;
-
-
-export interface AudioFormat {
-    encoding: "pcm_s16le" | "pcm_f32le" | "mulaw" | "alaw";
-    sampleRate: number;
-    channels?: number;
 }
 
 export interface RequestContext {
@@ -68,6 +39,7 @@ export interface Transcription {
     uniqueId?: string;
     words: TranscriptionWord[];
 }
+
 export interface Transcript {
     text: string;
     isFinal: boolean;
@@ -75,18 +47,12 @@ export interface Transcript {
 }
 
 export interface StreamingSynthesisInput {
-
     input: AsyncIterable<string>;
-
     model: string;
-
     voice?: string;
-
 }
+
 export interface StreamingTranscriptionInput {
-
     input: AsyncIterable<AudioChunk>;
-
     model: string;
-
 }

@@ -1,4 +1,5 @@
-import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingTranscriptionInput, StreamingSynthesisInput, RequestContext } from "./types"
+import type { AudioChunk } from "./audio"
+import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, Transcript, StreamingTranscriptionInput, StreamingSynthesisInput, RequestContext } from "./types"
 export interface Capability {
     tts?: boolean;
     stt?: boolean;
