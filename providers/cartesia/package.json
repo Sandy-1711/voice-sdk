@@ -29,7 +29,7 @@
     "ws": "^8.21.1"
   },
   "devDependencies": {
-    "@repo/typescript-config": "workspace:^",
+    "@voice-sdk/typescript-config": "workspace:^",
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
     "@voice-sdk/core": "workspace:^",
