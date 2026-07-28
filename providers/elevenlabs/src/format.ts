@@ -6,6 +6,7 @@ import { PROVIDER } from "./config";
 type OutputFormatValue = ElevenLabs.TextToSpeechConvertRequestOutputFormat;
 
 const OUTPUT_FORMATS = Object.values(ElevenLabs.TextToSpeechConvertRequestOutputFormat) as string[];
+const STREAM_OUTPUT_FORMATS = Object.values(ElevenLabs.TextToSpeechStreamRequestOutputFormat) as string[];
 
 /** ElevenLabs' server default. */
 export const DEFAULT_FORMAT: ResolvedAudioFormat = {
@@ -56,6 +57,26 @@ export function toOutputFormat(
     }
 
     return { value: value as OutputFormatValue, resolved: { ...resolved, channels: 1 } };
+}
+
+/**
+ * The streaming endpoints accept everything except `wav`, since a wav header
+ * declares a length that is not known until generation ends.
+ */
+export function toStreamOutputFormat(
+    requested: AudioFormat | undefined,
+    fallback: ResolvedAudioFormat,
+): { value: ElevenLabs.TextToSpeechStreamRequestOutputFormat; resolved: ResolvedAudioFormat } {
+    const { value, resolved } = toOutputFormat(requested, fallback);
+
+    if (!STREAM_OUTPUT_FORMATS.includes(value)) {
+        throw new ValidationError(
+            PROVIDER,
+            "format.container",
+            `"${value}" cannot be streamed. Use speak() for ${resolved.container}, or stream mp3, opus, pcm, ulaw or alaw.`,
+        );
+    }
+    return { value: value as ElevenLabs.TextToSpeechStreamRequestOutputFormat, resolved };
 }
 
 function build(format: Required<Pick<ResolvedAudioFormat, "container" | "encoding" | "sampleRate">> & { bitrate?: number }) {

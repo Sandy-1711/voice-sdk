@@ -1,10 +1,14 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
 import { collectAudio, ValidationError } from "@voice-sdk/core";
-import type { Alignment, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
+import type { Alignment, AudioStream, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
 import { PROVIDER, type ResolvedConfig } from "./config";
-import { DEFAULT_FORMAT, toOutputFormat, toVoiceSettings } from "./format";
+import { DEFAULT_FORMAT, toOutputFormat, toStreamOutputFormat, toVoiceSettings } from "./format";
 import { decodeBase64 } from "./internal/base64";
+
+type OutputFormatValue =
+    | ElevenLabs.TextToSpeechConvertRequestOutputFormat
+    | ElevenLabs.TextToSpeechStreamRequestOutputFormat;
 
 export class ElevenLabsTTS {
     #client: ElevenLabsClient;
@@ -20,18 +24,11 @@ export class ElevenLabsTTS {
             input.format ?? this.#config.defaultFormat,
             DEFAULT_FORMAT,
         );
-        const body = {
-            text: input.text,
-            modelId: input.model ?? this.#config.defaultModel,
-            languageCode: input.language,
-            voiceSettings: toVoiceSettings(input.controls),
-            outputFormat: value,
-            ...(input.providerOptions ?? {}),
-        };
+        const body = this.#body(input, value);
         const options = requestOptions(context);
 
-        // Timestamps come from a separate endpoint that returns base64 JSON
-        // instead of an audio stream.
+        // convertWithTimestamps returns JSON carrying base64 audio, where
+        // convert returns an audio stream, so each needs its own handling.
         if (input.timings) {
             assertCharacterTimings(input.timings);
             const response = await this.#client.textToSpeech.convertWithTimestamps(voice, body, options);
@@ -45,6 +42,69 @@ export class ElevenLabsTTS {
 
         const stream = await this.#client.textToSpeech.convert(voice, body, options);
         return { audio: await collectAudio(stream), format: resolved };
+    }
+
+    /**
+     * Output streaming. `timings` switches to the endpoint that carries
+     * alignment, which is used to stamp each chunk's offset — the character
+     * spans themselves have nowhere to live on an AudioChunk, so use `speak`
+     * or a session if you need them.
+     */
+    speakStream(input: SpeakInput, context?: RequestContext): AudioStream {
+        const voice = this.#voice(input.voice);
+        const { value, resolved } = toStreamOutputFormat(
+            input.format ?? this.#config.defaultFormat,
+            DEFAULT_FORMAT,
+        );
+        const body = this.#body(input, value);
+        const options = requestOptions(context);
+        const client = this.#client;
+
+        if (input.timings) {
+            assertCharacterTimings(input.timings);
+            return {
+                format: resolved,
+                async *[Symbol.asyncIterator]() {
+                    const chunks = await client.textToSpeech.streamWithTimestamps(voice, body, options);
+                    for await (const chunk of chunks) {
+                        const alignment = chunk.alignment ?? chunk.normalizedAlignment;
+                        yield {
+                            data: decodeBase64(chunk.audioBase64),
+                            offset: alignment?.characterStartTimesSeconds[0],
+                        };
+                    }
+                },
+            };
+        }
+
+        return {
+            format: resolved,
+            async *[Symbol.asyncIterator]() {
+                const stream = await client.textToSpeech.stream(voice, body, options);
+                const reader = stream.getReader();
+                try {
+                    for (;;) {
+                        const { done, value: bytes } = await reader.read();
+                        if (done) break;
+                        if (bytes) yield { data: bytes };
+                    }
+                } finally {
+                    reader.releaseLock();
+                }
+            },
+        };
+    }
+
+    /** Generic so the narrower streaming format survives into the request. */
+    #body<T extends OutputFormatValue>(input: SpeakInput, outputFormat: T) {
+        return {
+            text: input.text,
+            modelId: input.model ?? this.#config.defaultModel,
+            languageCode: input.language,
+            voiceSettings: toVoiceSettings(input.controls),
+            outputFormat,
+            ...(input.providerOptions ?? {}),
+        };
     }
 
     #voice(voice: string | undefined): string {
