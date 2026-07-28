@@ -1,6 +1,9 @@
 import { ConfigError } from "@voice-sdk/core";
 import type { AudioFormat } from "@voice-sdk/core";
 
+/** Single source of truth for the name this provider reports in errors. */
+export const PROVIDER = "elevenlabs";
+
 export interface ElevenLabsConfig {
     /** Falls back to the `ELEVENLABS_API_KEY` env var. */
     apiKey?: string;
@@ -36,7 +39,7 @@ export function resolveConfig(config: ElevenLabsConfig): ResolvedConfig {
     const apiKey = config.apiKey ?? process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
         throw new ConfigError(
-            "elevenlabs",
+            PROVIDER,
             "apiKey",
             "Pass `apiKey` or set the ELEVENLABS_API_KEY environment variable.",
         );

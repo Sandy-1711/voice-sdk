@@ -1,6 +1,6 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import type { ResolvedConfig } from "./config"
+import { PROVIDER, type ResolvedConfig } from "./config"
 import type { AudioSource, TranscribeInput, RequestContext, TranscriptResult, TranscriptWord } from "@voice-sdk/core";
 import { collectAudio, ValidationError, VoiceError } from "@voice-sdk/core";
 
@@ -67,7 +67,7 @@ function toGranularity(
     const granularity = GRANULARITY[timestamps as keyof typeof GRANULARITY];
     if (!granularity) {
         throw new ValidationError(
-            "elevenlabs",
+            PROVIDER,
             "timestamps",
             `"${timestamps}" is not supported. Supported: ${Object.keys(GRANULARITY).join(", ")}.`,
         );

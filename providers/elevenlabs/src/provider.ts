@@ -1,13 +1,14 @@
 import { VoiceProvider } from "@voice-sdk/core";
 import type { Capabilities } from "@voice-sdk/core";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { resolveConfig, type ElevenLabsConfig } from "./config";
+import { PROVIDER, resolveConfig, type ElevenLabsConfig } from "./config";
 import { ElevenLabsSTT } from "./stt";
+import { ElevenLabsTTS } from "./tts";
 import type { TranscribeInput, TranscriptResult, RequestContext } from "@voice-sdk/core";
 import type { SpeakInput, SpeakResult } from "@voice-sdk/core";
 
 export class ElevenLabsProvider implements VoiceProvider {
-    readonly name = "elevenlabs";
+    readonly name = PROVIDER;
     readonly capabilities: Readonly<Capabilities> = {
         tts: true,
         stt: true,
