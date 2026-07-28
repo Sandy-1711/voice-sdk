@@ -12,6 +12,11 @@ export class TurnTextTracker {
         return this.#turn;
     }
 
+    /** Cumulative text of the turn in progress. */
+    get text(): string {
+        return this.#current;
+    }
+
     /** For providers that send only what is new. */
     fromDelta(delta: string): { text: string; delta: string; turn: number } {
         this.#current += delta;
