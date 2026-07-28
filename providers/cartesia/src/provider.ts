@@ -1,87 +1,80 @@
-import { Cartesia, toFile } from '@cartesia/cartesia-js';
-import { collectAudio, ConfigError, ValidationError, type VoiceProvider } from "@voice-sdk/core";
-import type { TranscribeInput, TranscriptResult, AudioEncoding, AudioFormat, RequestContext } from "@voice-sdk/core";
-
-/** Core names the bare codec (`mulaw`); Cartesia prefixes everything with `pcm_`. */
-const STT_ENCODING: Partial<Record<AudioEncoding, Cartesia.STTEncoding>> = {
-    pcm_s16le: "pcm_s16le",
-    pcm_s32le: "pcm_s32le",
-    pcm_f32le: "pcm_f32le",
-    mulaw: "pcm_mulaw",
-    alaw: "pcm_alaw",
-};
-
-/** Resolves a core encoding to Cartesia's spelling, or throws naming the field. */
-function toSTTEncoding(format: AudioFormat | undefined) {
-    if (!format?.encoding) return undefined;
-
-    const encoding = STT_ENCODING[format.encoding];
-    if (!encoding) {
-        throw new ValidationError(
-            "cartesia",
-            "format.encoding",
-            `"${format.encoding}" has no Cartesia equivalent. Supported: ${Object.keys(STT_ENCODING).join(", ")}.`,
-        );
-    }
-    if (format.sampleRate !== undefined && !(format.sampleRate > 0)) {
-        throw new ValidationError("cartesia", "format.sampleRate", `Expected a positive number, got ${format.sampleRate}.`);
-    }
-    return encoding;
-}
-const DEFAULT_STT_MODEL = "ink-whisper";
-
-export interface CartesiaProviderConfig {
-    apiKey?: string;
-}
+import { Cartesia } from "@cartesia/cartesia-js";
+import type {
+    AudioStream,
+    Capabilities,
+    RealtimeSTTInput,
+    RealtimeTTSInput,
+    RequestContext,
+    SpeakInput,
+    SpeakResult,
+    STTSession,
+    TranscribeInput,
+    TranscriptResult,
+    TTSSession,
+    VoiceInfo,
+    VoiceProvider,
+} from "@voice-sdk/core";
+import type { CartesiaConfig, ResolvedConfig } from "./config";
+import { resolveConfig } from "./config";
+import { CartesiaSTT } from "./stt";
+import { CartesiaSTTSession } from "./stt-session";
+import { CartesiaTTS } from "./tts";
+import { CartesiaTTSSession } from "./tts-session";
 
 export class CartesiaProvider implements VoiceProvider {
     readonly name = "cartesia";
-    readonly capabilities = {
-        tts: false,
+    readonly capabilities: Readonly<Capabilities> = {
+        tts: true,
         stt: true,
-        realtimeTTS: false,
-        realtimeSTT: false,
+        realtimeTTS: true,
+        realtimeSTT: true,
     };
+
     #client: Cartesia;
-    constructor(config: CartesiaProviderConfig = {}) {
-        const apiKey = config.apiKey || process.env.CARTESIA_API_KEY;
-        if (!apiKey) {
-            throw new ConfigError("cartesia", "apiKey", "Cartesia API key is required. Please provide it in the config or set the CARTESIA_API_KEY environment variable.");
-        }
-        this.#client = new Cartesia({ apiKey: apiKey });
+    #config: ResolvedConfig;
+    #tts: CartesiaTTS;
+    #stt: CartesiaSTT;
+
+    constructor(config: CartesiaConfig = {}) {
+        this.#config = resolveConfig(config);
+        this.#client = new Cartesia({
+            apiKey: this.#config.apiKey,
+            baseURL: this.#config.baseUrl,
+        });
+        this.#tts = new CartesiaTTS(this.#client, this.#config);
+        this.#stt = new CartesiaSTT(this.#client, this.#config);
     }
 
+    speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
+        return this.#tts.speak(input, context);
+    }
 
+    speakStream(input: SpeakInput, context?: RequestContext): AudioStream {
+        return this.#tts.speakStream(input, context);
+    }
 
-    async transcribe(input: TranscribeInput, options?: RequestContext): Promise<TranscriptResult> {
+    transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
+        return this.#stt.transcribe(input, context);
+    }
 
-        const response = await this.#client.stt.transcribe(
-            {
-                file: await toFile(await collectAudio(input.audio), "audio"),
-                model: (input.model ?? DEFAULT_STT_MODEL) as Cartesia.STTBatchModel,
-                language: input.language,
-                encoding: toSTTEncoding(input.format),
-                sample_rate: input.format?.sampleRate,
-                timestamp_granularities: input.timestamps ? ["word"] : undefined,
-            },
-            {
-                signal: options?.signal,
-                timeout: options?.timeout,
-                maxRetries: options?.retries,
-            },
-        );
+    openTTSSession(input?: RealtimeTTSInput): Promise<TTSSession> {
+        return CartesiaTTSSession.open(this.#client, this.#config, input);
+    }
 
-        return {
-            text: response.text,
-            duration: response.duration,
-            language: response.language,
-            requestId: response.request_id,
-            // Only populated when `timestamps` was requested.
-            words: response.words?.map((word) => ({
-                text: word.word,
-                start: word.start,
-                end: word.end,
-            })),
-        };
+    async openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
+        return CartesiaSTTSession.open(this.#client, this.#config, input);
+    }
+
+    async listVoices(): Promise<VoiceInfo[]> {
+        const voices: VoiceInfo[] = [];
+        for await (const voice of this.#client.voices.list()) {
+            voices.push({
+                id: voice.id,
+                name: voice.name,
+                language: voice.language,
+                labels: voice.description ? { description: voice.description } : undefined,
+            });
+        }
+        return voices;
     }
 }
