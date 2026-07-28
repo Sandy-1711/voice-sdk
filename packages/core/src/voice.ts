@@ -1,7 +1,7 @@
-import type { VoiceProvider } from "./provider";
+import type { VoiceProvider, VoiceInfo } from "./provider";
 import { CapabilityError } from "./errors";
-import type { AudioChunk } from "./audio";
-import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput, RequestContext } from "./types";
+import type { AudioStream } from "./audio";
+import type { RequestContext, SpeakInput, SpeakResult, TranscribeInput, TranscriptResult } from "./types";
 
 export interface Logger {
     debug(message: string, ...args: unknown[]): void;
@@ -39,36 +39,49 @@ export class Voice<TProvider extends VoiceProvider> {
     get provider(): TProvider {
         return this.#provider;
     }
+
     get options(): Readonly<VoiceOptions> {
         return this.#options;
     }
 
-    async transcribe(input: TranscribeInput, options?: RequestContext): Promise<Transcription> {
+    async speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
+        if (!this.#provider.speak) {
+            throw new CapabilityError(this.#provider.name, "speak");
+        }
+        return this.#provider.speak(input, this.#context(context));
+    }
+
+    speakStream(input: SpeakInput, context?: RequestContext): AudioStream {
+        if (!this.#provider.speakStream) {
+            throw new CapabilityError(this.#provider.name, "speakStream");
+        }
+        return this.#provider.speakStream(input, this.#context(context));
+    }
+
+    async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
         if (!this.#provider.transcribe) {
             throw new CapabilityError(this.#provider.name, "transcribe");
         }
-        return this.#provider.transcribe(input, options);
+        return this.#provider.transcribe(input, this.#context(context));
     }
 
-    async synthesize(input: SynthesizeInput, options?: RequestContext): Promise<SynthesizeOutput> {
-        if (!this.#provider.synthesize) {
-            throw new CapabilityError(this.#provider.name, "synthesize");
+    async listVoices(): Promise<VoiceInfo[]> {
+        if (!this.#provider.listVoices) {
+            throw new CapabilityError(this.#provider.name, "listVoices");
         }
-        return this.#provider.synthesize(input, options);
+        return this.#provider.listVoices();
     }
 
-    async *synthesizeStream(input: StreamingSynthesisInput): AsyncIterable<AudioChunk> {
-        if (!this.#provider.synthesizeStream) {
-            throw new CapabilityError(this.#provider.name, "realtime synthesis");
-        }
-        yield* this.#provider.synthesizeStream(input);
+    async close(): Promise<void> {
+        await this.#provider.close?.();
     }
 
-    async *transcribeStream(input: StreamingTranscriptionInput): AsyncIterable<Transcript> {
-        if (!this.#provider.transcribeStream) {
-            throw new CapabilityError(this.#provider.name, "realtime transcription");
-        }
-        yield* this.#provider.transcribeStream(input);
+    /** Per-call context wins over the defaults given to the constructor. */
+    #context(context?: RequestContext): RequestContext {
+        return {
+            timeout: this.#options.timeout,
+            retries: this.#options.retries,
+            ...context,
+        };
     }
-
 }

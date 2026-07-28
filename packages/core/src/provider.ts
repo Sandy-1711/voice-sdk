@@ -1,25 +1,41 @@
-import type { AudioChunk } from "./audio"
-import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, Transcript, StreamingTranscriptionInput, StreamingSynthesisInput, RequestContext } from "./types"
-export interface Capability {
-    tts?: boolean;
-    stt?: boolean;
+import type { AudioStream } from "./audio";
+import type { RequestContext, SpeakInput, SpeakResult, TranscribeInput, TranscriptResult } from "./types";
 
-    streamingTTS?: boolean;
-    streamingSTT?: boolean;
-
+export interface Capabilities {
+    /** One-shot synthesis and output streaming. */
+    tts: boolean;
+    /** Batch transcription of complete audio. */
+    stt: boolean;
+    /** Duplex session: incremental text in, audio out. */
+    realtimeTTS: boolean;
+    /** Duplex session: audio frames in, incremental transcripts out. */
+    realtimeSTT: boolean;
 }
 
+export type CapabilityName = keyof Capabilities;
+
+export interface VoiceInfo {
+    id: string;
+    name?: string;
+    language?: string;
+    labels?: Record<string, string>;
+    previewUrl?: string;
+}
+
+/**
+ * If a capability flag is true, its method(s) must be present.
+ */
 export interface VoiceProvider {
     readonly name: string;
-    readonly capabilities: Readonly<Capability>
-    /** List voices available to this provider. */
-    getVoices?: () => Promise<string[]>;
-    /** Synthesize audio from text. */
-    synthesize?: (input: SynthesizeInput, options?: RequestContext) => Promise<SynthesizeOutput>;
-    /** Transcribe audio to text. */
-    transcribe?: (input: TranscribeInput, options?: RequestContext) => Promise<Transcription>;
-    /** Synthesize audio from text as a stream. */
-    synthesizeStream?: (input: StreamingSynthesisInput) => AsyncIterable<AudioChunk>;
-    /** Transcribe audio to text as a stream. */
-    transcribeStream?: (input: StreamingTranscriptionInput) => AsyncIterable<Transcript>;
+    readonly capabilities: Readonly<Capabilities>;
+
+    /** `tts` */
+    speak?(input: SpeakInput, context?: RequestContext): Promise<SpeakResult>;
+    speakStream?(input: SpeakInput, context?: RequestContext): AudioStream;
+
+    /** `stt` */
+    transcribe?(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult>;
+
+    listVoices?(): Promise<VoiceInfo[]>;
+    close?(): Promise<void>;
 }

@@ -1,6 +1,6 @@
 import { Cartesia, toFile } from '@cartesia/cartesia-js';
 import { collectAudio, ConfigError, ValidationError, type VoiceProvider } from "@voice-sdk/core";
-import type { TranscribeInput, Transcription, AudioEncoding, AudioFormat, RequestContext } from "@voice-sdk/core";
+import type { TranscribeInput, TranscriptResult, AudioEncoding, AudioFormat, RequestContext } from "@voice-sdk/core";
 
 /** Core names the bare codec (`mulaw`); Cartesia prefixes everything with `pcm_`. */
 const STT_ENCODING: Partial<Record<AudioEncoding, Cartesia.STTEncoding>> = {
@@ -28,6 +28,8 @@ function toSTTEncoding(format: AudioFormat | undefined) {
     }
     return encoding;
 }
+const DEFAULT_STT_MODEL = "ink-whisper";
+
 export interface CartesiaProviderConfig {
     apiKey?: string;
 }
@@ -35,10 +37,10 @@ export interface CartesiaProviderConfig {
 export class CartesiaProvider implements VoiceProvider {
     readonly name = "cartesia";
     readonly capabilities = {
-        tts: true,
+        tts: false,
         stt: true,
-        streamingTTS: false,
-        streamingSTT: false,
+        realtimeTTS: false,
+        realtimeSTT: false,
     };
     #client: Cartesia;
     constructor(config: CartesiaProviderConfig = {}) {
@@ -51,12 +53,12 @@ export class CartesiaProvider implements VoiceProvider {
 
 
 
-    async transcribe(input: TranscribeInput, options?: RequestContext): Promise<Transcription> {
+    async transcribe(input: TranscribeInput, options?: RequestContext): Promise<TranscriptResult> {
 
         const response = await this.#client.stt.transcribe(
             {
                 file: await toFile(await collectAudio(input.audio), "audio"),
-                model: input.model,
+                model: (input.model ?? DEFAULT_STT_MODEL) as Cartesia.STTBatchModel,
                 language: input.language,
                 encoding: toSTTEncoding(input.format),
                 sample_rate: input.format?.sampleRate,
@@ -73,9 +75,13 @@ export class CartesiaProvider implements VoiceProvider {
             text: response.text,
             duration: response.duration,
             language: response.language,
-            uniqueId: response.request_id,
+            requestId: response.request_id,
             // Only populated when `timestamps` was requested.
-            words: response.words ?? [],
+            words: response.words?.map((word) => ({
+                text: word.word,
+                start: word.start,
+                end: word.end,
+            })),
         };
     }
 }
