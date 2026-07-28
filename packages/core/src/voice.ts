@@ -1,6 +1,7 @@
 import type { VoiceProvider, VoiceInfo } from "./provider";
 import { CapabilityError } from "./errors";
 import type { AudioStream } from "./audio";
+import type { RealtimeSTTInput, RealtimeTTSInput, STTSession, TTSSession } from "./realtime";
 import type { RequestContext, SpeakInput, SpeakResult, TranscribeInput, TranscriptResult } from "./types";
 
 export interface Logger {
@@ -63,6 +64,22 @@ export class Voice<TProvider extends VoiceProvider> {
             throw new CapabilityError(this.#provider.name, "transcribe");
         }
         return this.#provider.transcribe(input, this.#context(context));
+    }
+
+    /** Opens a session that takes pushed text and streams audio back. */
+    async openTTSSession(input?: RealtimeTTSInput): Promise<TTSSession> {
+        if (!this.#provider.openTTSSession) {
+            throw new CapabilityError(this.#provider.name, "openTTSSession");
+        }
+        return this.#provider.openTTSSession(input);
+    }
+
+    /** Opens a session that takes pushed audio and streams transcripts back. */
+    async openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
+        if (!this.#provider.openSTTSession) {
+            throw new CapabilityError(this.#provider.name, "openSTTSession");
+        }
+        return this.#provider.openSTTSession(input);
     }
 
     async listVoices(): Promise<VoiceInfo[]> {

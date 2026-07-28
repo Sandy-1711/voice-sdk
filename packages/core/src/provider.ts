@@ -1,4 +1,5 @@
 import type { AudioStream } from "./audio";
+import type { RealtimeSTTInput, RealtimeTTSInput, STTSession, TTSSession } from "./realtime";
 import type { RequestContext, SpeakInput, SpeakResult, TranscribeInput, TranscriptResult } from "./types";
 
 export interface Capabilities {
@@ -35,6 +36,12 @@ export interface VoiceProvider {
 
     /** `stt` */
     transcribe?(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult>;
+
+    /** `realtimeTTS` */
+    openTTSSession?(input?: RealtimeTTSInput): Promise<TTSSession>;
+
+    /** `realtimeSTT` */
+    openSTTSession?(input?: RealtimeSTTInput): Promise<STTSession>;
 
     listVoices?(): Promise<VoiceInfo[]>;
     close?(): Promise<void>;
