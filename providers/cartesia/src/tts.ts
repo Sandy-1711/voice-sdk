@@ -71,13 +71,18 @@ export class CartesiaTTS {
 }
 
 /** Cartesia returns parallel arrays; core carries spans. */
-export function toAlignment(timestamps: Cartesia.WordTimestamps, unit: Alignment["unit"] = "word"): Alignment {
+export function toAlignment(
+    labels: string[],
+    start: number[],
+    end: number[],
+    unit: Alignment["unit"],
+): Alignment {
     return {
         unit,
-        spans: timestamps.words.map((text, index) => ({
+        spans: labels.map((text, index) => ({
             text,
-            start: timestamps.start[index] ?? 0,
-            end: timestamps.end[index] ?? 0,
+            start: start[index] ?? 0,
+            end: end[index] ?? 0,
         })),
     };
 }
