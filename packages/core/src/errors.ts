@@ -18,3 +18,15 @@ export class ConfigError extends VoiceError {
         this.name = "ConfigError";
     }
 }
+
+/**
+ * A request field carried a value this provider cannot represent. Thrown before
+ * the request goes out, so the caller sees the offending field rather than a
+ * bare 400 from the API.
+ */
+export class ValidationError extends VoiceError {
+    constructor(public readonly provider: string, public readonly field: string, message: string) {
+        super(`Provider "${provider}" rejected "${field}": ${message}`);
+        this.name = "ValidationError";
+    }
+}

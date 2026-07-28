@@ -1,6 +1,6 @@
 import type { VoiceProvider } from "./provider";
 import { CapabilityError } from "./errors";
-import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput } from "./types";
+import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput, RequestContext } from "./types";
 
 export interface Logger {
     debug(message: string, ...args: unknown[]): void;
@@ -42,18 +42,18 @@ export class Voice<TProvider extends VoiceProvider> {
         return this.#options;
     }
 
-    async transcribe(input: TranscribeInput): Promise<Transcription> {
+    async transcribe(input: TranscribeInput, options?: RequestContext): Promise<Transcription> {
         if (!this.#provider.transcribe) {
             throw new CapabilityError(this.#provider.name, "transcribe");
         }
-        return this.#provider.transcribe(input);
+        return this.#provider.transcribe(input, options);
     }
 
-    async synthesize(input: SynthesizeInput): Promise<SynthesizeOutput> {
+    async synthesize(input: SynthesizeInput, options?: RequestContext): Promise<SynthesizeOutput> {
         if (!this.#provider.synthesize) {
             throw new CapabilityError(this.#provider.name, "synthesize");
         }
-        return this.#provider.synthesize(input);
+        return this.#provider.synthesize(input, options);
     }
 
     async *synthesizeStream(input: StreamingSynthesisInput): AsyncIterable<AudioChunk> {

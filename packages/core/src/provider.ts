@@ -1,4 +1,4 @@
-import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingTranscriptionInput, StreamingSynthesisInput } from "./types"
+import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingTranscriptionInput, StreamingSynthesisInput, RequestContext } from "./types"
 export interface Capability {
     tts?: boolean;
     stt?: boolean;
@@ -14,9 +14,9 @@ export interface VoiceProvider {
     /** List voices available to this provider. */
     getVoices?: () => Promise<string[]>;
     /** Synthesize audio from text. */
-    synthesize?: (input: SynthesizeInput) => Promise<SynthesizeOutput>;
+    synthesize?: (input: SynthesizeInput, options?: RequestContext) => Promise<SynthesizeOutput>;
     /** Transcribe audio to text. */
-    transcribe?: (input: TranscribeInput) => Promise<Transcription>;
+    transcribe?: (input: TranscribeInput, options?: RequestContext) => Promise<Transcription>;
     /** Synthesize audio from text as a stream. */
     synthesizeStream?: (input: StreamingSynthesisInput) => AsyncIterable<AudioChunk>;
     /** Transcribe audio to text as a stream. */

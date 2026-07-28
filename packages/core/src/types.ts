@@ -31,15 +31,42 @@ export interface SynthesizeOutput {
 
 }
 
+
+export type AudioSource = Uint8Array | ArrayBuffer | Blob;
+
+
+export interface AudioFormat {
+    encoding: "pcm_s16le" | "pcm_f32le" | "mulaw" | "alaw";
+    sampleRate: number;
+    channels?: number;
+}
+
+export interface RequestContext {
+    signal?: AbortSignal;
+    timeout?: number;
+    retries?: number;
+}
+
 export interface TranscribeInput {
-    audio: AudioChunk;
-    model_id: string;
+    audio: AudioSource;
+    model: string;
     language?: string;
+    format?: AudioFormat;
+    timestamps?: boolean;
+}
+
+export interface TranscriptionWord {
+    start: number;
+    end: number;
+    word: string;
 }
 
 export interface Transcription {
     text: string;
-    confidence?: number;
+    duration?: number;
+    language?: string;
+    uniqueId?: string;
+    words: TranscriptionWord[];
 }
 export interface Transcript {
     text: string;
