@@ -1,23 +1,37 @@
 import { ConfigError } from "@voice-sdk/core";
 import type { AudioFormat } from "@voice-sdk/core";
+
 export interface ElevenLabsConfig {
+    /** Falls back to the `ELEVENLABS_API_KEY` env var. */
     apiKey?: string;
+    /** Residency host, e.g. https://api.eu.residency.elevenlabs.io */
     baseUrl?: string;
+    /** ElevenLabs puts the voice id in the URL path, so TTS needs one. */
     defaultVoice?: string;
     defaultModel?: string;
     defaultSTTModel?: string;
     defaultRealtimeSTTModel?: string;
     defaultFormat?: AudioFormat;
 }
+
+/** Pinned, never `-latest`, so generated audio does not shift under callers. */
+export const DEFAULTS = {
+    ttsModel: "eleven_multilingual_v2",
+    sttModel: "scribe_v2",
+    realtimeSTTModel: "scribe_v2_realtime",
+} as const;
+
 export interface ResolvedConfig {
     apiKey: string;
     baseUrl?: string;
-    defaultVoice: string;
+    /** Stays optional: TTS throws naming `voice` if no call supplies one. */
+    defaultVoice?: string;
     defaultModel: string;
     defaultSTTModel: string;
     defaultRealtimeSTTModel: string;
-    defaultFormat: AudioFormat;
+    defaultFormat?: AudioFormat;
 }
+
 export function resolveConfig(config: ElevenLabsConfig): ResolvedConfig {
     const apiKey = config.apiKey ?? process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
@@ -27,13 +41,14 @@ export function resolveConfig(config: ElevenLabsConfig): ResolvedConfig {
             "Pass `apiKey` or set the ELEVENLABS_API_KEY environment variable.",
         );
     }
+
     return {
         apiKey,
         baseUrl: config.baseUrl,
         defaultVoice: config.defaultVoice,
-        defaultModel: config.defaultModel,
-        defaultSTTModel: config.defaultSTTModel,
-        defaultRealtimeSTTModel: config.defaultRealtimeSTTModel,
+        defaultModel: config.defaultModel ?? DEFAULTS.ttsModel,
+        defaultSTTModel: config.defaultSTTModel ?? DEFAULTS.sttModel,
+        defaultRealtimeSTTModel: config.defaultRealtimeSTTModel ?? DEFAULTS.realtimeSTTModel,
         defaultFormat: config.defaultFormat,
     };
 }
