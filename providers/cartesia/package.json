@@ -4,10 +4,10 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
@@ -23,7 +23,15 @@
     "clean": "rm -rf dist"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.cjs"
+      }
+    }
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^3.5.0",
