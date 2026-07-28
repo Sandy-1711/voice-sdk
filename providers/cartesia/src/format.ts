@@ -90,7 +90,7 @@ export function toOutputFormat(requested: AudioFormat | undefined, fallback: Res
     };
 }
 
-/** The TTS WebSocket only accepts raw output, so a container here is an error. */
+/** The SSE and WebSocket endpoints only accept raw output. */
 export function toRawOutputFormat(
     requested: AudioFormat | undefined,
     fallback: ResolvedAudioFormat,
@@ -100,7 +100,7 @@ export function toRawOutputFormat(
         throw new ValidationError(
             "cartesia",
             "format.container",
-            `Realtime synthesis only supports the "raw" container, got "${payload.container}".`,
+            `Streaming synthesis only supports the "raw" container, got "${payload.container}". Use speak() for ${payload.container}.`,
         );
     }
     return { payload, resolved };
