@@ -7,6 +7,10 @@ effects, and speech-to-speech are explicitly **out of scope** for v0.
 
 Last verified: 2026-07-28.
 
+The type surface this research produced lives in [type-design.md](./type-design.md)
+(field-by-field mapping tables) and [core-types.draft.ts](./core-types.draft.ts)
+(the types themselves).
+
 ---
 
 ## 1. Capability matrix
@@ -55,7 +59,8 @@ and providers split along the seam:
 | `tts`           | `POST /v1/text-to-speech/{voice_id}` (+ `/stream`)     |
 | `stt`           | `POST /v1/speech-to-text` — **multipart/form-data**    |
 | `realtimeTTS`   | `WSS /v1/text-to-speech/{voice_id}/stream-input`       |
-| `realtimeSTT`   | `WSS` realtime speech-to-text (Scribe v2 Realtime)     |
+| `realtimeTTS`   | `WSS /v1/text-to-speech/{voice_id}/multi-stream-input` (multi-context) |
+| `realtimeSTT`   | `WSS /v1/speech-to-text/realtime` (Scribe v2 Realtime) |
 
 **TTS body:** `text`, `model_id` (default `eleven_multilingual_v2`),
 `voice_settings{stability, similarity_boost, style, speed, use_speaker_boost}`,
@@ -101,6 +106,14 @@ default `pcm_16000`), `language_code`, `commit_strategy` (`manual` | `vad`),
 `vad_threshold`, `vad_silence_threshold_secs`, `min_speech_duration_ms`,
 `include_timestamps`, `include_language_detection`, `keyterms`.
 
+**Multi-context TTS** (`/multi-stream-input`): several independent generations
+share one socket, each keyed by `context_id`. Client messages are
+`initialiseContext`, `sendText`, `{context_id, flush:true}`,
+`{context_id, close_context:true}`, `{close_socket:true}` and `keepContextAlive`
+(empty text). Server audio comes back tagged with `contextId`. This is the only
+ElevenLabs path that supports real interruption — the single-context socket has
+no cancel.
+
 **Quirks:** audio is **base64 in JSON, both directions** (not binary frames —
 unlike everyone else). Trailing space on pushed text is load-bearing.
 Three-level finality: partial → final → committed.
@@ -117,7 +130,7 @@ Three-level finality: partial → final → committed.
 | `tts`         | `POST /v1/speak`     |
 | `stt`         | `POST /v1/listen`    |
 | `realtimeTTS` | `WSS /v1/speak`      |
-| `realtimeSTT` | `WSS /v1/listen`     |
+| `realtimeSTT` | `WSS /v1/listen` (nova-3) or `WSS /v2/listen` (Flux) |
 
 Deepgram is the cleanest fit: same path for batch and realtime, config entirely
 via query params, no per-request JSON schema differences.
@@ -154,9 +167,28 @@ TTS params: `model` (default `aura-asteria-en`, 100+ voices), `encoding`
 (`linear16` | `mulaw` | `alaw`, default `linear16`), `sample_rate` (8000, 16000,
 24000 default, 32000, 48000), `speed`.
 
+**Flux — a second, turn-shaped realtime STT** (`WSS /v2/listen`, models
+`flux-general-en` / `flux-general-multi`). Instead of interim/final transcripts
+it emits turn lifecycle events:
+```jsonc
+{ "type": "Connected", "request_id": "...", "sequence_id": 0 }
+{ "type": "TurnInfo", "event": "StartOfTurn" | "Update" | "EagerEndOfTurn"
+                             | "TurnResumed" | "EndOfTurn",
+  "turn_index": 0, "audio_window_start": 0.0, "audio_window_end": 1.8,
+  "transcript": "...", "words": [{ "word", "confidence", "start", "end" }],
+  "end_of_turn_confidence": 0.91 }
+```
+Params: `eot_threshold` (default 0.7), `eager_eot_threshold`, `eot_timeout_ms`
+(default 5000), plus the usual `encoding` / `sample_rate`. `EagerEndOfTurn` is a
+speculative boundary that `TurnResumed` can revoke — useful for starting an LLM
+call early, and the one event with no clean slot in a 3-state finality model
+(it maps back to `partial`).
+
 **Quirks:** **`KeepAlive` is mandatory** — the session layer needs a heartbeat.
-Two-level finality (`is_final` = segment stable, `speech_final` = endpoint hit).
-`Clear` gives us true barge-in, which most providers lack.
+Two-level finality (`is_final` = segment stable, `speech_final` = endpoint hit)
+on nova-3, turn events on Flux. `Clear` gives us true barge-in, which most
+providers lack. `Results` also carries `from_finalize` so you can tell an
+app-triggered finalization from a natural one.
 
 ---
 
@@ -181,12 +213,16 @@ Containers: `wav` | `mp3` | `raw`. Encodings: `pcm_f32le`, `pcm_s16le`,
 `pcm_mulaw`, `pcm_alaw`. Sample rates: 8000/16000/22050/24000/44100/48000.
 
 **Realtime TTS:** same JSON body plus `context_id` (**required**), `continue`,
-`flush`, `add_timestamps`, `add_phoneme_timestamps`. Cancel with
-`{ "context_id": "...", "cancel": true }`.
-Server: `{"type":"chunk","data":"<base64>","context_id",...}`, `{"type":"done"}`,
-`{"type":"timestamps"}`, `{"type":"phoneme_timestamps"}`, `{"type":"error"}`.
+`flush`, `add_timestamps`, `add_phoneme_timestamps`, `use_normalized_timestamps`,
+`max_buffer_delay_ms` (0–5000, default 3000), `pronunciation_dict_id`. Cancel
+with `{ "context_id": "...", "cancel": true }`.
+Server: `{"type":"chunk","data":"<base64>","context_id","step_time"}`,
+`{"type":"done"}`, `{"type":"timestamps","word_timestamps":{words,start,end}}`,
+`{"type":"phoneme_timestamps"}`, `{"type":"flush_done","flush_id"}`,
+`{"type":"error"}`. Every message carries `context_id`, `status_code` and `done`.
 
-**Realtime STT:** query params `model` (`ink-2` | `ink-whisper`), `encoding`,
+**Realtime STT:** query params `model` (`ink-2` | `ink-whisper`), `encoding`
+(`pcm_s16le` | `pcm_s32le` | `pcm_f16le` | `pcm_f32le` | `pcm_mulaw` | `pcm_alaw`),
 `sample_rate`, `cartesia_version`, `language`, `min_volume`,
 `max_silence_duration_secs` (ink-whisper only), `keyterm` (ink-2 only, ≤100).
 Client sends **binary audio frames** plus the *text* commands `finalize` and
@@ -338,6 +374,7 @@ abstraction leaks.
 | Provider   | Finality model                                                      |
 | ---------- | ------------------------------------------------------------------- |
 | Deepgram   | `is_final` (segment stable) + `speech_final` (endpoint) — 2 levels    |
+| DG Flux    | `StartOfTurn` → `Update` → `EagerEndOfTurn` ⇄ `TurnResumed` → `EndOfTurn` |
 | ElevenLabs | `partial` → `final` → `committed` — 3 levels                          |
 | AssemblyAI | `end_of_turn` + `turn_is_formatted` — turn-scoped                     |
 | Cartesia   | `is_final`, but **only after an explicit `finalize`** on ink-whisper   |
@@ -431,6 +468,10 @@ worth a shared `getEphemeralToken()` shape later, but out of scope for v0.
 ---
 
 ## 4. Proposed core shape
+
+> Superseded in detail by [type-design.md](./type-design.md) +
+> [core-types.draft.ts](./core-types.draft.ts). The sketch below is the shape
+> those were built out from.
 
 Capability checking is **runtime-guarded** (per decision): every method exists
 on the facade, unsupported ones throw `CapabilityError`.
