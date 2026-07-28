@@ -11,3 +11,10 @@ export class CapabilityError extends VoiceError {
         this.name = "CapabilityError";
     }
 }
+
+export class ConfigError extends VoiceError {
+    constructor(public readonly provider: string, public readonly field: string, message: string) {
+        super(`Provider "${provider}" configuration error for field "${field}": ${message}`);
+        this.name = "ConfigError";
+    }
+}

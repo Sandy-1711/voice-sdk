@@ -2,7 +2,7 @@ export interface SynthesizeInput {
     model_id: string;
     text: string;
     voice?: string;
-    outputFormat?: {};
+    outputFormat?: Record<string, any>;
     language?: string;
 }
 
