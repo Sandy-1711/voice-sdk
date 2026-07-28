@@ -99,8 +99,9 @@ export interface STTTranscriptEvent {
 
 export type STTEvent =
     | STTTranscriptEvent
-    | { type: "speech_started"; at: number }
-    | { type: "speech_ended"; at: number }
+    /** `at` is seconds from session start, when the provider reports it. */
+    | { type: "speech_started"; at?: number }
+    | { type: "speech_ended"; at?: number }
     | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
     | { type: "warning"; message: string; code?: string };
 
