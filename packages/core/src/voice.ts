@@ -1,18 +1,6 @@
-import type { VoiceProvider, CapKey } from "./provider";
-import type {
-    SpeakInput,
-    AudioResult,
-    TTSSessionInput,
-    TTSSession,
-} from "./tts";
-import type {
-    TranscribeInput,
-    Transcript,
-    STTSessionInput,
-    STTSession,
-} from "./stt";
+import type { VoiceProvider } from "./provider";
 import { CapabilityError } from "./errors";
-
+import type { TranscribeInput, SynthesizeInput, SynthesizeOutput, Transcription, AudioChunk, Transcript, StreamingSynthesisInput, StreamingTranscriptionInput } from "./types";
 
 export interface Logger {
     debug(message: string, ...args: unknown[]): void;
@@ -47,16 +35,6 @@ export class Voice<TProvider extends VoiceProvider> {
         this.#options = config.options ?? {};
     }
 
-    get tts(): TProvider["tts"] {
-        return this.#provider.tts;
-    }
-    get stt(): TProvider["stt"] {
-        return this.#provider.stt;
-    }
-    get cloning(): TProvider["cloning"] {
-        return this.#provider.cloning;
-    }
-
     get provider(): TProvider {
         return this.#provider;
     }
@@ -64,38 +42,32 @@ export class Voice<TProvider extends VoiceProvider> {
         return this.#options;
     }
 
-
-    #require<K extends CapKey>(cap: K): NonNullable<TProvider[K]> {
-        const engine = this.#provider[cap];
-        if (engine == null) {
-            throw new CapabilityError(this.#provider.name, cap);
+    async transcribe(input: TranscribeInput): Promise<Transcription> {
+        if (!this.#provider.transcribe) {
+            throw new CapabilityError(this.#provider.name, "transcribe");
         }
-        return engine as NonNullable<TProvider[K]>;
+        return this.#provider.transcribe(input);
     }
 
-
-    speak(input: SpeakInput): Promise<AudioResult> {
-        return this.#require("tts").speak(input);
+    async synthesize(input: SynthesizeInput): Promise<SynthesizeOutput> {
+        if (!this.#provider.synthesize) {
+            throw new CapabilityError(this.#provider.name, "synthesize");
+        }
+        return this.#provider.synthesize(input);
     }
 
-    connect(input?: TTSSessionInput): TTSSession {
-        return this.#require("tts").connect(input);
+    async *synthesizeStream(input: StreamingSynthesisInput): AsyncIterable<AudioChunk> {
+        if (!this.#provider.synthesizeStream) {
+            throw new CapabilityError(this.#provider.name, "realtime synthesis");
+        }
+        yield* this.#provider.synthesizeStream(input);
     }
 
-    transcribe(input: TranscribeInput): Promise<Transcript> {
-        return this.#require("stt").transcribe(input);
+    async *transcribeStream(input: StreamingTranscriptionInput): AsyncIterable<Transcript> {
+        if (!this.#provider.transcribeStream) {
+            throw new CapabilityError(this.#provider.name, "realtime transcription");
+        }
+        yield* this.#provider.transcribeStream(input);
     }
 
-    listen(input?: STTSessionInput): STTSession {
-        return this.#require("stt").connect(input);
-    }
-
-
-    async init(): Promise<void> {
-        await this.#provider.init?.();
-    }
-
-    async close(): Promise<void> {
-        await this.#provider.close?.();
-    }
 }
