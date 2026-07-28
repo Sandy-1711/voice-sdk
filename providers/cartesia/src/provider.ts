@@ -15,14 +15,14 @@ import type {
     VoiceProvider,
 } from "@voice-sdk/core";
 import type { CartesiaConfig, ResolvedConfig } from "./config";
-import { resolveConfig } from "./config";
+import { PROVIDER, resolveConfig } from "./config";
 import { CartesiaSTT } from "./stt";
 import { CartesiaSTTSession } from "./stt-session";
 import { CartesiaTTS } from "./tts";
 import { CartesiaTTSSession } from "./tts-session";
 
 export class CartesiaProvider implements VoiceProvider {
-    readonly name = "cartesia";
+    readonly name: string;
     readonly capabilities: Readonly<Capabilities> = {
         tts: true,
         stt: true,
@@ -36,6 +36,7 @@ export class CartesiaProvider implements VoiceProvider {
     #stt: CartesiaSTT;
 
     constructor(config: CartesiaConfig = {}) {
+        this.name = PROVIDER;
         this.#config = resolveConfig(config);
         this.#client = new Cartesia({
             apiKey: this.#config.apiKey,

@@ -1,5 +1,7 @@
 import { ConfigError, type AudioFormat, type ResolvedAudioFormat } from "@voice-sdk/core";
 
+export const PROVIDER = "cartesia";
+
 export interface CartesiaConfig {
     /** Falls back to the `CARTESIA_API_KEY` env var. */
     apiKey?: string;

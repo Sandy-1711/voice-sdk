@@ -2,7 +2,7 @@ import type { Cartesia } from "@cartesia/cartesia-js";
 import type { RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@voice-sdk/core";
 import { TurnTextTracker, ValidationError, VoiceError } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
-import { DEFAULTS, DEFAULT_INPUT_FORMAT } from "./config";
+import { DEFAULTS, DEFAULT_INPUT_FORMAT, PROVIDER } from "./config";
 import { toSTTEncoding } from "./format";
 
 type AutoWS = ReturnType<Cartesia["stt"]["autoFinalize"]["websocket"]>;
@@ -46,7 +46,7 @@ export class CartesiaSTTSession implements STTSession {
         const model = input.model ?? DEFAULTS.vadSTTModel;
         if (model.startsWith("ink-whisper")) {
             throw new ValidationError(
-                "cartesia",
+                PROVIDER,
                 "model",
                 `"${model}" has no turn detection. Use turnDetection: { mode: "manual" }, or the ink-2 model.`,
             );
