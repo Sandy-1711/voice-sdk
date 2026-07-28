@@ -178,6 +178,9 @@ importers:
 
   providers/cartesia:
     dependencies:
+      '@cartesia/cartesia-js':
+        specifier: ^3.5.0
+        version: 3.5.0(ws@8.21.1)
       ws:
         specifier: ^8.21.1
         version: 8.21.1
@@ -227,6 +230,14 @@ importers:
         version: 5.9.2
 
 packages:
+
+  '@cartesia/cartesia-js@3.5.0':
+    resolution: {integrity: sha512-rQdspxPOgezHXQfhC7/FqiuOyjtmB/iS2V9azmjh5seiGZhxnvInvfGztqozUO6BQK8QYeyMBHsp5cPRvyfbjw==}
+    peerDependencies:
+      ws: ^8.18.0
+    peerDependenciesMeta:
+      ws:
+        optional: true
 
   '@emnapi/runtime@1.7.1':
     resolution: {integrity: sha512-PVtJr5CmLwYAU9PZDMITZoR5iAOShYREoR45EyyLrbntV50mdePTgUn4AmOw90Ifcj+x2kRjdzr1HP3RrNiHGA==}
@@ -2010,6 +2021,10 @@ packages:
     engines: {node: '>=10'}
 
 snapshots:
+
+  '@cartesia/cartesia-js@3.5.0(ws@8.21.1)':
+    optionalDependencies:
+      ws: 8.21.1
 
   '@emnapi/runtime@1.7.1':
     dependencies:

@@ -26,13 +26,14 @@
     "access": "public"
   },
   "dependencies": {
+    "@cartesia/cartesia-js": "^3.5.0",
     "ws": "^8.21.1"
   },
   "devDependencies": {
-    "@voice-sdk/typescript-config": "workspace:^",
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
     "@voice-sdk/core": "workspace:^",
+    "@voice-sdk/typescript-config": "workspace:^",
     "tsup": "^8.5.1",
     "typescript": "^5.9.2"
   },
