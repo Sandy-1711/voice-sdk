@@ -1,11 +1,25 @@
-import { VoiceProvider } from "@voice-sdk/core";
-import type { Capabilities } from "@voice-sdk/core";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import { PROVIDER, resolveConfig, type ElevenLabsConfig } from "./config";
+import type {
+    AudioStream,
+    Capabilities,
+    RealtimeSTTInput,
+    RealtimeTTSInput,
+    RequestContext,
+    SpeakInput,
+    SpeakResult,
+    STTSession,
+    TranscribeInput,
+    TranscriptResult,
+    TTSSession,
+    VoiceInfo,
+    VoiceProvider,
+} from "@voice-sdk/core";
+import type { ElevenLabsConfig, ResolvedConfig } from "./config";
+import { PROVIDER, resolveConfig } from "./config";
 import { ElevenLabsSTT } from "./stt";
+import { ElevenLabsSTTSession } from "./stt-session";
 import { ElevenLabsTTS } from "./tts";
-import type { TranscribeInput, TranscriptResult, RequestContext } from "@voice-sdk/core";
-import type { AudioStream, SpeakInput, SpeakResult } from "@voice-sdk/core";
+import { ElevenLabsTTSSession } from "./tts-session";
 
 export class ElevenLabsProvider implements VoiceProvider {
     readonly name = PROVIDER;
@@ -14,17 +28,21 @@ export class ElevenLabsProvider implements VoiceProvider {
         stt: true,
         realtimeTTS: true,
         realtimeSTT: true,
-    }
+    };
+
     #client: ElevenLabsClient;
-    #stt: ElevenLabsSTT;
+    #config: ResolvedConfig;
     #tts: ElevenLabsTTS;
+    #stt: ElevenLabsSTT;
+
     constructor(config: ElevenLabsConfig = {}) {
-        const resolvedConfig = resolveConfig(config);
+        this.#config = resolveConfig(config);
         this.#client = new ElevenLabsClient({
-            apiKey: resolvedConfig.apiKey
+            apiKey: this.#config.apiKey,
+            baseUrl: this.#config.baseUrl,
         });
-        this.#stt = new ElevenLabsSTT(this.#client, resolvedConfig);
-        this.#tts = new ElevenLabsTTS(this.#client, resolvedConfig);
+        this.#tts = new ElevenLabsTTS(this.#client, this.#config);
+        this.#stt = new ElevenLabsSTT(this.#client, this.#config);
     }
 
     speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
@@ -39,4 +57,22 @@ export class ElevenLabsProvider implements VoiceProvider {
         return this.#stt.transcribe(input, context);
     }
 
+    async openTTSSession(input?: RealtimeTTSInput): Promise<TTSSession> {
+        return ElevenLabsTTSSession.open(this.#config, input);
+    }
+
+    async openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
+        return ElevenLabsSTTSession.open(this.#config, input);
+    }
+
+    async listVoices(): Promise<VoiceInfo[]> {
+        const response = await this.#client.voices.getAll();
+
+        return response.voices.map((voice) => ({
+            id: voice.voiceId,
+            name: voice.name,
+            labels: voice.labels,
+            previewUrl: voice.previewUrl,
+        }));
+    }
 }

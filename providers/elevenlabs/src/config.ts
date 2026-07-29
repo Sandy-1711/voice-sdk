@@ -4,6 +4,8 @@ import type { AudioFormat } from "@voice-sdk/core";
 /** Single source of truth for the name this provider reports in errors. */
 export const PROVIDER = "elevenlabs";
 
+export const DEFAULT_BASE_URL = "https://api.elevenlabs.io";
+
 export interface ElevenLabsConfig {
     /** Falls back to the `ELEVENLABS_API_KEY` env var. */
     apiKey?: string;

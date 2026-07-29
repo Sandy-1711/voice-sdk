@@ -257,6 +257,43 @@ export function fromAlignment(
     };
 }
 
+/** Realtime STT names its input format the same way TTS names its output. */
+export function toRealtimeAudioFormat(format: AudioFormat | undefined): string {
+    const encoding = format?.encoding ?? "pcm_s16le";
+    const sampleRate = format?.sampleRate ?? 16000;
+
+    if (encoding === "mulaw") return "ulaw_8000";
+    if (encoding === "pcm_s16le") return `pcm_${sampleRate}`;
+
+    throw new ValidationError(
+        PROVIDER,
+        "inputFormat.encoding",
+        `"${encoding}" is not supported. Supported: pcm_s16le, mulaw.`,
+    );
+}
+
+/**
+ * The TTS WebSocket reports alignment in milliseconds as start + duration,
+ * unlike the REST endpoints which already report seconds.
+ */
+export function fromWsAlignment(alignment: WsAlignment | undefined): Alignment | undefined {
+    if (!alignment) return undefined;
+
+    return {
+        unit: "character",
+        spans: alignment.chars.map((text, index) => {
+            const start = (alignment.charStartTimesMs[index] ?? 0) / 1000;
+            return { text, start, end: start + (alignment.charDurationsMs[index] ?? 0) / 1000 };
+        }),
+    };
+}
+
+export interface WsAlignment {
+    chars: string[];
+    charStartTimesMs: number[];
+    charDurationsMs: number[];
+}
+
 function isRawEncoding(encoding: AudioFormat["encoding"]): boolean {
     return encoding === "pcm_s16le" || encoding === "pcm_s32le" || encoding === "pcm_f32le"
         || encoding === "mulaw" || encoding === "alaw";
