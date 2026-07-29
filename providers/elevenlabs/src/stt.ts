@@ -1,8 +1,9 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { PROVIDER, type ResolvedConfig } from "./config"
-import type { AudioSource, TranscribeInput, RequestContext, TranscriptResult, TranscriptWord } from "@voice-sdk/core";
-import { collectAudio, ValidationError, VoiceError } from "@voice-sdk/core";
+import type { RequestContext, TranscribeInput, TranscriptResult } from "@voice-sdk/core";
+import { VoiceError } from "@voice-sdk/core";
+import type { ResolvedConfig } from "./config";
+import { fromWord, toFileFormat, toGranularity, toRequestOptions, toSource } from "./format";
 
 export class ElevenLabsSTT {
     #client: ElevenLabsClient;
@@ -13,21 +14,20 @@ export class ElevenLabsSTT {
     }
 
     async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
-
-        const response = await this.#client.speechToText.convert({
-            ...(await toSource(input.audio)),
-            modelId: (input.model ?? this.#config.defaultSTTModel) as ElevenLabs.SpeechToTextConvertRequestModelId,
-            languageCode: input.language,
-            timestampsGranularity: toGranularity(input.timestamps),
-            diarize: input.diarize,
-            numSpeakers: input.speakerCount,
-            ...(input.providerOptions ?? {}),
-        }, {
-            abortSignal: context?.signal,
-            // Core counts timeouts in milliseconds, ElevenLabs in seconds.
-            timeoutInSeconds: context?.timeout === undefined ? undefined : context.timeout / 1000,
-            maxRetries: context?.retries,
-        });
+        const response = await this.#client.speechToText.convert(
+            {
+                ...(await toSource(input.audio)),
+                modelId: (input.model ?? this.#config.defaultSTTModel) as ElevenLabs.SpeechToTextConvertRequestModelId,
+                languageCode: input.language,
+                fileFormat: toFileFormat(input.format),
+                timestampsGranularity: toGranularity(input.timestamps),
+                diarize: input.diarize,
+                numSpeakers: input.speakerCount,
+                keyterms: input.keyterms,
+                ...(input.providerOptions ?? {}),
+            },
+            toRequestOptions(context),
+        );
 
         if (!("text" in response)) {
             throw new VoiceError(
@@ -45,44 +45,4 @@ export class ElevenLabsSTT {
             raw: response,
         };
     }
-
-}
-
-/** ElevenLabs takes a URL natively, so skip the round trip when given one. */
-async function toSource(audio: AudioSource) {
-    if ("url" in audio) return { sourceUrl: audio.url };
-    return { file: await collectAudio(audio) };
-}
-
-const GRANULARITY = {
-    word: "word",
-    character: "character",
-} as const;
-
-function toGranularity(
-    timestamps: TranscribeInput["timestamps"],
-): ElevenLabs.SpeechToTextConvertRequestTimestampsGranularity {
-    if (!timestamps) return "none";
-
-    const granularity = GRANULARITY[timestamps as keyof typeof GRANULARITY];
-    if (!granularity) {
-        throw new ValidationError(
-            PROVIDER,
-            "timestamps",
-            `"${timestamps}" is not supported. Supported: ${Object.keys(GRANULARITY).join(", ")}.`,
-        );
-    }
-    return granularity;
-}
-
-/** `logprob` is a log probability in [-inf, 0], not a 0-1 confidence. */
-function fromWord(word: ElevenLabs.SpeechToTextWordResponseModel): TranscriptWord {
-    return {
-        text: word.text,
-        start: word.start ?? 0,
-        end: word.end ?? 0,
-        confidence: Math.exp(word.logprob),
-        speaker: word.speakerId,
-        kind: word.type,
-    };
 }

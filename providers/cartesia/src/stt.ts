@@ -2,7 +2,7 @@ import { toFile, type Cartesia } from "@cartesia/cartesia-js";
 import { collectAudio } from "@voice-sdk/core";
 import type { RequestContext, TranscribeInput, TranscriptResult } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
-import { toSTTEncoding } from "./format";
+import { toRequestOptions, toSTTEncoding } from "./format";
 
 export class CartesiaSTT {
     #client: Cartesia;
@@ -25,11 +25,7 @@ export class CartesiaSTT {
                 timestamp_granularities: input.timestamps ? ["word"] : undefined,
                 ...(input.providerOptions ?? {}),
             },
-            {
-                signal: context?.signal,
-                timeout: context?.timeout,
-                maxRetries: context?.retries,
-            },
+            toRequestOptions(context),
         );
 
         return {

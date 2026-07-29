@@ -1,10 +1,17 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
 import { collectAudio, decodeBase64, ValidationError } from "@voice-sdk/core";
-import type { Alignment, AudioStream, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
+import type { AudioStream, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
 import { PROVIDER, type ResolvedConfig } from "./config";
-import { DEFAULT_FORMAT, toOutputFormat, toStreamOutputFormat, toVoiceSettings } from "./format";
-
+import {
+    assertCharacterTimings,
+    DEFAULT_FORMAT,
+    fromAlignment,
+    toOutputFormat,
+    toRequestOptions,
+    toStreamOutputFormat,
+    toVoiceSettings,
+} from "./format";
 
 type OutputFormatValue =
     | ElevenLabs.TextToSpeechConvertRequestOutputFormat
@@ -25,7 +32,7 @@ export class ElevenLabsTTS {
             DEFAULT_FORMAT,
         );
         const body = this.#body(input, value);
-        const options = requestOptions(context);
+        const options = toRequestOptions(context);
 
         // convertWithTimestamps returns JSON carrying base64 audio, where
         // convert returns an audio stream, so each needs its own handling.
@@ -57,7 +64,7 @@ export class ElevenLabsTTS {
             DEFAULT_FORMAT,
         );
         const body = this.#body(input, value);
-        const options = requestOptions(context);
+        const options = toRequestOptions(context);
         const client = this.#client;
 
         if (input.timings) {
@@ -118,39 +125,4 @@ export class ElevenLabsTTS {
         }
         return id;
     }
-}
-
-/** ElevenLabs aligns per character, so word and phoneme requests cannot be met. */
-function assertCharacterTimings(timings: NonNullable<SpeakInput["timings"]>): void {
-    if (timings !== true && timings !== "character") {
-        throw new ValidationError(
-            PROVIDER,
-            "timings",
-            `"${timings}" is not supported. ElevenLabs reports character-level timings only.`,
-        );
-    }
-}
-
-function fromAlignment(
-    alignment: ElevenLabs.CharacterAlignmentResponseModel | undefined,
-): Alignment | undefined {
-    if (!alignment) return undefined;
-
-    return {
-        unit: "character",
-        spans: alignment.characters.map((text, index) => ({
-            text,
-            start: alignment.characterStartTimesSeconds[index] ?? 0,
-            end: alignment.characterEndTimesSeconds[index] ?? 0,
-        })),
-    };
-}
-
-function requestOptions(context?: RequestContext) {
-    return {
-        abortSignal: context?.signal,
-        // Core counts timeouts in milliseconds, ElevenLabs in seconds.
-        timeoutInSeconds: context?.timeout === undefined ? undefined : context.timeout / 1000,
-        maxRetries: context?.retries,
-    };
 }

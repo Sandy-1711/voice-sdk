@@ -3,9 +3,8 @@ import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from
 import { decodeBase64, VoiceError } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
-import { toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
+import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
 
-import { fromTimestamps } from "./tts";
 
 type TTSWebsocket = Awaited<ReturnType<Cartesia["tts"]["websocket"]>>;
 type TTSContext = ReturnType<TTSWebsocket["context"]>;

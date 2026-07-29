@@ -1,6 +1,14 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
 import { ValidationError } from "@voice-sdk/core";
-import type { AudioEncoding, AudioFormat, ResolvedAudioFormat, VoiceControls } from "@voice-sdk/core";
+import type {
+    Alignment,
+    AudioEncoding,
+    AudioFormat,
+    RequestContext,
+    ResolvedAudioFormat,
+    TranscriptWord,
+    VoiceControls,
+} from "@voice-sdk/core";
 import { PROVIDER } from "./config";
 
 /**
@@ -150,6 +158,58 @@ export function toVoice(voice: string | undefined): Cartesia.VoiceSpecifier {
         );
     }
     return { mode: "id", id: voice };
+}
+
+export function toRequestOptions(context?: RequestContext) {
+    return {
+        signal: context?.signal,
+        timeout: context?.timeout,
+        maxRetries: context?.retries,
+    };
+}
+
+/** Cartesia returns parallel arrays; core carries spans. */
+export function fromTimestamps(
+    labels: string[],
+    start: number[],
+    end: number[],
+    unit: Alignment["unit"],
+): Alignment {
+    return {
+        unit,
+        spans: labels.map((text, index) => ({
+            text,
+            start: start[index] ?? 0,
+            end: end[index] ?? 0,
+        })),
+    };
+}
+
+/**
+ * The SDK types realtime word timings as parallel arrays, but the wire sends
+ * objects. Accept both rather than trusting either.
+ */
+export function fromWords(words: unknown): TranscriptWord[] | undefined {
+    if (!Array.isArray(words) || words.length === 0) return undefined;
+
+    const out: TranscriptWord[] = [];
+    for (const entry of words) {
+        if (!entry || typeof entry !== "object") continue;
+
+        const item = entry as Record<string, unknown>;
+        if (typeof item.word === "string") {
+            out.push({ text: item.word, start: Number(item.start) || 0, end: Number(item.end) || 0 });
+            continue;
+        }
+        if (Array.isArray(item.words)) {
+            const starts = Array.isArray(item.start) ? item.start : [];
+            const ends = Array.isArray(item.end) ? item.end : [];
+            item.words.forEach((text: unknown, index: number) => {
+                out.push({ text: String(text), start: Number(starts[index]) || 0, end: Number(ends[index]) || 0 });
+            });
+        }
+    }
+    return out.length > 0 ? out : undefined;
 }
 
 function isSampleRate(value: number): value is SampleRate {

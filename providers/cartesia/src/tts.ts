@@ -1,7 +1,6 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
 import type {
     AudioStream,
-    Alignment,
     RequestContext,
     SpeakInput,
     SpeakResult,
@@ -9,7 +8,7 @@ import type {
 import { decodeBase64 } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, DEFAULT_STREAM_FORMAT } from "./config";
-import { toGenerationConfig, toOutputFormat, toRawOutputFormat, toVoice } from "./format";
+import { toGenerationConfig, toOutputFormat, toRawOutputFormat, toRequestOptions, toVoice } from "./format";
 
 
 export class CartesiaTTS {
@@ -26,7 +25,7 @@ export class CartesiaTTS {
 
         const response = await this.#client.tts.generate(
             { ...this.#body(input), output_format: payload },
-            requestOptions(context),
+            toRequestOptions(context),
         );
 
         return {
@@ -49,7 +48,7 @@ export class CartesiaTTS {
             async *[Symbol.asyncIterator]() {
                 const events = await client.tts.generateSSE(
                     { ...body, output_format: payload, add_timestamps: Boolean(input.timings) },
-                    requestOptions(context),
+                    toRequestOptions(context),
                 );
                 for await (const event of events) {
                     if (event.type === "chunk") yield { data: decodeBase64(event.data) };
@@ -69,29 +68,4 @@ export class CartesiaTTS {
             ...(input.providerOptions ?? {}),
         };
     }
-}
-
-/** Cartesia returns parallel arrays; core carries spans. */
-export function fromTimestamps(
-    labels: string[],
-    start: number[],
-    end: number[],
-    unit: Alignment["unit"],
-): Alignment {
-    return {
-        unit,
-        spans: labels.map((text, index) => ({
-            text,
-            start: start[index] ?? 0,
-            end: end[index] ?? 0,
-        })),
-    };
-}
-
-function requestOptions(context?: RequestContext) {
-    return {
-        signal: context?.signal,
-        timeout: context?.timeout,
-        maxRetries: context?.retries,
-    };
 }

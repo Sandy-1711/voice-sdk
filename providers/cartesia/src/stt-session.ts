@@ -1,9 +1,9 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
-import type { RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@voice-sdk/core";
+import type { RealtimeSTTInput, STTEvent, STTSession } from "@voice-sdk/core";
 import { TurnTextTracker, ValidationError, VoiceError } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULTS, DEFAULT_INPUT_FORMAT, PROVIDER } from "./config";
-import { toSTTEncoding } from "./format";
+import { fromWords, toSTTEncoding } from "./format";
 
 type AutoWS = ReturnType<Cartesia["stt"]["autoFinalize"]["websocket"]>;
 type ManualWS = ReturnType<Cartesia["stt"]["manualFinalize"]["websocket"]>;
@@ -120,7 +120,7 @@ export class CartesiaSTTSession implements STTSession {
                         text,
                         delta,
                         turn,
-                        words: toWords(message.words),
+                        words: fromWords(message.words),
                         language: message.language,
                         raw: message,
                     };
@@ -187,31 +187,4 @@ export class CartesiaSTTSession implements STTSession {
         const { text, delta, turn } = this.#tracker.fromCumulative(transcript);
         return { type: "transcript", finality, text, delta, turn, raw };
     }
-}
-
-/**
- * The SDK types word timings as parallel arrays, but the wire sends objects.
- * Accept both rather than trusting either.
- */
-function toWords(words: unknown): TranscriptWord[] | undefined {
-    if (!Array.isArray(words) || words.length === 0) return undefined;
-
-    const out: TranscriptWord[] = [];
-    for (const entry of words) {
-        if (!entry || typeof entry !== "object") continue;
-
-        const item = entry as Record<string, unknown>;
-        if (typeof item.word === "string") {
-            out.push({ text: item.word, start: Number(item.start) || 0, end: Number(item.end) || 0 });
-            continue;
-        }
-        if (Array.isArray(item.words)) {
-            const starts = Array.isArray(item.start) ? item.start : [];
-            const ends = Array.isArray(item.end) ? item.end : [];
-            item.words.forEach((text: unknown, index: number) => {
-                out.push({ text: String(text), start: Number(starts[index]) || 0, end: Number(ends[index]) || 0 });
-            });
-        }
-    }
-    return out.length > 0 ? out : undefined;
 }

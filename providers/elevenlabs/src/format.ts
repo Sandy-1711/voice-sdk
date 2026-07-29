@@ -1,6 +1,16 @@
 import { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { ValidationError } from "@voice-sdk/core";
-import type { AudioFormat, ResolvedAudioFormat, VoiceControls } from "@voice-sdk/core";
+import { collectAudio, ValidationError } from "@voice-sdk/core";
+import type {
+    Alignment,
+    AudioFormat,
+    AudioSource,
+    RequestContext,
+    ResolvedAudioFormat,
+    SpeakInput,
+    TranscribeInput,
+    TranscriptWord,
+    VoiceControls,
+} from "@voice-sdk/core";
 import { PROVIDER } from "./config";
 
 /**
@@ -148,4 +158,106 @@ export function toVoiceSettings(controls: VoiceControls | undefined): ElevenLabs
     if (controls.style !== undefined) settings.style = controls.style;
 
     return Object.keys(settings).length > 0 ? settings : undefined;
+}
+
+/** ElevenLabs takes a URL natively, so skip the round trip when given one. */
+export async function toSource(audio: AudioSource) {
+    if ("url" in audio) return { sourceUrl: audio.url };
+    return { file: await collectAudio(audio) };
+}
+
+/**
+ * ElevenLabs only distinguishes "raw 16-bit PCM at 16 kHz" from "an encoded
+ * waveform it can sniff", and the raw path is lower latency. Any other
+ * headerless format would be sniffed and fail, so it is rejected here.
+ */
+export function toFileFormat(
+    format: AudioFormat | undefined,
+): ElevenLabs.SpeechToTextConvertRequestFileFormat | undefined {
+    if (!format) return undefined;
+
+    const headerless = format.container === "raw" || (!format.container && isRawEncoding(format.encoding));
+    if (!headerless) return "other";
+
+    if (format.encoding === "pcm_s16le" && (format.sampleRate ?? 16000) === 16000 && (format.channels ?? 1) === 1) {
+        return "pcm_s16le_16";
+    }
+    throw new ValidationError(
+        PROVIDER,
+        "format",
+        "Headerless audio must be 16-bit PCM at 16 kHz mono. Use a container format (wav, mp3, ...) for anything else.",
+    );
+}
+
+const GRANULARITY = {
+    word: "word",
+    character: "character",
+} as const;
+
+export function toGranularity(
+    timestamps: TranscribeInput["timestamps"],
+): ElevenLabs.SpeechToTextConvertRequestTimestampsGranularity {
+    if (!timestamps) return "none";
+
+    const granularity = GRANULARITY[timestamps as keyof typeof GRANULARITY];
+    if (!granularity) {
+        throw new ValidationError(
+            PROVIDER,
+            "timestamps",
+            `"${timestamps}" is not supported. Supported: ${Object.keys(GRANULARITY).join(", ")}.`,
+        );
+    }
+    return granularity;
+}
+
+/** ElevenLabs aligns per character, so word and phoneme requests cannot be met. */
+export function assertCharacterTimings(timings: NonNullable<SpeakInput["timings"]>): void {
+    if (timings !== true && timings !== "character") {
+        throw new ValidationError(
+            PROVIDER,
+            "timings",
+            `"${timings}" is not supported. ElevenLabs reports character-level timings only.`,
+        );
+    }
+}
+
+export function toRequestOptions(context?: RequestContext) {
+    return {
+        abortSignal: context?.signal,
+        // Core counts timeouts in milliseconds, ElevenLabs in seconds.
+        timeoutInSeconds: context?.timeout === undefined ? undefined : context.timeout / 1000,
+        maxRetries: context?.retries,
+    };
+}
+
+/** `logprob` is a log probability in [-inf, 0], not a 0-1 confidence. */
+export function fromWord(word: ElevenLabs.SpeechToTextWordResponseModel): TranscriptWord {
+    return {
+        text: word.text,
+        start: word.start ?? 0,
+        end: word.end ?? 0,
+        confidence: Math.exp(word.logprob),
+        speaker: word.speakerId,
+        kind: word.type,
+    };
+}
+
+export function fromAlignment(
+    alignment: ElevenLabs.CharacterAlignmentResponseModel | undefined,
+): Alignment | undefined {
+    if (!alignment) return undefined;
+
+    return {
+        unit: "character",
+        spans: alignment.characters.map((text, index) => ({
+            text,
+            start: alignment.characterStartTimesSeconds[index] ?? 0,
+            end: alignment.characterEndTimesSeconds[index] ?? 0,
+        })),
+    };
+}
+
+function isRawEncoding(encoding: AudioFormat["encoding"]): boolean {
+    return encoding === "pcm_s16le" || encoding === "pcm_s32le" || encoding === "pcm_f32le"
+        || encoding === "mulaw" || encoding === "alaw";
 }
