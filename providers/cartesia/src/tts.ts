@@ -5,7 +5,7 @@ import type {
     SpeakInput,
     SpeakResult,
 } from "@voice-sdk/core";
-import { decodeBase64 } from "@voice-sdk/core";
+import { decodeBase64, withProviderOptions } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, DEFAULT_STREAM_FORMAT } from "./config";
 import { toGenerationConfig, toOutputFormat, toRawOutputFormat, toRequestOptions, toVoice } from "./format";
@@ -59,13 +59,12 @@ export class CartesiaTTS {
 
     /** Everything but `output_format`, which differs per endpoint. */
     #body(input: SpeakInput) {
-        return {
+        return withProviderOptions({
             model_id: (input.model ?? this.#config.defaultModel) as Cartesia.TTSModel,
             transcript: input.text,
             voice: toVoice(input.voice ?? this.#config.defaultVoice),
             language: input.language as Cartesia.SupportedLanguage | undefined,
             generation_config: toGenerationConfig(input.controls),
-            ...(input.providerOptions ?? {}),
-        };
+        }, input.providerOptions);
     }
 }

@@ -1,6 +1,6 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
 import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@voice-sdk/core";
-import { decodeBase64, VoiceError } from "@voice-sdk/core";
+import { decodeBase64, VoiceError, withProviderOptions } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
@@ -29,16 +29,17 @@ export class CartesiaTTSSession implements TTSSession {
     ): Promise<CartesiaTTSSession> {
         const { payload, resolved } = toRawOutputFormat(input.format ?? config.defaultFormat, DEFAULT_STREAM_FORMAT);
 
-        const ws = await client.tts.websocket();
-        const context = ws.context({
+        const options = withProviderOptions({
             model_id: (input.model ?? config.defaultModel) as Cartesia.TTSModel,
             voice: toVoice(input.voice ?? config.defaultVoice),
             output_format: payload,
             language: input.language as Cartesia.SupportedLanguage | undefined,
             add_timestamps: input.timings === true || input.timings === "word",
             add_phoneme_timestamps: input.timings === "phoneme",
-            ...(input.providerOptions ?? {}),
-        });
+        }, input.providerOptions);
+
+        const ws = await client.tts.websocket();
+        const context = ws.context(options);
 
         return new CartesiaTTSSession(ws, context, resolved, toGenerationConfig(input.controls));
     }

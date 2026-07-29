@@ -1,6 +1,6 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { collectAudio, decodeBase64, ValidationError } from "@voice-sdk/core";
+import { collectAudio, decodeBase64, ValidationError, withProviderOptions } from "@voice-sdk/core";
 import type { AudioStream, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import {
@@ -104,14 +104,16 @@ export class ElevenLabsTTS {
 
     /** Generic so the narrower streaming format survives into the request. */
     #body<T extends OutputFormatValue>(input: SpeakInput, outputFormat: T) {
-        return {
-            text: input.text,
-            modelId: input.model ?? this.#config.defaultModel,
-            languageCode: input.language,
-            voiceSettings: toVoiceSettings(input.controls),
-            outputFormat,
-            ...(input.providerOptions ?? {}),
-        };
+        return withProviderOptions(
+            {
+                text: input.text,
+                modelId: input.model ?? this.#config.defaultModel,
+                languageCode: input.language,
+                voiceSettings: toVoiceSettings(input.controls),
+                outputFormat,
+            },
+            input.providerOptions,
+        );
     }
 
     #voice(voice: string | undefined): string {

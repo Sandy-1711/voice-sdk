@@ -1,5 +1,5 @@
 import { toFile, type Cartesia } from "@cartesia/cartesia-js";
-import { collectAudio } from "@voice-sdk/core";
+import { collectAudio, withProviderOptions } from "@voice-sdk/core";
 import type { RequestContext, TranscribeInput, TranscriptResult } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { toRequestOptions, toSTTEncoding } from "./format";
@@ -14,19 +14,17 @@ export class CartesiaSTT {
     }
 
     async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
-        const response = await this.#client.stt.transcribe(
-            {
-                file: await toFile(await collectAudio(input.audio), "audio"),
-                model: (input.model ?? this.#config.defaultSTTModel) as Cartesia.STTBatchModel,
-                language: input.language,
-                encoding: toSTTEncoding(input.format),
-                sample_rate: input.format?.sampleRate,
-                // Word is the only granularity Cartesia offers.
-                timestamp_granularities: input.timestamps ? ["word"] : undefined,
-                ...(input.providerOptions ?? {}),
-            },
-            toRequestOptions(context),
-        );
+        const request = withProviderOptions({
+            file: await toFile(await collectAudio(input.audio), "audio"),
+            model: (input.model ?? this.#config.defaultSTTModel) as Cartesia.STTBatchModel,
+            language: input.language,
+            encoding: toSTTEncoding(input.format),
+            sample_rate: input.format?.sampleRate,
+            // Word is the only granularity Cartesia offers.
+            timestamp_granularities: input.timestamps ? ["word" as const] : undefined,
+        }, input.providerOptions);
+
+        const response = await this.#client.stt.transcribe(request, toRequestOptions(context));
 
         return {
             text: response.text,
