@@ -1,10 +1,10 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { collectAudio, ValidationError } from "@voice-sdk/core";
+import { collectAudio, decodeBase64, ValidationError } from "@voice-sdk/core";
 import type { Alignment, AudioStream, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, toOutputFormat, toStreamOutputFormat, toVoiceSettings } from "./format";
-import { decodeBase64 } from "./internal/base64";
+
 
 type OutputFormatValue =
     | ElevenLabs.TextToSpeechConvertRequestOutputFormat
@@ -35,7 +35,7 @@ export class ElevenLabsTTS {
             return {
                 audio: decodeBase64(response.audioBase64),
                 format: resolved,
-                alignment: toAlignment(response.alignment ?? response.normalizedAlignment),
+                alignment: fromAlignment(response.alignment ?? response.normalizedAlignment),
                 raw: response,
             };
         }
@@ -131,7 +131,7 @@ function assertCharacterTimings(timings: NonNullable<SpeakInput["timings"]>): vo
     }
 }
 
-function toAlignment(
+function fromAlignment(
     alignment: ElevenLabs.CharacterAlignmentResponseModel | undefined,
 ): Alignment | undefined {
     if (!alignment) return undefined;

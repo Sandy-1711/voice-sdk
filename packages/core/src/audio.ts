@@ -92,6 +92,24 @@ export async function collectAudio(source: AudioSource): Promise<Uint8Array> {
     return concatAudio(chunks);
 }
 
+/** Providers that carry audio as base64 JSON decode it before core sees it. */
+export function decodeBase64(data: string): Uint8Array {
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
+export function encodeBase64(bytes: Uint8Array): string {
+    // Chunked because spreading a whole audio buffer into fromCharCode
+    // overflows the call stack.
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+}
+
 export function concatAudio(chunks: Uint8Array[]): Uint8Array {
     const total = chunks.reduce((size, chunk) => size + chunk.length, 0);
     const out = new Uint8Array(total);

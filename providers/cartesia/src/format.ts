@@ -3,6 +3,14 @@ import { ValidationError } from "@voice-sdk/core";
 import type { AudioEncoding, AudioFormat, ResolvedAudioFormat, VoiceControls } from "@voice-sdk/core";
 import { PROVIDER } from "./config";
 
+/**
+ * Translation between core's vocabulary and Cartesia's.
+ *
+ * Naming convention across every provider:
+ *   to<Thing>   core  -> provider   (building a request)
+ *   from<Thing> provider -> core    (reading a response)
+ */
+
 type CartesiaOutputFormat =
     | Cartesia.RawOutputFormat
     | Cartesia.WAVOutputFormat

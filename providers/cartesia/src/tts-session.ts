@@ -1,11 +1,11 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
 import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@voice-sdk/core";
-import { VoiceError } from "@voice-sdk/core";
+import { decodeBase64, VoiceError } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
 import { toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
-import { decodeBase64 } from "./internal/base64";
-import { toAlignment } from "./tts";
+
+import { fromTimestamps } from "./tts";
 
 type TTSWebsocket = Awaited<ReturnType<Cartesia["tts"]["websocket"]>>;
 type TTSContext = ReturnType<TTSWebsocket["context"]>;
@@ -104,7 +104,7 @@ export class CartesiaTTSSession implements TTSSession {
                     if (timings) {
                         yield {
                             type: "timing",
-                            alignment: toAlignment(timings.words, timings.start, timings.end, "word"),
+                            alignment: fromTimestamps(timings.words, timings.start, timings.end, "word"),
                         };
                     }
                     break;
@@ -114,7 +114,7 @@ export class CartesiaTTSSession implements TTSSession {
                     if (timings) {
                         yield {
                             type: "timing",
-                            alignment: toAlignment(timings.phonemes, timings.start, timings.end, "phoneme"),
+                            alignment: fromTimestamps(timings.phonemes, timings.start, timings.end, "phoneme"),
                         };
                     }
                     break;

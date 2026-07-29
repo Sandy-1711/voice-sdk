@@ -41,7 +41,7 @@ export class ElevenLabsSTT {
             languageConfidence: response.languageProbability,
             duration: response.audioDurationSecs,
             requestId: response.transcriptionId,
-            words: response.words.length > 0 ? response.words.map(toWord) : undefined,
+            words: response.words.length > 0 ? response.words.map(fromWord) : undefined,
             raw: response,
         };
     }
@@ -76,7 +76,7 @@ function toGranularity(
 }
 
 /** `logprob` is a log probability in [-inf, 0], not a 0-1 confidence. */
-function toWord(word: ElevenLabs.SpeechToTextWordResponseModel): TranscriptWord {
+function fromWord(word: ElevenLabs.SpeechToTextWordResponseModel): TranscriptWord {
     return {
         text: word.text,
         start: word.start ?? 0,

@@ -3,6 +3,14 @@ import { ValidationError } from "@voice-sdk/core";
 import type { AudioFormat, ResolvedAudioFormat, VoiceControls } from "@voice-sdk/core";
 import { PROVIDER } from "./config";
 
+/**
+ * Translation between core's vocabulary and ElevenLabs'.
+ *
+ * Naming convention across every provider:
+ *   to<Thing>   core  -> provider   (building a request)
+ *   from<Thing> provider -> core    (reading a response)
+ */
+
 type OutputFormatValue = ElevenLabs.TextToSpeechConvertRequestOutputFormat;
 
 const OUTPUT_FORMATS = Object.values(ElevenLabs.TextToSpeechConvertRequestOutputFormat) as string[];

@@ -6,10 +6,11 @@ import type {
     SpeakInput,
     SpeakResult,
 } from "@voice-sdk/core";
+import { decodeBase64 } from "@voice-sdk/core";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, DEFAULT_STREAM_FORMAT } from "./config";
 import { toGenerationConfig, toOutputFormat, toRawOutputFormat, toVoice } from "./format";
-import { decodeBase64 } from "./internal/base64";
+
 
 export class CartesiaTTS {
     #client: Cartesia;
@@ -71,7 +72,7 @@ export class CartesiaTTS {
 }
 
 /** Cartesia returns parallel arrays; core carries spans. */
-export function toAlignment(
+export function fromTimestamps(
     labels: string[],
     start: number[],
     end: number[],
