@@ -104,6 +104,16 @@ export class ElevenLabsSTTSession implements STTSession {
     }
 
     async close(): Promise<void> {
+        // The socket opens in the constructor, so a caller that closes straight
+        // away arrives mid-handshake. Closing then is a no-op the `ws` library
+        // drops, which would leave `closed` waiting on a socket nobody ever
+        // shuts — so wait for the handshake to settle first.
+        if (this.#ws.readyState === WebSocket.CONNECTING) {
+            await new Promise<void>((resolve) => {
+                this.#ws.once("open", () => resolve());
+                this.#ws.once("close", () => resolve());
+            });
+        }
         if (this.#ws.readyState === WebSocket.OPEN) this.#ws.close();
         await this.#closed;
     }
