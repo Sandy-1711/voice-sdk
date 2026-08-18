@@ -182,8 +182,14 @@ describe("toRequestOptions", () => {
         });
     });
 
-    it("leaves everything unset when there is no context", () => {
-        expect(toRequestOptions()).toEqual({ signal: undefined, timeout: undefined, maxRetries: undefined });
+    // Cartesia's client validates `timeout` on key presence rather than value,
+    // so an unset deadline has to be absent, not present-and-undefined -
+    // otherwise every request fails with "timeout must be an integer".
+    it("omits what the caller did not set, rather than sending undefined", () => {
+        expect(toRequestOptions()).toEqual({});
+        expect(toRequestOptions({})).toEqual({});
+        expect("timeout" in toRequestOptions({ retries: 1 })).toBe(false);
+        expect(toRequestOptions({ retries: 1 })).toEqual({ maxRetries: 1 });
     });
 });
 
