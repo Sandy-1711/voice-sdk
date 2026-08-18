@@ -1,6 +1,27 @@
 {
   "name": "@voice-sdk/cartesia",
   "version": "0.1.0",
+  "description": "Cartesia provider for the voice SDK: speech synthesis and transcription, batch and realtime.",
+  "keywords": [
+    "voice",
+    "tts",
+    "stt",
+    "cartesia",
+    "sonic",
+    "realtime",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Sandy-1711",
+  "homepage": "https://github.com/Sandy-1711/voice-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sandy-1711/voice-sdk.git",
+    "directory": "providers/cartesia"
+  },
+  "bugs": {
+    "url": "https://github.com/Sandy-1711/voice-sdk/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -16,6 +37,9 @@
     "dist"
   ],
   "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -23,17 +47,6 @@
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "clean": "rm -rf dist"
-  },
-  "publishConfig": {
-    "access": "public",
-    "types": "./dist/index.d.ts",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.mjs",
-        "require": "./dist/index.cjs"
-      }
-    }
   },
   "dependencies": {
     "@cartesia/cartesia-js": "^3.5.0",
@@ -50,5 +63,16 @@
   },
   "peerDependencies": {
     "@voice-sdk/core": "workspace:^"
+  },
+  "publishConfig": {
+    "access": "public",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.cjs"
+      }
+    }
   }
 }

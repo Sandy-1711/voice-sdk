@@ -1,6 +1,29 @@
 {
   "name": "@voice-sdk/deepgram",
   "version": "0.1.0",
+  "description": "Deepgram provider for the voice SDK: speech synthesis and transcription, batch and realtime.",
+  "keywords": [
+    "voice",
+    "tts",
+    "stt",
+    "deepgram",
+    "aura",
+    "nova",
+    "flux",
+    "realtime",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Sandy-1711",
+  "homepage": "https://github.com/Sandy-1711/voice-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sandy-1711/voice-sdk.git",
+    "directory": "providers/deepgram"
+  },
+  "bugs": {
+    "url": "https://github.com/Sandy-1711/voice-sdk/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -16,6 +39,9 @@
     "dist"
   ],
   "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -23,17 +49,6 @@
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "clean": "rm -rf dist"
-  },
-  "publishConfig": {
-    "access": "public",
-    "types": "./dist/index.d.ts",
-    "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "import": "./dist/index.mjs",
-        "require": "./dist/index.cjs"
-      }
-    }
   },
   "dependencies": {
     "ws": "^8.21.1"
@@ -49,5 +64,16 @@
   },
   "peerDependencies": {
     "@voice-sdk/core": "workspace:^"
+  },
+  "publishConfig": {
+    "access": "public",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.cjs"
+      }
+    }
   }
 }
