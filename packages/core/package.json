@@ -25,7 +25,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
-    "@voice-sdk/test-kit": "workspace:^",
     "@voice-sdk/typescript-config": "workspace:*",
     "tsup": "^8.5.1",
     "typescript": "5.9.2"

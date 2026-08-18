@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { fakeHttp, pcmRamp, type FakeHttp } from "@voice-sdk/test-kit";
+import { pcmRamp, serveBytes, type ByteServer } from "./helpers";
 import { collectAudio, concatAudio, decodeBase64, encodeBase64 } from "../src/index";
 
 const BYTES = new Uint8Array([0, 1, 2, 253, 254, 255]);
 
-let server: FakeHttp | undefined;
+let server: ByteServer | undefined;
 
 afterEach(async () => {
     await server?.close();
@@ -48,9 +48,9 @@ describe("collectAudio", () => {
 
     it("fetches a url source", async () => {
         const audio = pcmRamp(64);
-        server = await fakeHttp({ "GET /audio.pcm": { body: audio } });
+        server = await serveBytes(audio);
 
-        await expect(collectAudio({ url: `${server.baseUrl}/audio.pcm` })).resolves.toEqual(audio);
+        await expect(collectAudio({ url: server.url })).resolves.toEqual(audio);
     });
 
     it("survives an empty stream", async () => {

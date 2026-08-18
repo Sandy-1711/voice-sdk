@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collect } from "@voice-sdk/test-kit";
+import { collect } from "./helpers";
 import { audioOnly, turns } from "../src/index";
 import type { STTEvent, TTSEvent } from "../src/index";
 
