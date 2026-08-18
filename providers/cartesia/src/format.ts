@@ -160,12 +160,23 @@ export function toVoice(voice: string | undefined): Cartesia.VoiceSpecifier {
     return { mode: "id", id: voice };
 }
 
-export function toRequestOptions(context?: RequestContext) {
-    return {
-        signal: context?.signal,
-        timeout: context?.timeout,
-        maxRetries: context?.retries,
-    };
+/**
+ * Only the fields the caller actually set are included. Cartesia's client
+ * validates `timeout` on key presence rather than value, so passing
+ * `timeout: undefined` fails every request with "timeout must be an integer".
+ */
+export function toRequestOptions(context?: RequestContext): {
+    signal?: AbortSignal;
+    timeout?: number;
+    maxRetries?: number;
+} {
+    const options: { signal?: AbortSignal; timeout?: number; maxRetries?: number } = {};
+
+    if (context?.signal !== undefined) options.signal = context.signal;
+    if (context?.timeout !== undefined) options.timeout = context.timeout;
+    if (context?.retries !== undefined) options.maxRetries = context.retries;
+
+    return options;
 }
 
 /** Cartesia returns parallel arrays; core carries spans. */

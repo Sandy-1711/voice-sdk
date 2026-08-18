@@ -1,6 +1,27 @@
 {
   "name": "@voice-sdk/core",
   "version": "0.1.0",
+  "description": "Provider-agnostic types and helpers for text-to-speech and speech-to-text, batch and realtime.",
+  "keywords": [
+    "voice",
+    "tts",
+    "stt",
+    "text-to-speech",
+    "speech-to-text",
+    "realtime",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Sandy-1711",
+  "homepage": "https://github.com/Sandy-1711/voice-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sandy-1711/voice-sdk.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/Sandy-1711/voice-sdk/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -16,15 +37,19 @@
     "dist"
   ],
   "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
+    "test": "vitest run",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
-    "@voice-sdk/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
+    "@voice-sdk/typescript-config": "workspace:*",
     "tsup": "^8.5.1",
     "typescript": "5.9.2"
   },

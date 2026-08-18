@@ -107,6 +107,7 @@ export class CartesiaSTTSession implements STTSession {
 
     async *#manualEvents(ws: ManualWS): AsyncIterable<STTEvent> {
         for await (const event of ws.stream()) {
+            if (event.type === "error") throw toSessionError(event.error);
             if (event.type !== "message") continue;
             const message = event.message;
 
@@ -151,6 +152,7 @@ export class CartesiaSTTSession implements STTSession {
 
     async *#autoEvents(ws: AutoWS): AsyncIterable<STTEvent> {
         for await (const event of ws.stream()) {
+            if (event.type === "error") throw toSessionError(event.error);
             if (event.type !== "message") continue;
             const message = event.message;
 
@@ -187,4 +189,27 @@ export class CartesiaSTTSession implements STTSession {
         const { text, delta, turn } = this.#tracker.fromCumulative(transcript);
         return { type: "transcript", finality, text, delta, turn, raw };
     }
+}
+
+/**
+ * The SDK never yields an API error as a message: both API failures and socket
+ * failures are funnelled into the stream's own `error` event. Skipping those
+ * would leave a failed session silently waiting for transcripts that are never
+ * coming.
+ *
+ * An API failure arrives as the JSON payload stringified into the message, so
+ * it is unwrapped back into "title: message" rather than shown as raw JSON.
+ */
+function toSessionError(error: unknown): VoiceError {
+    const detail = error instanceof Error ? error.message : String(error);
+
+    try {
+        const parsed = JSON.parse(detail) as { title?: string; message?: string };
+        const summary = [parsed.title, parsed.message].filter(Boolean).join(": ");
+        if (summary) return new VoiceError(`Cartesia STT session: ${summary}`);
+    } catch {
+        /* not JSON; the raw message is the best we have */
+    }
+
+    return new VoiceError(`Cartesia STT session: ${detail}`);
 }

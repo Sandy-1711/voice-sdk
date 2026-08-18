@@ -1,6 +1,27 @@
 {
   "name": "@voice-sdk/cartesia",
   "version": "0.1.0",
+  "description": "Cartesia provider for the voice SDK: speech synthesis and transcription, batch and realtime.",
+  "keywords": [
+    "voice",
+    "tts",
+    "stt",
+    "cartesia",
+    "sonic",
+    "realtime",
+    "sdk"
+  ],
+  "license": "MIT",
+  "author": "Sandy-1711",
+  "homepage": "https://github.com/Sandy-1711/voice-sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sandy-1711/voice-sdk.git",
+    "directory": "providers/cartesia"
+  },
+  "bugs": {
+    "url": "https://github.com/Sandy-1711/voice-sdk/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
@@ -16,11 +37,32 @@
     "dist"
   ],
   "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@cartesia/cartesia-js": "^3.5.0",
+    "ws": "^8.21.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/ws": "^8.18.1",
+    "@voice-sdk/core": "workspace:^",
+    "@voice-sdk/test-kit": "workspace:^",
+    "@voice-sdk/typescript-config": "workspace:^",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "@voice-sdk/core": "workspace:^"
   },
   "publishConfig": {
     "access": "public",
@@ -32,20 +74,5 @@
         "require": "./dist/index.cjs"
       }
     }
-  },
-  "dependencies": {
-    "@cartesia/cartesia-js": "^3.5.0",
-    "ws": "^8.21.1"
-  },
-  "devDependencies": {
-    "@types/node": "^22.15.3",
-    "@types/ws": "^8.18.1",
-    "@voice-sdk/core": "workspace:^",
-    "@voice-sdk/typescript-config": "workspace:^",
-    "tsup": "^8.5.1",
-    "typescript": "^5.9.2"
-  },
-  "peerDependencies": {
-    "@voice-sdk/core": "workspace:^"
   }
 }
