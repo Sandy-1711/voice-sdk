@@ -1,159 +1,116 @@
-# Turborepo starter
+# voice-sdk
 
-This Turborepo starter is maintained by the Turborepo core team.
+One interface for voice providers. Synthesis and transcription, batch and
+realtime, with the same types whichever provider is behind them — so switching
+is a constructor change rather than a rewrite.
 
-## Using this example
+```ts
+import { Voice } from "@voice-sdk/core";
+import { DeepgramProvider } from "@voice-sdk/deepgram";
 
-Run the following command:
+const voice = new Voice({ provider: new DeepgramProvider() });
 
-```sh
-npx create-turbo@latest
+const { audio, format } = await voice.speak({ text: "Hello there." });
+const { text } = await voice.transcribe({ audio });
 ```
 
-## What's inside?
+Swap `DeepgramProvider` for `CartesiaProvider` or `ElevenLabsProvider` and
+nothing else changes.
 
-This Turborepo includes the following packages/apps:
+## Packages
 
-### Apps and Packages
+| Package                                        | What it is                                              |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| [`@voice-sdk/core`](packages/core)             | The contract: `Voice`, the types, the shared helpers    |
+| [`@voice-sdk/cartesia`](providers/cartesia)    | Cartesia — sonic, ink-whisper, ink-2                    |
+| [`@voice-sdk/deepgram`](providers/deepgram)    | Deepgram — aura-2, nova-3, flux                         |
+| [`@voice-sdk/elevenlabs`](providers/elevenlabs)| ElevenLabs — eleven_multilingual_v2, scribe             |
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@voice-sdk/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@voice-sdk/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@voice-sdk/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+Install core plus whichever providers you need. Each provider declares core as a
+peer dependency, so an app never ends up with two copies of it.
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm add @voice-sdk/core @voice-sdk/deepgram
 ```
 
-Without global `turbo`, use your package manager:
+## Capabilities
+
+Four, deliberately narrow. A provider declares which it has, and calling one it
+lacks raises a `CapabilityError` naming the provider rather than failing deeper
+in.
+
+|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` |
+| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: |
+| **Cartesia**   |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
+| **Deepgram**   |  ✅   |  ✅   |      ✅       |      ✅       |      —       |
+| **ElevenLabs** |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
+
+Deepgram has no voice-listing endpoint because a voice *is* a model there, so
+the method is absent rather than faked.
+
+`realtimeTTS` means a duplex session you push text **into** incrementally — what
+a spoken LLM response needs. Streaming audio *out* of a one-shot call is
+`speakStream`, and every provider with `tts` has it.
+
+See [`@voice-sdk/core`](packages/core) for the full surface, and each provider's
+README for what is specific to it.
+
+## Working on it
 
 ```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+pnpm install
+pnpm test          # offline: fake servers on ephemeral ports, no keys, no cost
+pnpm check-types
+pnpm build
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+`pnpm test` is the tier CI runs. It stands real HTTP and WebSocket servers up on
+ephemeral ports and drives each provider against them, so URL building, headers,
+protocol frames and streaming stay covered without touching a real API.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+The second tier does touch the real APIs, and is opt-in because it costs money:
 
 ```sh
-turbo build --filter=docs
+DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
 ```
 
-Without global `turbo`:
+Anything without a key is skipped. Run it before a release — the offline fakes
+only encode what we believe each wire format is, and this is what catches one
+changing.
+
+### Adding a provider
+
+Every provider package has the same shape, one file per concern:
+
+```
+src/
+├── config.ts        # api key, defaults, what to use when the caller says nothing
+├── format.ts        # core's AudioFormat  ->  this provider's spelling
+├── tts.ts           # speak() and speakStream()
+├── tts-session.ts   # openTTSSession()
+├── stt.ts           # transcribe()
+├── stt-session.ts   # openSTTSession()
+├── provider.ts      # the class implementing VoiceProvider — mostly delegation
+└── index.ts         # the provider class and its config type
+```
+
+`provider.ts` ending up as almost pure delegation is the sign the split is
+right. [`docs/drafts/building-a-provider.md`](docs/drafts/building-a-provider.md)
+walks through how the first one was built, and `@voice-sdk/test-kit` carries the
+fake servers and the shared contract assertions every provider is held to.
+
+### Releasing
+
+Changes that users would notice get a changeset:
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+pnpm changeset
 ```
 
-### Develop
+On merge to `main`, CI opens a release pull request that applies the pending
+changesets. Merging that publishes to npm. The four packages are versioned
+together, so matching versions mean packages built and tested against each other.
 
-To develop all apps and packages, run the following command:
+## Licence
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+MIT
