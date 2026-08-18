@@ -225,6 +225,9 @@ importers:
       '@voice-sdk/core':
         specifier: workspace:^
         version: link:../../packages/core
+      '@voice-sdk/test-kit':
+        specifier: workspace:^
+        version: link:../../packages/test-kit
       '@voice-sdk/typescript-config':
         specifier: workspace:^
         version: link:../../packages/typescript-config
@@ -250,6 +253,9 @@ importers:
       '@voice-sdk/core':
         specifier: workspace:^
         version: link:../../packages/core
+      '@voice-sdk/test-kit':
+        specifier: workspace:^
+        version: link:../../packages/test-kit
       '@voice-sdk/typescript-config':
         specifier: workspace:^
         version: link:../../packages/typescript-config
@@ -278,6 +284,9 @@ importers:
       '@voice-sdk/core':
         specifier: workspace:^
         version: link:../../packages/core
+      '@voice-sdk/test-kit':
+        specifier: workspace:^
+        version: link:../../packages/test-kit
       '@voice-sdk/typescript-config':
         specifier: workspace:^
         version: link:../../packages/typescript-config

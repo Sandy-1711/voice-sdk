@@ -20,6 +20,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "clean": "rm -rf dist"
   },
   "publishConfig": {
@@ -40,6 +42,7 @@
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
     "@voice-sdk/core": "workspace:^",
+    "@voice-sdk/test-kit": "workspace:^",
     "@voice-sdk/typescript-config": "workspace:^",
     "tsup": "^8.5.1",
     "typescript": "^5.9.2"
