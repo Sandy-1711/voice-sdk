@@ -8,9 +8,13 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "test": "turbo run test",
-    "test:live": "turbo run test:live"
+    "test:live": "turbo run test:live",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "turbo run build --filter=@voice-sdk/core --filter=./providers/* && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.0",
     "@vitest/coverage-v8": "^4.1.10",
     "prettier": "^3.7.4",
     "turbo": "^2.10.5",
