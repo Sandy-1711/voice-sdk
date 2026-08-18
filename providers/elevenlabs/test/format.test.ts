@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ResolvedAudioFormat } from "@voice-sdk/core";
 import {
     DEFAULT_FORMAT,
     assertCharacterTimings,
@@ -253,7 +252,7 @@ describe("fromAlignment", () => {
 
     it("defaults a time the arrays did not cover", () => {
         expect(
-            fromAlignment({ characters: ["h"], characterStartTimesSeconds: [], characterEndTimesSeconds: [] }).spans,
+            fromAlignment({ characters: ["h"], characterStartTimesSeconds: [], characterEndTimesSeconds: [] })?.spans,
         ).toEqual([{ text: "h", start: 0, end: 0 }]);
     });
 });
