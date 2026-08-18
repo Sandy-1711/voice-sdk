@@ -1,6 +1,6 @@
 # Core types
 
-Everything in `@voice-sdk/core`, what it means, and why it is shaped that way.
+Everything in `@swungstudent/voice`, what it means, and why it is shaped that way.
 
 Each section is written twice. **In plain words** is the idea with no jargon.
 **In practice** is the type and the evidence behind it. Read one, both, or skip

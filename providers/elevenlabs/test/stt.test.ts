@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { VoiceError } from "@voice-sdk/core";
+import { VoiceError } from "@swungstudent/voice";
 import { fakeHttp, pcmRamp, wav, type FakeHttp } from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../src/index";
 

@@ -1,6 +1,6 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
-import type { RealtimeSTTInput, STTEvent, STTSession } from "@voice-sdk/core";
-import { TurnTextTracker, ValidationError, VoiceError, withProviderOptions } from "@voice-sdk/core";
+import type { RealtimeSTTInput, STTEvent, STTSession } from "@swungstudent/voice";
+import { TurnTextTracker, ValidationError, VoiceError, withProviderOptions } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { DEFAULTS, DEFAULT_INPUT_FORMAT, PROVIDER } from "./config";
 import { fromWords, toSTTEncoding } from "./format";

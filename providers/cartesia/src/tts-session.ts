@@ -1,6 +1,6 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
-import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@voice-sdk/core";
-import { decodeBase64, VoiceError, withProviderOptions } from "@voice-sdk/core";
+import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@swungstudent/voice";
+import { decodeBase64, VoiceError, withProviderOptions } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";

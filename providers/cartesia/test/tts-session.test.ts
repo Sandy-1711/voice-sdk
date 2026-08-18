@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Cartesia } from "@cartesia/cartesia-js";
-import { encodeBase64 } from "@voice-sdk/core";
+import { encodeBase64 } from "@swungstudent/voice";
 import { assertTTSEvent, collect, pcmRamp } from "@voice-sdk/test-kit";
 import { resolveConfig } from "../src/config";
 import { CartesiaTTSSession } from "../src/tts-session";

@@ -1,5 +1,5 @@
 {
-  "name": "@voice-sdk/core",
+  "name": "@swungstudent/voice",
   "version": "0.1.0",
   "description": "Provider-agnostic types and helpers for text-to-speech and speech-to-text, batch and realtime.",
   "keywords": [

@@ -13,7 +13,7 @@ import type {
     TTSSession,
     VoiceInfo,
     VoiceProvider,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import type { ElevenLabsConfig, ResolvedConfig } from "./config";
 import { PROVIDER, resolveConfig } from "./config";
 import { ElevenLabsSTT } from "./stt";

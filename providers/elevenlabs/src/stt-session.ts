@@ -1,12 +1,12 @@
 import WebSocket from "ws";
-import { encodeBase64, TurnTextTracker, VoiceError } from "@voice-sdk/core";
+import { encodeBase64, TurnTextTracker, VoiceError } from "@swungstudent/voice";
 import type {
     Finality,
     RealtimeSTTInput,
     STTEvent,
     STTSession,
     TranscriptWord,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
 import { AsyncQueue } from "./internal/async-queue";

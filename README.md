@@ -5,8 +5,8 @@ realtime, with the same types whichever provider is behind them — so switching
 is a constructor change rather than a rewrite.
 
 ```ts
-import { Voice } from "@voice-sdk/core";
-import { DeepgramProvider } from "@voice-sdk/deepgram";
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
 
 const voice = new Voice({ provider: new DeepgramProvider() });
 
@@ -19,18 +19,18 @@ nothing else changes.
 
 ## Packages
 
-| Package                                        | What it is                                              |
-| ---------------------------------------------- | ------------------------------------------------------- |
-| [`@voice-sdk/core`](packages/core)             | The contract: `Voice`, the types, the shared helpers    |
-| [`@voice-sdk/cartesia`](providers/cartesia)    | Cartesia — sonic, ink-whisper, ink-2                    |
-| [`@voice-sdk/deepgram`](providers/deepgram)    | Deepgram — aura-2, nova-3, flux                         |
-| [`@voice-sdk/elevenlabs`](providers/elevenlabs)| ElevenLabs — eleven_multilingual_v2, scribe             |
+| Package                                            | What it is                                           |
+| -------------------------------------------------- | ---------------------------------------------------- |
+| [`@swungstudent/voice`](packages/core)             | The contract: `Voice`, the types, the shared helpers |
+| [`@swungstudent/cartesia`](providers/cartesia)     | Cartesia — sonic, ink-whisper, ink-2                 |
+| [`@swungstudent/deepgram`](providers/deepgram)     | Deepgram — aura-2, nova-3, flux                      |
+| [`@swungstudent/elevenlabs`](providers/elevenlabs) | ElevenLabs — eleven_multilingual_v2, scribe          |
 
 Install core plus whichever providers you need. Each provider declares core as a
 peer dependency, so an app never ends up with two copies of it.
 
 ```sh
-pnpm add @voice-sdk/core @voice-sdk/deepgram
+pnpm add @swungstudent/voice @swungstudent/deepgram
 ```
 
 ## Capabilities
@@ -52,8 +52,8 @@ the method is absent rather than faked.
 a spoken LLM response needs. Streaming audio *out* of a one-shot call is
 `speakStream`, and every provider with `tts` has it.
 
-See [`@voice-sdk/core`](packages/core) for the full surface, and each provider's
-README for what is specific to it.
+See [`@swungstudent/voice`](packages/core) for the full surface, and each
+provider's README for what is specific to it.
 
 ## Working on it
 

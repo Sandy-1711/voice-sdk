@@ -4,8 +4,8 @@ import type {
     RequestContext,
     SpeakInput,
     SpeakResult,
-} from "@voice-sdk/core";
-import { decodeBase64, withProviderOptions } from "@voice-sdk/core";
+} from "@swungstudent/voice";
+import { decodeBase64, withProviderOptions } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, DEFAULT_STREAM_FORMAT } from "./config";
 import { toGenerationConfig, toOutputFormat, toRawOutputFormat, toRequestOptions, toVoice } from "./format";

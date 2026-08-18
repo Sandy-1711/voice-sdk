@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { VoiceError } from "@voice-sdk/core";
+import { VoiceError } from "@swungstudent/voice";
 import { fakeHttp, type FakeHttp } from "@voice-sdk/test-kit";
 import { DEFAULT_BASE_URL } from "../src/config";
 import { buildUrl, send } from "../src/internal/http";

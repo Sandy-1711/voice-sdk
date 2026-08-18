@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { encodeBase64 } from "@voice-sdk/core";
+import { encodeBase64 } from "@swungstudent/voice";
 import { assertTTSEvent, collect, fakeSocket, pcmRamp, type FakeSocket } from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../src/index";
 

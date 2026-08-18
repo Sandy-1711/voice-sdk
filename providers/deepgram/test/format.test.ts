@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ValidationError } from "@voice-sdk/core";
-import type { ResolvedAudioFormat } from "@voice-sdk/core";
+import { ValidationError } from "@swungstudent/voice";
+import type { ResolvedAudioFormat } from "@swungstudent/voice";
 import {
     assertNoTimings,
     fromWords,

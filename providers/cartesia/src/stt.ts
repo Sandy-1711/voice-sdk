@@ -1,6 +1,6 @@
 import { toFile, type Cartesia } from "@cartesia/cartesia-js";
-import { collectAudio, withProviderOptions } from "@voice-sdk/core";
-import type { RequestContext, TranscribeInput, TranscriptResult } from "@voice-sdk/core";
+import { collectAudio, withProviderOptions } from "@swungstudent/voice";
+import type { RequestContext, TranscribeInput, TranscriptResult } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { toRequestOptions, toSTTEncoding } from "./format";
 

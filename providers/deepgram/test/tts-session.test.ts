@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { assertTTSEvent, collect, fakeSocket, pcmRamp, type FakeSocket } from "@voice-sdk/test-kit";
-import type { TTSEvent } from "@voice-sdk/core";
+import type { TTSEvent } from "@swungstudent/voice";
 import { DeepgramProvider } from "../src/index";
 
 let server: FakeSocket;

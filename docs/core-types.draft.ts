@@ -1,5 +1,5 @@
 /**
- * Draft core type surface for @voice-sdk/core.
+ * Draft core type surface for @swungstudent/voice.
  *
  * Derived from the provider survey in ./provider-research.md (ElevenLabs,
  * Deepgram, Cartesia, OpenAI — plus AssemblyAI/Groq as stress tests).

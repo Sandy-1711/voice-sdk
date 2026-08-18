@@ -1,5 +1,5 @@
 import { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { collectAudio, ValidationError } from "@voice-sdk/core";
+import { collectAudio, ValidationError } from "@swungstudent/voice";
 import type {
     Alignment,
     AudioFormat,
@@ -10,7 +10,7 @@ import type {
     TranscribeInput,
     TranscriptWord,
     VoiceControls,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import { PROVIDER } from "./config";
 
 /**
