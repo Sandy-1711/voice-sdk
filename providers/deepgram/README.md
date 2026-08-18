@@ -1,15 +1,15 @@
-# @voice-sdk/deepgram
+# @swungstudent/deepgram
 
-Deepgram provider for [`@voice-sdk/core`](https://www.npmjs.com/package/@voice-sdk/core).
+Deepgram provider for [`@swungstudent/voice`](https://www.npmjs.com/package/@swungstudent/voice).
 All four capabilities: synthesis and transcription, batch and realtime.
 
 ```sh
-pnpm add @voice-sdk/core @voice-sdk/deepgram
+pnpm add @swungstudent/voice @swungstudent/deepgram
 ```
 
 ```ts
-import { Voice } from "@voice-sdk/core";
-import { DeepgramProvider } from "@voice-sdk/deepgram";
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
 
 const voice = new Voice({
   provider: new DeepgramProvider(), // reads DEEPGRAM_API_KEY

@@ -18,11 +18,11 @@
   "devDependencies": {
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
-    "@voice-sdk/core": "workspace:^",
+    "@swungstudent/voice": "workspace:^",
     "@voice-sdk/typescript-config": "workspace:^",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@voice-sdk/core": "workspace:^"
+    "@swungstudent/voice": "workspace:^"
   }
 }

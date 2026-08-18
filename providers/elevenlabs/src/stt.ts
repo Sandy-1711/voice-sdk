@@ -1,7 +1,7 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import type { RequestContext, TranscribeInput, TranscriptResult } from "@voice-sdk/core";
-import { VoiceError, withProviderOptions } from "@voice-sdk/core";
+import type { RequestContext, TranscribeInput, TranscriptResult } from "@swungstudent/voice";
+import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { fromWord, toFileFormat, toGranularity, toRequestOptions, toSource } from "./format";
 

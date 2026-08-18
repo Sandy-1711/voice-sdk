@@ -1,15 +1,15 @@
-# @voice-sdk/elevenlabs
+# @swungstudent/elevenlabs
 
-ElevenLabs provider for [`@voice-sdk/core`](https://www.npmjs.com/package/@voice-sdk/core).
+ElevenLabs provider for [`@swungstudent/voice`](https://www.npmjs.com/package/@swungstudent/voice).
 All four capabilities: synthesis and transcription, batch and realtime.
 
 ```sh
-pnpm add @voice-sdk/core @voice-sdk/elevenlabs
+pnpm add @swungstudent/voice @swungstudent/elevenlabs
 ```
 
 ```ts
-import { Voice } from "@voice-sdk/core";
-import { ElevenLabsProvider } from "@voice-sdk/elevenlabs";
+import { Voice } from "@swungstudent/voice";
+import { ElevenLabsProvider } from "@swungstudent/elevenlabs";
 
 const voice = new Voice({
   provider: new ElevenLabsProvider({ defaultVoice: "21m00Tcm4TlvDq8ikWAM" }),

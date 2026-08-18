@@ -1,6 +1,6 @@
 import WebSocket from "ws";
-import { decodeBase64, ValidationError, VoiceError } from "@voice-sdk/core";
-import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@voice-sdk/core";
+import { decodeBase64, ValidationError, VoiceError } from "@swungstudent/voice";
+import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, PROVIDER, type ResolvedConfig } from "./config";
 import {
     assertCharacterTimings,

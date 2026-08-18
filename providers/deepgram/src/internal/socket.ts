@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { VoiceError } from "@voice-sdk/core";
+import { VoiceError } from "@swungstudent/voice";
 
 /**
  * Deepgram's sockets are plain `ws` connections that differ only in their URL,

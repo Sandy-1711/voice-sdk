@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { VoiceError } from "@voice-sdk/core";
+import { VoiceError } from "@swungstudent/voice";
 import { fakeSocket, waitFor, type FakeSocket } from "@voice-sdk/test-kit";
 import { handshake, open, sendWhenOpen, toBytes } from "../src/internal/socket";
 

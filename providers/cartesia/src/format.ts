@@ -1,5 +1,5 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
-import { ValidationError } from "@voice-sdk/core";
+import { ValidationError } from "@swungstudent/voice";
 import type {
     Alignment,
     AudioEncoding,
@@ -8,7 +8,7 @@ import type {
     ResolvedAudioFormat,
     TranscriptWord,
     VoiceControls,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import { PROVIDER } from "./config";
 
 /**

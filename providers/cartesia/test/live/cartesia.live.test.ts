@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Voice, type STTEvent, type TTSEvent } from "@voice-sdk/core";
+import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
 import { CartesiaProvider } from "../../src/index";
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ResolvedAudioFormat } from "@voice-sdk/core";
+import type { ResolvedAudioFormat } from "@swungstudent/voice";
 import {
     fromTimestamps,
     fromWords,

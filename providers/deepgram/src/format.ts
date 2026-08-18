@@ -1,4 +1,4 @@
-import { ValidationError } from "@voice-sdk/core";
+import { ValidationError } from "@swungstudent/voice";
 import type {
     AudioEncoding,
     AudioFormat,
@@ -6,7 +6,7 @@ import type {
     SpeakInput,
     TranscriptWord,
     VoiceControls,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import { PROVIDER } from "./config";
 
 /**

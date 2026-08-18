@@ -1,5 +1,5 @@
-import { VoiceError } from "@voice-sdk/core";
-import type { RequestContext } from "@voice-sdk/core";
+import { VoiceError } from "@swungstudent/voice";
+import type { RequestContext } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL } from "../config";
 
 export type QueryValue = string | number | boolean | string[] | undefined;

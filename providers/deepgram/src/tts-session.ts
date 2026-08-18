@@ -1,6 +1,6 @@
 import type WebSocket from "ws";
-import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@voice-sdk/core";
-import { VoiceError, withProviderOptions } from "@voice-sdk/core";
+import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@swungstudent/voice";
+import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import { DEFAULT_STREAM_FORMAT, type ResolvedConfig } from "./config";
 import { assertNoTimings, toRealtimeOutputFormat, toSpeed } from "./format";
 import { AsyncQueue } from "./internal/async-queue";

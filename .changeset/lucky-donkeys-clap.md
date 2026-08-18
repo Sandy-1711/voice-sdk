@@ -1,6 +1,6 @@
 ---
-"@voice-sdk/cartesia": patch
-"@voice-sdk/elevenlabs": patch
+"@swungstudent/cartesia": patch
+"@swungstudent/elevenlabs": patch
 ---
 
 Fix three failures that made whole capabilities unusable.

@@ -1,23 +1,23 @@
-# @voice-sdk/core
+# @swungstudent/voice
 
 The provider-agnostic half of the voice SDK: one set of types and one entry
 point that every provider implements, so switching providers is a constructor
 change rather than a rewrite.
 
 This package talks to nothing on its own. Install it alongside a provider —
-[`@voice-sdk/cartesia`](https://www.npmjs.com/package/@voice-sdk/cartesia),
-[`@voice-sdk/deepgram`](https://www.npmjs.com/package/@voice-sdk/deepgram) or
-[`@voice-sdk/elevenlabs`](https://www.npmjs.com/package/@voice-sdk/elevenlabs).
+[`@swungstudent/cartesia`](https://www.npmjs.com/package/@swungstudent/cartesia),
+[`@swungstudent/deepgram`](https://www.npmjs.com/package/@swungstudent/deepgram) or
+[`@swungstudent/elevenlabs`](https://www.npmjs.com/package/@swungstudent/elevenlabs).
 
 ```sh
-pnpm add @voice-sdk/core @voice-sdk/deepgram
+pnpm add @swungstudent/voice @swungstudent/deepgram
 ```
 
 ## Quickstart
 
 ```ts
-import { Voice } from "@voice-sdk/core";
-import { DeepgramProvider } from "@voice-sdk/deepgram";
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
 
 // The provider reads DEEPGRAM_API_KEY unless you pass `apiKey`.
 const voice = new Voice({ provider: new DeepgramProvider() });
@@ -87,7 +87,7 @@ Going the other way, transcripts arrive with three levels of finality —
 may continue, and `turn_end` means the speaker finished:
 
 ```ts
-import { turns } from "@voice-sdk/core";
+import { turns } from "@swungstudent/voice";
 
 const session = await voice.openSTTSession({ turnDetection: { mode: "vad", silence: 1 } });
 microphone.on("data", (frame) => session.push(frame));

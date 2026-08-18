@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { encodeBase64 } from "@voice-sdk/core";
+import { encodeBase64 } from "@swungstudent/voice";
 import { collect, fakeHttp, pcmRamp, type FakeHttp } from "@voice-sdk/test-kit";
 import { CartesiaProvider } from "../src/index";
 

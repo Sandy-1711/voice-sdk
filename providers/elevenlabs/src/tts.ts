@@ -1,7 +1,7 @@
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { collectAudio, decodeBase64, ValidationError, withProviderOptions } from "@voice-sdk/core";
-import type { AudioStream, RequestContext, SpeakInput, SpeakResult } from "@voice-sdk/core";
+import { collectAudio, decodeBase64, ValidationError, withProviderOptions } from "@swungstudent/voice";
+import type { AudioStream, RequestContext, SpeakInput, SpeakResult } from "@swungstudent/voice";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import {
     assertCharacterTimings,

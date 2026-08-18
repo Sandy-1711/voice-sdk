@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CapabilityError, Voice } from "@voice-sdk/core";
+import { CapabilityError, Voice } from "@swungstudent/voice";
 import { assertCapabilityInvariants } from "@voice-sdk/test-kit";
 import { DeepgramProvider } from "../src/index";
 

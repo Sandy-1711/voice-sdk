@@ -3,8 +3,8 @@ import type {
     TranscribeInput,
     TranscriptResult,
     TranscriptSegment,
-} from "@voice-sdk/core";
-import { collectAudio, ValidationError, withProviderOptions } from "@voice-sdk/core";
+} from "@swungstudent/voice";
+import { collectAudio, ValidationError, withProviderOptions } from "@swungstudent/voice";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import { fromWords, toSTTFormat, type WireWord } from "./format";
 import { buildUrl, send } from "./internal/http";

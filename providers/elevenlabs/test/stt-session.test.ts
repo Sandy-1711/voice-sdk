@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { decodeBase64 } from "@voice-sdk/core";
+import { decodeBase64 } from "@swungstudent/voice";
 import {
     assertSTTEvent,
     assertTurnSequence,

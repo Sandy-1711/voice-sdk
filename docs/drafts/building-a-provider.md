@@ -1,6 +1,6 @@
 # Building a provider
 
-How `@voice-sdk/cartesia` was built, in the order it was built, so you can do the
+How `@swungstudent/cartesia` was built, in the order it was built, so you can do the
 same for Deepgram, ElevenLabs or OpenAI without rediscovering anything.
 
 Read [core-types.md](./core-types.md) first if you have not — this guide assumes
@@ -30,12 +30,12 @@ providers/cartesia/src/
 One file per capability, plus two shared ones. `provider.ts` ends up as almost
 pure delegation — that is the sign the split is right.
 
-The package depends on `@voice-sdk/core` as a **peer** dependency, so an app
+The package depends on `@swungstudent/voice` as a **peer** dependency, so an app
 never ends up with two copies of core:
 
 ```jsonc
-"peerDependencies": { "@voice-sdk/core": "workspace:^" },
-"devDependencies":  { "@voice-sdk/core": "workspace:^" }
+"peerDependencies": { "@swungstudent/voice": "workspace:^" },
+"devDependencies":  { "@swungstudent/voice": "workspace:^" }
 ```
 
 ---

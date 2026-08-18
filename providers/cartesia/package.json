@@ -1,5 +1,5 @@
 {
-  "name": "@voice-sdk/cartesia",
+  "name": "@swungstudent/cartesia",
   "version": "0.1.0",
   "description": "Cartesia provider for the voice SDK: speech synthesis and transcription, batch and realtime.",
   "keywords": [
@@ -55,14 +55,14 @@
   "devDependencies": {
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
-    "@voice-sdk/core": "workspace:^",
+    "@swungstudent/voice": "workspace:^",
     "@voice-sdk/test-kit": "workspace:^",
     "@voice-sdk/typescript-config": "workspace:^",
     "tsup": "^8.5.1",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {
-    "@voice-sdk/core": "workspace:^"
+    "@swungstudent/voice": "workspace:^"
   },
   "publishConfig": {
     "access": "public",

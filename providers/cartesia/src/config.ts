@@ -1,4 +1,4 @@
-import { ConfigError, type AudioFormat, type ResolvedAudioFormat } from "@voice-sdk/core";
+import { ConfigError, type AudioFormat, type ResolvedAudioFormat } from "@swungstudent/voice";
 
 export const PROVIDER = "cartesia";
 

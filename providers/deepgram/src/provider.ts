@@ -11,7 +11,7 @@ import type {
     TranscriptResult,
     TTSSession,
     VoiceProvider,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import type { DeepgramConfig, ResolvedConfig } from "./config";
 import { PROVIDER, resolveConfig } from "./config";
 import { DeepgramSTT } from "./stt";

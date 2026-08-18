@@ -1,15 +1,15 @@
-# @voice-sdk/cartesia
+# @swungstudent/cartesia
 
-Cartesia provider for [`@voice-sdk/core`](https://www.npmjs.com/package/@voice-sdk/core).
+Cartesia provider for [`@swungstudent/voice`](https://www.npmjs.com/package/@swungstudent/voice).
 All four capabilities: synthesis and transcription, batch and realtime.
 
 ```sh
-pnpm add @voice-sdk/core @voice-sdk/cartesia
+pnpm add @swungstudent/voice @swungstudent/cartesia
 ```
 
 ```ts
-import { Voice } from "@voice-sdk/core";
-import { CartesiaProvider } from "@voice-sdk/cartesia";
+import { Voice } from "@swungstudent/voice";
+import { CartesiaProvider } from "@swungstudent/cartesia";
 
 const voice = new Voice({
   provider: new CartesiaProvider({ defaultVoice: "a0e99841-438c-4a64-b679-ae501e7d6091" }),

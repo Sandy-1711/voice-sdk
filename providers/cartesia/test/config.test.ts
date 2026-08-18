@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConfigError } from "@voice-sdk/core";
+import { ConfigError } from "@swungstudent/voice";
 import { DEFAULTS, resolveConfig } from "../src/config";
 
 afterEach(() => {

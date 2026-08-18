@@ -1,4 +1,4 @@
-import type { Alignment, STTEvent, TTSEvent, VoiceProvider } from "@voice-sdk/core";
+import type { Alignment, STTEvent, TTSEvent, VoiceProvider } from "@swungstudent/voice";
 
 /**
  * The invariant every provider owes the contract in core's provider.ts: a

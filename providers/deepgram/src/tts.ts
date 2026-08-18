@@ -4,8 +4,8 @@ import type {
     ResolvedAudioFormat,
     SpeakInput,
     SpeakResult,
-} from "@voice-sdk/core";
-import { withProviderOptions } from "@voice-sdk/core";
+} from "@swungstudent/voice";
+import { withProviderOptions } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, DEFAULT_STREAM_FORMAT } from "./config";
 import { assertNoTimings, toOutputFormat, toSpeed } from "./format";

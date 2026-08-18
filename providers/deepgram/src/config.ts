@@ -1,5 +1,5 @@
-import { ConfigError } from "@voice-sdk/core";
-import type { AudioFormat, ResolvedAudioFormat } from "@voice-sdk/core";
+import { ConfigError } from "@swungstudent/voice";
+import type { AudioFormat, ResolvedAudioFormat } from "@swungstudent/voice";
 
 /** Single source of truth for the name this provider reports in errors. */
 export const PROVIDER = "deepgram";

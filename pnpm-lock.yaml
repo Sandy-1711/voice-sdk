@@ -158,15 +158,15 @@ importers:
         specifier: ^8.21.1
         version: 8.21.1
     devDependencies:
+      '@swungstudent/voice':
+        specifier: workspace:^
+        version: link:../core
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.3
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      '@voice-sdk/core':
-        specifier: workspace:^
-        version: link:../core
       '@voice-sdk/typescript-config':
         specifier: workspace:^
         version: link:../typescript-config
@@ -216,15 +216,15 @@ importers:
         specifier: ^8.21.1
         version: 8.21.1
     devDependencies:
+      '@swungstudent/voice':
+        specifier: workspace:^
+        version: link:../../packages/core
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.3
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      '@voice-sdk/core':
-        specifier: workspace:^
-        version: link:../../packages/core
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit
@@ -244,15 +244,15 @@ importers:
         specifier: ^8.21.1
         version: 8.21.1
     devDependencies:
+      '@swungstudent/voice':
+        specifier: workspace:^
+        version: link:../../packages/core
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.3
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      '@voice-sdk/core':
-        specifier: workspace:^
-        version: link:../../packages/core
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit
@@ -275,15 +275,15 @@ importers:
         specifier: ^8.21.1
         version: 8.21.1
     devDependencies:
+      '@swungstudent/voice':
+        specifier: workspace:^
+        version: link:../../packages/core
       '@types/node':
         specifier: ^22.15.3
         version: 22.15.3
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      '@voice-sdk/core':
-        specifier: workspace:^
-        version: link:../../packages/core
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit

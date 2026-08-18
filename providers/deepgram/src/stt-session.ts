@@ -1,12 +1,12 @@
 import type WebSocket from "ws";
-import type { Finality, RealtimeSTTInput, STTEvent, STTSession } from "@voice-sdk/core";
+import type { Finality, RealtimeSTTInput, STTEvent, STTSession } from "@swungstudent/voice";
 import {
     DEFAULT_REALTIME_INPUT_FORMAT,
     TurnTextTracker,
     ValidationError,
     VoiceError,
     withProviderOptions,
-} from "@voice-sdk/core";
+} from "@swungstudent/voice";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import { fromWords, toRealtimeSTTFormat, type WireWord } from "./format";
 import { AsyncQueue } from "./internal/async-queue";
