@@ -33,13 +33,18 @@ jobs:
       # Opens or updates a release pull request while changesets are pending.
       # Merging that pull request is what publishes: this step then finds no
       # pending changesets, runs `pnpm release`, and pushes the tarballs.
-      - uses: changesets/action@v1
+      # v2 is the release line that pairs with @changesets/cli v3. v1 worked out
+      # what had shipped by scraping "New tag:" lines out of the publish output,
+      # which v3 no longer prints — so it saw nothing published and quietly
+      # skipped both the tag push and the GitHub release.
+      - uses: changesets/action@v2
         with:
-          version: pnpm version-packages
-          publish: pnpm release
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
+          version-script: pnpm version-packages
+          publish-script: pnpm release
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # The registry credential comes from the .npmrc setup-node wrote;
+          # v2 no longer handles the token itself.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
