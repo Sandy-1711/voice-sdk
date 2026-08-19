@@ -1,5 +1,7 @@
 export * from "./voice";
+export * from "./logger";
 export * from "./provider";
+export * from "./http";
 export * from "./audio";
 export * from "./errors";
 export * from "./types";

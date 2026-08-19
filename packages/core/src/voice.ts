@@ -1,15 +1,9 @@
 import type { VoiceProvider, VoiceInfo } from "./provider";
 import { CapabilityError } from "./errors";
 import type { AudioStream } from "./audio";
+import type { Logger } from "./logger";
 import type { RealtimeSTTInput, RealtimeTTSInput, STTSession, TTSSession } from "./realtime";
 import type { RequestContext, SpeakInput, SpeakResult, TranscribeInput, TranscriptResult } from "./types";
-
-export interface Logger {
-    debug(message: string, ...args: unknown[]): void;
-    info(message: string, ...args: unknown[]): void;
-    warn(message: string, ...args: unknown[]): void;
-    error(message: string, ...args: unknown[]): void;
-}
 
 export interface VoiceOptions {
     /** Per-request timeout in milliseconds. */
