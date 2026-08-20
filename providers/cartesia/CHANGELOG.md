@@ -1,5 +1,12 @@
 # @swungstudent/cartesia
 
+## 0.2.0
+
+### Patch Changes
+
+- Updated dependencies [0dcc646]
+  - @swungstudent/voice@0.2.0
+
 ## 0.1.1
 
 ### Patch Changes
