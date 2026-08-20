@@ -73,6 +73,8 @@ export class DeepgramSTT {
                 ? JSON.stringify({ url: (input.audio as { url: string }).url })
                 : await collectAudio(input.audio),
             contentType: isUrl ? "application/json" : "application/octet-stream",
+            operation: "transcribe",
+            transport: this.#config.transport,
             context,
         });
 

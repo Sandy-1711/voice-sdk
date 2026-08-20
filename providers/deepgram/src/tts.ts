@@ -26,6 +26,8 @@ export class DeepgramTTS {
             url,
             body: JSON.stringify({ text: input.text }),
             contentType: "application/json",
+            operation: "speak",
+            transport: this.#config.transport,
             context,
         });
 
@@ -43,6 +45,7 @@ export class DeepgramTTS {
     speakStream(input: SpeakInput, context?: RequestContext): AudioStream {
         const { resolved, url } = this.#request(input, DEFAULT_STREAM_FORMAT);
         const apiKey = this.#config.apiKey;
+        const transport = this.#config.transport;
 
         return {
             format: resolved,
@@ -52,6 +55,11 @@ export class DeepgramTTS {
                     url,
                     body: JSON.stringify({ text: input.text }),
                     contentType: "application/json",
+                    operation: "speakStream",
+                    // The body is read chunk by chunk, so the deadline must let
+                    // go at the headers and the caller's signal must not.
+                    stream: true,
+                    transport,
                     context,
                 });
                 if (!response.body) return;
