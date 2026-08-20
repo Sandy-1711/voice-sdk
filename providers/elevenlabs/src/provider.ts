@@ -1,4 +1,3 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import type {
     AudioStream,
     Capabilities,
@@ -15,11 +14,20 @@ import type {
     VoiceProvider,
 } from "@swungstudent/voice";
 import type { ElevenLabsConfig, ResolvedConfig } from "./config";
-import { PROVIDER, resolveConfig } from "./config";
+import { DEFAULT_BASE_URL, PROVIDER, resolveConfig } from "./config";
+import { camelize, send } from "./internal/http";
 import { ElevenLabsSTT } from "./stt";
 import { ElevenLabsSTTSession } from "./stt-session";
 import { ElevenLabsTTS } from "./tts";
 import { ElevenLabsTTSSession } from "./tts-session";
+
+/** Wire shape of `GET /v1/voices`, narrowed to what `VoiceInfo` carries. */
+interface WireVoice {
+    voiceId: string;
+    name?: string;
+    labels?: Record<string, string>;
+    previewUrl?: string;
+}
 
 export class ElevenLabsProvider implements VoiceProvider {
     readonly name = PROVIDER;
@@ -30,19 +38,14 @@ export class ElevenLabsProvider implements VoiceProvider {
         realtimeSTT: true,
     };
 
-    #client: ElevenLabsClient;
     #config: ResolvedConfig;
     #tts: ElevenLabsTTS;
     #stt: ElevenLabsSTT;
 
     constructor(config: ElevenLabsConfig = {}) {
         this.#config = resolveConfig(config);
-        this.#client = new ElevenLabsClient({
-            apiKey: this.#config.apiKey,
-            baseUrl: this.#config.baseUrl,
-        });
-        this.#tts = new ElevenLabsTTS(this.#client, this.#config);
-        this.#stt = new ElevenLabsSTT(this.#client, this.#config);
+        this.#tts = new ElevenLabsTTS(this.#config);
+        this.#stt = new ElevenLabsSTT(this.#config);
     }
 
     speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
@@ -66,9 +69,17 @@ export class ElevenLabsProvider implements VoiceProvider {
     }
 
     async listVoices(): Promise<VoiceInfo[]> {
-        const response = await this.#client.voices.getAll();
+        const response = await send({
+            apiKey: this.#config.apiKey,
+            url: new URL("/v1/voices", this.#config.baseUrl ?? DEFAULT_BASE_URL),
+            method: "GET",
+            operation: "listVoices",
+            transport: this.#config.transport,
+        });
 
-        return response.voices.map((voice) => ({
+        const payload = camelize(await response.json()) as { voices?: WireVoice[] };
+
+        return (payload.voices ?? []).map((voice) => ({
             id: voice.voiceId,
             name: voice.name,
             labels: voice.labels,

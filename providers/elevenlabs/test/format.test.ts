@@ -9,7 +9,6 @@ import {
     toGranularity,
     toOutputFormat,
     toRealtimeAudioFormat,
-    toRequestOptions,
     toSource,
     toStreamOutputFormat,
     toVoiceSettings,
@@ -189,25 +188,6 @@ describe("assertCharacterTimings", () => {
     it("refuses word and phoneme, which ElevenLabs cannot meet", () => {
         expect(catchError(() => assertCharacterTimings("word"))).toMatchObject({ field: "timings" });
         expect(catchError(() => assertCharacterTimings("phoneme"))).toMatchObject({ field: "timings" });
-    });
-});
-
-describe("toRequestOptions", () => {
-    // Core counts timeouts in milliseconds, ElevenLabs in seconds.
-    it("converts the timeout into seconds", () => {
-        expect(toRequestOptions({ timeout: 30_000 }).timeoutInSeconds).toBe(30);
-        expect(toRequestOptions({ timeout: 500 }).timeoutInSeconds).toBe(0.5);
-    });
-
-    it("leaves an unset deadline unset rather than sending zero", () => {
-        expect(toRequestOptions({}).timeoutInSeconds).toBeUndefined();
-        expect(toRequestOptions().timeoutInSeconds).toBeUndefined();
-    });
-
-    it("carries the signal and the retry count", () => {
-        const signal = AbortSignal.abort();
-
-        expect(toRequestOptions({ signal, retries: 2 })).toMatchObject({ abortSignal: signal, maxRetries: 2 });
     });
 });
 

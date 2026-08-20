@@ -1,10 +1,8 @@
-import { ElevenLabs } from "@elevenlabs/elevenlabs-js";
 import { collectAudio, ValidationError } from "@swungstudent/voice";
 import type {
     Alignment,
     AudioFormat,
     AudioSource,
-    RequestContext,
     ResolvedAudioFormat,
     SpeakInput,
     TranscribeInput,
@@ -21,10 +19,56 @@ import { PROVIDER } from "./config";
  *   from<Thing> provider -> core    (reading a response)
  */
 
-type OutputFormatValue = ElevenLabs.TextToSpeechConvertRequestOutputFormat;
+/**
+ * The API's own vocabulary, which used to arrive as generated enums. Kept as
+ * plain arrays so the whole 22 MB client is not a dependency of four constants.
+ */
+export const OUTPUT_FORMATS = [
+    "alaw_8000",
+    "mp3_22050_32", "mp3_24000_48", "mp3_44100_32", "mp3_44100_64",
+    "mp3_44100_96", "mp3_44100_128", "mp3_44100_192",
+    "opus_48000_32", "opus_48000_64", "opus_48000_96", "opus_48000_128", "opus_48000_192",
+    "pcm_8000", "pcm_16000", "pcm_22050", "pcm_24000", "pcm_32000", "pcm_44100", "pcm_48000",
+    "ulaw_8000",
+    "wav_8000", "wav_16000", "wav_22050", "wav_24000", "wav_32000", "wav_44100", "wav_48000",
+] as const;
 
-const OUTPUT_FORMATS = Object.values(ElevenLabs.TextToSpeechConvertRequestOutputFormat) as string[];
-const STREAM_OUTPUT_FORMATS = Object.values(ElevenLabs.TextToSpeechStreamRequestOutputFormat) as string[];
+export type OutputFormatValue = (typeof OUTPUT_FORMATS)[number];
+
+/** Widened, so a built token can be checked against the list before it is one. */
+const SUPPORTED: readonly string[] = OUTPUT_FORMATS;
+
+/** Everything except wav, whose header declares a length generation has not reached. */
+const STREAM_SUPPORTED: readonly string[] = OUTPUT_FORMATS.filter((value) => !value.startsWith("wav_"));
+
+export type StreamOutputFormatValue = OutputFormatValue;
+
+/** Only the fields core's `VoiceControls` can reach. */
+export interface VoiceSettings {
+    speed?: number;
+    stability?: number;
+    similarityBoost?: number;
+    style?: number;
+}
+
+export type FileFormat = "pcm_s16le_16" | "other";
+export type TimestampsGranularity = "none" | "word" | "character";
+
+export interface WordResponse {
+    text: string;
+    start?: number;
+    end?: number;
+    /** A log probability in [-inf, 0], not a 0-1 confidence. */
+    logprob: number;
+    type?: TranscriptWord["kind"];
+    speakerId?: string;
+}
+
+export interface CharacterAlignment {
+    characters: string[];
+    characterStartTimesSeconds: number[];
+    characterEndTimesSeconds: number[];
+}
 
 /** ElevenLabs' server default. */
 export const DEFAULT_FORMAT: ResolvedAudioFormat = {
@@ -65,12 +109,12 @@ export function toOutputFormat(
 
     const { value, resolved } = build({ container, encoding, sampleRate, bitrate });
 
-    if (!OUTPUT_FORMATS.includes(value)) {
+    if (!SUPPORTED.includes(value)) {
         const family = value.slice(0, value.indexOf("_") + 1);
         throw new ValidationError(
             PROVIDER,
             "format",
-            `"${value}" is not supported. Supported: ${OUTPUT_FORMATS.filter((f) => f.startsWith(family)).join(", ")}.`,
+            `"${value}" is not supported. Supported: ${SUPPORTED.filter((f) => f.startsWith(family)).join(", ")}.`,
         );
     }
 
@@ -84,17 +128,17 @@ export function toOutputFormat(
 export function toStreamOutputFormat(
     requested: AudioFormat | undefined,
     fallback: ResolvedAudioFormat,
-): { value: ElevenLabs.TextToSpeechStreamRequestOutputFormat; resolved: ResolvedAudioFormat } {
+): { value: StreamOutputFormatValue; resolved: ResolvedAudioFormat } {
     const { value, resolved } = toOutputFormat(requested, fallback);
 
-    if (!STREAM_OUTPUT_FORMATS.includes(value)) {
+    if (!STREAM_SUPPORTED.includes(value)) {
         throw new ValidationError(
             PROVIDER,
             "format.container",
             `"${value}" cannot be streamed. Use speak() for ${resolved.container}, or stream mp3, opus, pcm, ulaw or alaw.`,
         );
     }
-    return { value: value as ElevenLabs.TextToSpeechStreamRequestOutputFormat, resolved };
+    return { value, resolved };
 }
 
 function build(format: Required<Pick<ResolvedAudioFormat, "container" | "encoding" | "sampleRate">> & { bitrate?: number }) {
@@ -148,10 +192,10 @@ function rawPrefix(encoding: ResolvedAudioFormat["encoding"]): string {
 }
 
 /** Only these four have ElevenLabs equivalents; the rest are ignored. */
-export function toVoiceSettings(controls: VoiceControls | undefined): ElevenLabs.VoiceSettings | undefined {
+export function toVoiceSettings(controls: VoiceControls | undefined): VoiceSettings | undefined {
     if (!controls) return undefined;
 
-    const settings: ElevenLabs.VoiceSettings = {};
+    const settings: VoiceSettings = {};
     if (controls.speed !== undefined) settings.speed = controls.speed;
     if (controls.stability !== undefined) settings.stability = controls.stability;
     if (controls.similarity !== undefined) settings.similarityBoost = controls.similarity;
@@ -173,7 +217,7 @@ export async function toSource(audio: AudioSource) {
  */
 export function toFileFormat(
     format: AudioFormat | undefined,
-): ElevenLabs.SpeechToTextConvertRequestFileFormat | undefined {
+): FileFormat | undefined {
     if (!format) return undefined;
 
     const headerless = format.container === "raw" || (!format.container && isRawEncoding(format.encoding));
@@ -196,7 +240,7 @@ const GRANULARITY = {
 
 export function toGranularity(
     timestamps: TranscribeInput["timestamps"],
-): ElevenLabs.SpeechToTextConvertRequestTimestampsGranularity {
+): TimestampsGranularity {
     if (!timestamps) return "none";
 
     const granularity = GRANULARITY[timestamps as keyof typeof GRANULARITY];
@@ -221,17 +265,8 @@ export function assertCharacterTimings(timings: NonNullable<SpeakInput["timings"
     }
 }
 
-export function toRequestOptions(context?: RequestContext) {
-    return {
-        abortSignal: context?.signal,
-        // Core counts timeouts in milliseconds, ElevenLabs in seconds.
-        timeoutInSeconds: context?.timeout === undefined ? undefined : context.timeout / 1000,
-        maxRetries: context?.retries,
-    };
-}
-
 /** `logprob` is a log probability in [-inf, 0], not a 0-1 confidence. */
-export function fromWord(word: ElevenLabs.SpeechToTextWordResponseModel): TranscriptWord {
+export function fromWord(word: WordResponse): TranscriptWord {
     return {
         text: word.text,
         start: word.start ?? 0,
@@ -243,7 +278,7 @@ export function fromWord(word: ElevenLabs.SpeechToTextWordResponseModel): Transc
 }
 
 export function fromAlignment(
-    alignment: ElevenLabs.CharacterAlignmentResponseModel | undefined,
+    alignment: CharacterAlignment | undefined,
 ): Alignment | undefined {
     if (!alignment) return undefined;
 

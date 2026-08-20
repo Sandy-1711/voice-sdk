@@ -1,5 +1,11 @@
-import { ConfigError } from "@swungstudent/voice";
-import type { AudioFormat } from "@swungstudent/voice";
+import { ConfigError, createTransport } from "@swungstudent/voice";
+import type {
+    AudioFormat,
+    HttpHandler,
+    HttpMiddleware,
+    Logger,
+    RateLimitOptions,
+} from "@swungstudent/voice";
 
 /** Single source of truth for the name this provider reports in errors. */
 export const PROVIDER = "elevenlabs";
@@ -17,6 +23,19 @@ export interface ElevenLabsConfig {
     defaultSTTModel?: string;
     defaultRealtimeSTTModel?: string;
     defaultFormat?: AudioFormat;
+
+    /** Extra attempts after a retryable failure. A per-call context wins. Default 2. */
+    retries?: number;
+    /** Milliseconds allowed for response headers. A per-call context wins. */
+    timeout?: number;
+    /** Supplying one turns request logging on. */
+    logger?: Logger;
+    /** Supplying one turns rate limiting on. */
+    rateLimit?: RateLimitOptions;
+    /** Extra HTTP middleware, applied outside the built-in chain. */
+    middleware?: HttpMiddleware[];
+    /** Innermost handler. Swappable so a test never has to reach the network. */
+    fetch?: HttpHandler;
 }
 
 /** Pinned, never `-latest`, so generated audio does not shift under callers. */
@@ -35,6 +54,8 @@ export interface ResolvedConfig {
     defaultSTTModel: string;
     defaultRealtimeSTTModel: string;
     defaultFormat?: AudioFormat;
+    /** The assembled middleware chain every HTTP call goes through. */
+    transport: HttpHandler;
 }
 
 export function resolveConfig(config: ElevenLabsConfig): ResolvedConfig {
@@ -55,5 +76,14 @@ export function resolveConfig(config: ElevenLabsConfig): ResolvedConfig {
         defaultSTTModel: config.defaultSTTModel ?? DEFAULTS.sttModel,
         defaultRealtimeSTTModel: config.defaultRealtimeSTTModel ?? DEFAULTS.realtimeSTTModel,
         defaultFormat: config.defaultFormat,
+        transport: createTransport({
+            provider: PROVIDER,
+            retries: config.retries,
+            timeout: config.timeout,
+            logger: config.logger,
+            rateLimit: config.rateLimit,
+            middleware: config.middleware,
+            fetch: config.fetch,
+        }),
     };
 }

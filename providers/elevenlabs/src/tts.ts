@@ -1,27 +1,28 @@
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-import type { ElevenLabs } from "@elevenlabs/elevenlabs-js";
-import { collectAudio, decodeBase64, ValidationError, withProviderOptions } from "@swungstudent/voice";
+import { decodeBase64, ValidationError, withProviderOptions } from "@swungstudent/voice";
 import type { AudioStream, RequestContext, SpeakInput, SpeakResult } from "@swungstudent/voice";
-import { PROVIDER, type ResolvedConfig } from "./config";
+import { DEFAULT_BASE_URL, PROVIDER, type ResolvedConfig } from "./config";
 import {
     assertCharacterTimings,
     DEFAULT_FORMAT,
     fromAlignment,
     toOutputFormat,
-    toRequestOptions,
     toStreamOutputFormat,
     toVoiceSettings,
+    type CharacterAlignment,
 } from "./format";
+import { camelize, send, snakeify } from "./internal/http";
 
-type OutputFormatValue =
-    | ElevenLabs.TextToSpeechConvertRequestOutputFormat
-    | ElevenLabs.TextToSpeechStreamRequestOutputFormat;
+/** Wire shape of the two `/with-timestamps` endpoints, after camelising. */
+interface TimestampedAudio {
+    audioBase64: string;
+    alignment?: CharacterAlignment;
+    normalizedAlignment?: CharacterAlignment;
+}
 
 export class ElevenLabsTTS {
-    #client: ElevenLabsClient;
     #config: ResolvedConfig;
-    constructor(client: ElevenLabsClient, config: ResolvedConfig) {
-        this.#client = client;
+
+    constructor(config: ResolvedConfig) {
         this.#config = config;
     }
 
@@ -31,24 +32,25 @@ export class ElevenLabsTTS {
             input.format ?? this.#config.defaultFormat,
             DEFAULT_FORMAT,
         );
-        const body = this.#body(input, value);
-        const options = toRequestOptions(context);
 
-        // convertWithTimestamps returns JSON carrying base64 audio, where
-        // convert returns an audio stream, so each needs its own handling.
+        // `/with-timestamps` answers with JSON carrying base64 audio, where the
+        // plain endpoint answers with the audio itself, so each needs its own
+        // handling.
         if (input.timings) {
             assertCharacterTimings(input.timings);
-            const response = await this.#client.textToSpeech.convertWithTimestamps(voice, body, options);
+            const response = await this.#post({ voice, path: "/with-timestamps", input, value, operation: "speak", context });
+            const payload = camelize(await response.json()) as TimestampedAudio;
+
             return {
-                audio: decodeBase64(response.audioBase64),
+                audio: decodeBase64(payload.audioBase64),
                 format: resolved,
-                alignment: fromAlignment(response.alignment ?? response.normalizedAlignment),
-                raw: response,
+                alignment: fromAlignment(payload.alignment ?? payload.normalizedAlignment),
+                raw: payload,
             };
         }
 
-        const stream = await this.#client.textToSpeech.convert(voice, body, options);
-        return { audio: await collectAudio(stream), format: resolved };
+        const response = await this.#post({ voice, path: "", input, value, operation: "speak", context });
+        return { audio: new Uint8Array(await response.arrayBuffer()), format: resolved };
     }
 
     /**
@@ -63,17 +65,32 @@ export class ElevenLabsTTS {
             input.format ?? this.#config.defaultFormat,
             DEFAULT_FORMAT,
         );
-        const body = this.#body(input, value);
-        const options = toRequestOptions(context);
-        const client = this.#client;
+        if (input.timings) assertCharacterTimings(input.timings);
 
-        if (input.timings) {
-            assertCharacterTimings(input.timings);
+        // Everything above runs now, so a bad format throws from the call
+        // rather than from the first `for await`. The request itself waits.
+        const timings = Boolean(input.timings);
+        const post = () =>
+            this.#post({
+                voice,
+                path: timings ? "/stream/with-timestamps" : "/stream",
+                input,
+                value,
+                operation: "speakStream",
+                stream: true,
+                context,
+            });
+
+        if (timings) {
             return {
                 format: resolved,
                 async *[Symbol.asyncIterator]() {
-                    const chunks = await client.textToSpeech.streamWithTimestamps(voice, body, options);
-                    for await (const chunk of chunks) {
+                    const response = await post();
+                    if (!response.body) return;
+
+                    // One JSON object per line, each with its own alignment.
+                    for await (const line of lines(response.body)) {
+                        const chunk = camelize(JSON.parse(line)) as TimestampedAudio;
                         const alignment = chunk.alignment ?? chunk.normalizedAlignment;
                         yield {
                             data: decodeBase64(chunk.audioBase64),
@@ -87,8 +104,10 @@ export class ElevenLabsTTS {
         return {
             format: resolved,
             async *[Symbol.asyncIterator]() {
-                const stream = await client.textToSpeech.stream(voice, body, options);
-                const reader = stream.getReader();
+                const response = await post();
+                if (!response.body) return;
+
+                const reader = response.body.getReader();
                 try {
                     for (;;) {
                         const { done, value: bytes } = await reader.read();
@@ -102,15 +121,41 @@ export class ElevenLabsTTS {
         };
     }
 
-    /** Generic so the narrower streaming format survives into the request. */
-    #body<T extends OutputFormatValue>(input: SpeakInput, outputFormat: T) {
+    #post({ voice, path, input, value, operation, stream, context }: {
+        voice: string;
+        path: string;
+        input: SpeakInput;
+        value: string;
+        operation: string;
+        stream?: boolean;
+        context?: RequestContext;
+    }): Promise<Response> {
+        const url = new URL(
+            `/v1/text-to-speech/${encodeURIComponent(voice)}${path}`,
+            this.#config.baseUrl ?? DEFAULT_BASE_URL,
+        );
+        // The format rides in the query; everything else is in the body.
+        url.searchParams.set("output_format", value);
+
+        return send({
+            apiKey: this.#config.apiKey,
+            url,
+            body: JSON.stringify(snakeify(this.#body(input))),
+            contentType: "application/json",
+            operation,
+            stream,
+            transport: this.#config.transport,
+            context,
+        });
+    }
+
+    #body(input: SpeakInput) {
         return withProviderOptions(
             {
                 text: input.text,
                 modelId: input.model ?? this.#config.defaultModel,
                 languageCode: input.language,
                 voiceSettings: toVoiceSettings(input.controls),
-                outputFormat,
             },
             input.providerOptions,
         );
@@ -126,5 +171,31 @@ export class ElevenLabsTTS {
             );
         }
         return id;
+    }
+}
+
+/** Splits a chunked body on newlines, since a JSON object can span two reads. */
+async function* lines(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    try {
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            for (let index = buffer.indexOf("\n"); index >= 0; index = buffer.indexOf("\n")) {
+                const line = buffer.slice(0, index).trim();
+                buffer = buffer.slice(index + 1);
+                if (line) yield line;
+            }
+        }
+
+        const rest = buffer.trim();
+        if (rest) yield rest;
+    } finally {
+        reader.releaseLock();
     }
 }
