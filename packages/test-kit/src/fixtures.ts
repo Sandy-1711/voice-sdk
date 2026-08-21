@@ -1,4 +1,4 @@
-/** Deterministic audio, so assertions can be about bytes rather than sound. */
+// Deterministic audio, so assertions can be about bytes rather than sound.
 
 /** `samples` samples of s16le silence. */
 export function pcmSilence(samples: number): Uint8Array {

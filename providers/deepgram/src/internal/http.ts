@@ -35,13 +35,14 @@ export interface SendInput {
     context?: RequestContext;
 }
 
-/**
- * Retry, backoff and deadlines now live in `@swungstudent/voice`, so this is
- * only the two things that are Deepgram's own: the token auth scheme, and
- * reading `{ err_code, err_msg }` out of a failure.
- */
+// Built once, on first use by a caller that supplied no transport.
 let fallback: HttpHandler | undefined;
 
+/**
+ * Retry, backoff and deadlines live in `@swungstudent/voice`, so this is only
+ * the two things that are Deepgram's own: the token auth scheme, and reading
+ * `{ err_code, err_msg }` out of a failure.
+ */
 export async function send({
     apiKey,
     url,

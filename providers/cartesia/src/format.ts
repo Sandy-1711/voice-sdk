@@ -11,13 +11,10 @@ import type {
 } from "@swungstudent/voice";
 import { PROVIDER } from "./config";
 
-/**
- * Translation between core's vocabulary and Cartesia's.
- *
- * Naming convention across every provider:
- *   to<Thing>   core  -> provider   (building a request)
- *   from<Thing> provider -> core    (reading a response)
- */
+// Translation between core's vocabulary and Cartesia's. Naming convention
+// across every provider:
+//   to<Thing>   core -> provider   (building a request)
+//   from<Thing> provider -> core   (reading a response)
 
 type CartesiaOutputFormat = Cartesia.RawOutputFormat | Cartesia.WAVOutputFormat | Cartesia.MP3OutputFormat;
 
