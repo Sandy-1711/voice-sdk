@@ -76,9 +76,16 @@ export class CartesiaSTTSession implements STTSession {
         this.#ws = ws;
         this.#mode = mode;
         this.#closed = new Promise((resolve) => {
-            // Both sockets emit the same close event; the union of their
-            // listener maps is not callable, so narrow to either one.
-            (ws as ManualWS).on("close", () => resolve());
+            // Both sockets emit the same events; the union of their listener
+            // maps is not callable, so narrow to either one.
+            const socket = ws as ManualWS;
+            socket.on("close", () => resolve());
+            // With nothing listening for `error` the SDK calls Promise.reject
+            // itself, which is an unhandled rejection and fatal on current
+            // Node. The error still reaches the caller through stream(), which
+            // yields it as an `error` event; binding here settles the session
+            // and keeps the SDK from throwing at the process as well.
+            socket.on("error", () => resolve());
         });
     }
 
