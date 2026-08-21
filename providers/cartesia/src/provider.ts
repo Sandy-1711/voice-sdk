@@ -16,6 +16,7 @@ import type {
 } from "@swungstudent/voice";
 import type { CartesiaConfig, ResolvedConfig } from "./config";
 import { PROVIDER, resolveConfig } from "./config";
+import { ensureWebSocket } from "./internal/websocket";
 import { CartesiaSTT } from "./stt";
 import { CartesiaSTTSession } from "./stt-session";
 import { CartesiaTTS } from "./tts";
@@ -36,6 +37,7 @@ export class CartesiaProvider implements VoiceProvider {
     #stt: CartesiaSTT;
 
     constructor(config: CartesiaConfig = {}) {
+        ensureWebSocket();
         this.name = PROVIDER;
         this.#config = resolveConfig(config);
         this.#client = new Cartesia({
