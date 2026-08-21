@@ -17,14 +17,15 @@ export function open(url: URL, apiKey: string): WebSocket {
     return new WebSocket(address, { headers: authHeaders(apiKey) });
 }
 
-/** Queues until the handshake completes, so `push` never has to be awaited. */
-export function sendWhenOpen(ws: WebSocket, payload: string | Uint8Array): void {
-    if (ws.readyState === WebSocket.OPEN) {
-        ws.send(payload);
-        return;
-    }
-    if (ws.readyState !== WebSocket.CONNECTING) return;
-    ws.once("open", () => ws.send(payload));
+/**
+ * A session only exists once its handshake resolved, so a socket that is not
+ * open here is one that has since closed. Dropping the frame is the right move:
+ * `push` is fire-and-forget, and throwing from it would surface the failure
+ * somewhere the caller cannot catch it. The close itself reaches them through
+ * `closed` and the output stream.
+ */
+export function sendIfOpen(ws: WebSocket, payload: string | Uint8Array): void {
+    if (ws.readyState === WebSocket.OPEN) ws.send(payload);
 }
 
 /**

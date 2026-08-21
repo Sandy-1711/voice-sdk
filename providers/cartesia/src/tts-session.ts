@@ -7,7 +7,7 @@ import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
 import type { GenerationConfig } from "./format";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toText } from "./internal/socket";
+import { handshake, open, sendIfOpen, toText } from "./internal/socket";
 
 /** Wire shape of what `/tts/websocket` sends back. */
 interface ServerMessage {
@@ -112,7 +112,7 @@ export class CartesiaTTSSession implements TTSSession {
 
     /** Cancelling drops queued audio but leaves the context usable. */
     cancel(): void {
-        sendWhenOpen(this.#ws, JSON.stringify({ cancel: true, context_id: this.#contextId }));
+        sendIfOpen(this.#ws, JSON.stringify({ cancel: true, context_id: this.#contextId }));
     }
 
     async close(): Promise<void> {
@@ -123,7 +123,7 @@ export class CartesiaTTSSession implements TTSSession {
 
     /** Every request repeats the context configuration; only the verb differs. */
     #send(request: Record<string, unknown>): void {
-        sendWhenOpen(this.#ws, JSON.stringify({ ...this.#options, ...request, context_id: this.#contextId }));
+        sendIfOpen(this.#ws, JSON.stringify({ ...this.#options, ...request, context_id: this.#contextId }));
     }
 
     #receive(raw: WebSocket.RawData): void {

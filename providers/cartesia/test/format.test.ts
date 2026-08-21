@@ -7,7 +7,6 @@ import {
     toOutputFormat,
     toRawOutputFormat,
     toRealtimeSTTFormat,
-    toRequestOptions,
     toSTTFormat,
     toVoice,
 } from "../src/format";
@@ -223,28 +222,6 @@ describe("toVoice", () => {
 
         expect(thrown).toMatchObject({ name: "ValidationError", field: "voice" });
         expect((thrown as Error).message).toContain("defaultVoice");
-    });
-});
-
-describe("toRequestOptions", () => {
-    it("carries the deadline, the signal and the retry count", () => {
-        const signal = AbortSignal.abort();
-
-        expect(toRequestOptions({ signal, timeout: 30_000, retries: 2 })).toEqual({
-            signal,
-            timeout: 30_000,
-            maxRetries: 2,
-        });
-    });
-
-    // Cartesia's client validates `timeout` on key presence rather than value,
-    // so an unset deadline has to be absent, not present-and-undefined -
-    // otherwise every request fails with "timeout must be an integer".
-    it("omits what the caller did not set, rather than sending undefined", () => {
-        expect(toRequestOptions()).toEqual({});
-        expect(toRequestOptions({})).toEqual({});
-        expect("timeout" in toRequestOptions({ retries: 1 })).toBe(false);
-        expect(toRequestOptions({ retries: 1 })).toEqual({ maxRetries: 1 });
     });
 });
 

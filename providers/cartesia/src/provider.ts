@@ -1,4 +1,3 @@
-import { Cartesia } from "@cartesia/cartesia-js";
 import type {
     AudioStream,
     Capabilities,
@@ -16,14 +15,23 @@ import type {
 } from "@swungstudent/voice";
 import type { CartesiaConfig, ResolvedConfig } from "./config";
 import { PROVIDER, resolveConfig } from "./config";
-import { ensureWebSocket } from "./internal/websocket";
+import { buildUrl, send } from "./internal/http";
 import { CartesiaSTT } from "./stt";
 import { CartesiaSTTSession } from "./stt-session";
 import { CartesiaTTS } from "./tts";
 import { CartesiaTTSSession } from "./tts-session";
 
+/** Wire shape of one page of `GET /voices`. */
+interface VoicePage {
+    data?: { id: string; name?: string; language?: string; description?: string }[];
+    has_more?: boolean;
+}
+
+/** What Cartesia allows per page, so the walk makes as few requests as it can. */
+const PAGE_SIZE = 100;
+
 export class CartesiaProvider implements VoiceProvider {
-    readonly name: string;
+    readonly name = PROVIDER;
     readonly capabilities: Readonly<Capabilities> = {
         tts: true,
         stt: true,
@@ -31,19 +39,12 @@ export class CartesiaProvider implements VoiceProvider {
         realtimeSTT: true,
     };
 
-    #client: Cartesia;
     #config: ResolvedConfig;
     #tts: CartesiaTTS;
     #stt: CartesiaSTT;
 
     constructor(config: CartesiaConfig = {}) {
-        ensureWebSocket();
-        this.name = PROVIDER;
         this.#config = resolveConfig(config);
-        this.#client = new Cartesia({
-            apiKey: this.#config.apiKey,
-            baseURL: this.#config.baseUrl,
-        });
         this.#tts = new CartesiaTTS(this.#config);
         this.#stt = new CartesiaSTT(this.#config);
     }
@@ -68,16 +69,41 @@ export class CartesiaProvider implements VoiceProvider {
         return CartesiaSTTSession.open(this.#config, input);
     }
 
+    /**
+     * The catalogue is cursor-paginated: each page carries `has_more`, and the
+     * next one starts after the last id seen. An empty page also ends the walk,
+     * so a server that sets `has_more` and then runs dry cannot loop forever.
+     */
     async listVoices(): Promise<VoiceInfo[]> {
         const voices: VoiceInfo[] = [];
-        for await (const voice of this.#client.voices.list()) {
-            voices.push({
-                id: voice.id,
-                name: voice.name,
-                language: voice.language,
-                labels: voice.description ? { description: voice.description } : undefined,
+        let startingAfter: string | undefined;
+
+        for (;;) {
+            const response = await send({
+                apiKey: this.#config.apiKey,
+                url: buildUrl(this.#config.baseUrl, "/voices", {
+                    limit: PAGE_SIZE,
+                    starting_after: startingAfter,
+                }),
+                method: "GET",
+                operation: "listVoices",
+                transport: this.#config.transport,
             });
+
+            const page = (await response.json()) as VoicePage;
+            const data = page.data ?? [];
+
+            for (const voice of data) {
+                voices.push({
+                    id: voice.id,
+                    name: voice.name,
+                    language: voice.language,
+                    labels: voice.description ? { description: voice.description } : undefined,
+                });
+            }
+
+            if (!page.has_more || data.length === 0) return voices;
+            startingAfter = data[data.length - 1]?.id;
         }
-        return voices;
     }
 }

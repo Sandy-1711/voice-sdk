@@ -81,6 +81,19 @@ describe("opening", () => {
 
         expect((await server.connection()).url.searchParams.get("model")).toBe("ink-2");
     });
+
+    // push() is fire-and-forget, so a socket that has gone away must not throw
+    // somewhere the caller has no way to catch it.
+    it("drops audio pushed after the socket closed, without throwing", async () => {
+        const session = await provider().openSTTSession();
+        const connection = await server.connection();
+
+        connection.close();
+        await session.closed;
+
+        expect(() => session.push(pcmRamp(8))).not.toThrow();
+        await expect(session.flush()).resolves.toBeUndefined();
+    });
 });
 
 describe("openSTTSession in auto mode", () => {

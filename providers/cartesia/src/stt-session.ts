@@ -12,7 +12,7 @@ import type { ResolvedConfig } from "./config";
 import { DEFAULTS, PROVIDER } from "./config";
 import { fromWords, toRealtimeSTTFormat } from "./format";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toText } from "./internal/socket";
+import { handshake, open, sendIfOpen, toText } from "./internal/socket";
 
 /** Wire shapes for both endpoints, narrowed to the fields core models. */
 interface STTMessage {
@@ -140,12 +140,12 @@ export class CartesiaSTTSession implements STTSession {
     }
 
     push(audio: Uint8Array): void {
-        sendWhenOpen(this.#ws, audio);
+        sendIfOpen(this.#ws, audio);
     }
 
     /** Manual mode transcribes on `finalize`; auto mode decides for itself. */
     async flush(): Promise<void> {
-        if (this.#mode === "manual") sendWhenOpen(this.#ws, "finalize");
+        if (this.#mode === "manual") sendIfOpen(this.#ws, "finalize");
     }
 
     /** Cartesia has no server-side discard, so this only drops the local turn. */
@@ -156,8 +156,8 @@ export class CartesiaSTTSession implements STTSession {
     async close(): Promise<void> {
         // The two endpoints say goodbye differently: manual takes a bare text
         // frame, auto takes a JSON message.
-        if (this.#mode === "manual") sendWhenOpen(this.#ws, "close");
-        else sendWhenOpen(this.#ws, JSON.stringify({ type: "close" }));
+        if (this.#mode === "manual") sendIfOpen(this.#ws, "close");
+        else sendIfOpen(this.#ws, JSON.stringify({ type: "close" }));
         await this.#closed;
     }
 
