@@ -4,6 +4,7 @@ import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord }
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
 import { AsyncQueue } from "./internal/async-queue";
+import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -130,7 +131,7 @@ export class ElevenLabsSTTSession implements STTSession {
     #receive(raw: WebSocket.RawData): void {
         let message: ServerMessage;
         try {
-            message = JSON.parse(raw.toString()) as ServerMessage;
+            message = JSON.parse(toText(raw)) as ServerMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`ElevenLabs STT socket sent invalid JSON: ${String(error)}`));
             return;

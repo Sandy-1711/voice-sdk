@@ -76,7 +76,7 @@ export async function fakeSocket(options: FakeSocketOptions = {}): Promise<FakeS
                     });
                 });
             }
-            return connections[index] as FakeConnection;
+            return connections[index];
         },
         close() {
             for (const ws of server.clients) ws.terminate();
@@ -98,7 +98,9 @@ function wrap(ws: WebSocket, target: string, headers: NodeJS.Dict<string | strin
     };
 
     ws.on("message", (data: RawData, isBinary: boolean) => {
-        received.push(isBinary ? toBytes(data) : data.toString());
+        // Via toBytes either way: RawData can be an ArrayBuffer or a Buffer[],
+        // and calling toString() on those yields "[object ArrayBuffer]".
+        received.push(isBinary ? toBytes(data) : new TextDecoder().decode(toBytes(data)));
         wake();
     });
     ws.on("close", () => {

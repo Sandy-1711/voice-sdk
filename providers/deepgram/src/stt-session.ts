@@ -11,7 +11,7 @@ import { PROVIDER, type ResolvedConfig } from "./config";
 import { fromWords, toRealtimeSTTFormat, type WireWord } from "./format";
 import { AsyncQueue } from "./internal/async-queue";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen } from "./internal/socket";
+import { handshake, open, sendWhenOpen, toText } from "./internal/socket";
 
 /** Wire shapes for both endpoints, narrowed to the fields core models. */
 interface ListenMessage {
@@ -225,7 +225,7 @@ export class DeepgramSTTSession implements STTSession {
     #receive(raw: WebSocket.RawData): void {
         let message: ListenMessage & FluxMessage;
         try {
-            message = JSON.parse(raw.toString()) as ListenMessage & FluxMessage;
+            message = JSON.parse(toText(raw)) as ListenMessage & FluxMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`Deepgram STT socket sent invalid JSON: ${String(error)}`));
             return;

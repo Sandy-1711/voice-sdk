@@ -11,6 +11,7 @@ import {
     type WsAlignment,
 } from "./format";
 import { AsyncQueue } from "./internal/async-queue";
+import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -161,7 +162,7 @@ export class ElevenLabsTTSSession implements TTSSession {
     #receive(raw: WebSocket.RawData): void {
         let message: ServerMessage;
         try {
-            message = JSON.parse(raw.toString()) as ServerMessage;
+            message = JSON.parse(toText(raw)) as ServerMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`ElevenLabs TTS socket sent invalid JSON: ${String(error)}`));
             return;

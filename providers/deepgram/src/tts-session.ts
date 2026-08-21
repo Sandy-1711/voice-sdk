@@ -5,7 +5,7 @@ import { DEFAULT_STREAM_FORMAT, type ResolvedConfig } from "./config";
 import { assertNoTimings, toRealtimeOutputFormat, toSpeed } from "./format";
 import { AsyncQueue } from "./internal/async-queue";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toBytes } from "./internal/socket";
+import { handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
 
 /** Wire shape. Audio arrives as binary frames; everything else is JSON. */
 interface ServerMessage {
@@ -111,7 +111,7 @@ export class DeepgramTTSSession implements TTSSession {
 
         let message: ServerMessage;
         try {
-            message = JSON.parse(raw.toString()) as ServerMessage;
+            message = JSON.parse(toText(raw)) as ServerMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`Deepgram TTS socket sent invalid JSON: ${String(error)}`));
             return;
