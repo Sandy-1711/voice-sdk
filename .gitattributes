@@ -1,0 +1,12 @@
+# The index already stores LF. This pins the working tree to LF too, so a
+# Windows checkout under core.autocrlf=true does not hand Prettier CRLF files
+# that its endOfLine: "lf" rule then rejects on every run.
+* text=auto eol=lf
+
+# Generated: keep it out of diffs and out of language stats.
+pnpm-lock.yaml -diff linguist-generated
+
+*.png binary
+*.ico binary
+*.woff binary
+*.woff2 binary
