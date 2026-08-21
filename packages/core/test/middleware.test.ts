@@ -49,7 +49,6 @@ function provider(): VoiceProvider {
  */
 function session() {
     return {
-        // eslint-disable-next-line @typescript-eslint/require-await
         output: (async function* () {})(),
         push: () => {},
         flush: async () => {},
