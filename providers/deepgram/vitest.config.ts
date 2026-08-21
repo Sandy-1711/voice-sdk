@@ -6,6 +6,7 @@ export default defineConfig({
         exclude: ["test/live/**"],
         coverage: {
             provider: "v8",
+            reporter: ["text", "text-summary", "lcov"],
             include: ["src/**"],
         },
     },
