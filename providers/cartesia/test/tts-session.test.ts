@@ -120,9 +120,11 @@ describe("opening", () => {
         });
     });
 
-    // Unlike speak(), here output_format sits inside the merge, so
-    // providerOptions can tweak one field without dropping its siblings.
-    it("lets providerOptions merge into the mapped output format", async () => {
+    // `format` is the typed way to ask, so the mapped output_format is applied
+    // after the merge and wins outright — same as speak(). Anything else would
+    // let providerOptions change the real format while `session.format` still
+    // reported the old one.
+    it("keeps the mapped output format over one passed through providerOptions", async () => {
         expect(
             await firstFrame({
                 format: { sampleRate: 44100 },
@@ -130,7 +132,7 @@ describe("opening", () => {
             }),
         ).toMatchObject({
             max_buffer_delay_ms: 100,
-            output_format: { container: "raw", encoding: "pcm_s16le", sample_rate: 24000 },
+            output_format: { container: "raw", encoding: "pcm_s16le", sample_rate: 44100 },
         });
     });
 

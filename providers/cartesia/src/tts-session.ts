@@ -45,17 +45,24 @@ export class CartesiaTTSSession implements TTSSession {
             DEFAULT_STREAM_FORMAT,
         );
 
-        const options = withProviderOptions(
-            {
-                model_id: input.model ?? config.defaultModel,
-                voice: toVoice(input.voice ?? config.defaultVoice),
-                output_format: payload,
-                language: input.language,
-                add_timestamps: input.timings === true || input.timings === "word",
-                add_phoneme_timestamps: input.timings === "phoneme",
-            },
-            input.providerOptions,
-        );
+        // `output_format` is applied after the merge, so it cannot be overridden:
+        // `session.format` is a promise to the caller about how to play the
+        // bytes, and providerOptions changing the real format without changing
+        // the reported one would make that promise quietly false. `speak` has
+        // always worked this way.
+        const options = {
+            ...withProviderOptions(
+                {
+                    model_id: input.model ?? config.defaultModel,
+                    voice: toVoice(input.voice ?? config.defaultVoice),
+                    language: input.language,
+                    add_timestamps: input.timings === true || input.timings === "word",
+                    add_phoneme_timestamps: input.timings === "phoneme",
+                },
+                input.providerOptions,
+            ),
+            output_format: payload,
+        };
 
         // Everything above can throw, and does so before a socket is opened.
         const ws = open(buildUrl(config.baseUrl, "/tts/websocket"), config.apiKey);
