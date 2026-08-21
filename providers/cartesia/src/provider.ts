@@ -61,7 +61,7 @@ export class CartesiaProvider implements VoiceProvider {
     }
 
     openTTSSession(input?: RealtimeTTSInput): Promise<TTSSession> {
-        return CartesiaTTSSession.open(this.#client, this.#config, input);
+        return CartesiaTTSSession.open(this.#config, input);
     }
 
     openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
