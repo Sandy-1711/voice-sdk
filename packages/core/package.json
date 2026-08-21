@@ -46,7 +46,7 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run --coverage",
-    "clean": "rm -rf dist"
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
