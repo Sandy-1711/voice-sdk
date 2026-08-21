@@ -12,15 +12,16 @@ different ways. This is the shared version.
 
 ## Why now
 
-`providers/deepgram/src/internal/http.ts` already hand-rolls retry, backoff and
-a request deadline. When ElevenLabs drops its generated SDK, it needs the same
-logic. When Cartesia drops its own, that is a third copy. Three copies of retry
-policy is three places for a bug to hide.
+`providers/deepgram/src/internal/http.ts` hand-rolled retry, backoff and a
+request deadline. ElevenLabs needed the same logic when it dropped its generated
+SDK, and Cartesia would have been a third copy. Three copies of retry policy is
+three places for a bug to hide. All three providers now share this layer, and
+none of them ships a vendor client.
 
 The generated ElevenLabs client is what forced the issue: 19,963 files and
 22.4 MB unpacked to reach six endpoints. It ships the whole product surface —
 agents, dubbing, studio, workspace — and on Windows that many hardlinks is an
-install that crawls or dies outright. For comparison, `@cartesia/cartesia-js` is
+install that crawls or dies outright. For comparison, `@cartesia/cartesia-js` was
 912 files and `ws` is 19.
 
 What that SDK actually did for us was one file, `requestWithRetries.js`: retry
