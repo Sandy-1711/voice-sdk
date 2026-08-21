@@ -32,13 +32,16 @@ export class CartesiaSTTSession implements STTSession {
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
 
         if (mode === "manual") {
-            const params = withProviderOptions({
-                model: (input.model ?? DEFAULTS.manualSTTModel) as ManualModel,
-                encoding,
-                sample_rate,
-                keyterm: input.keyterms,
-                language: input.language as "en" | undefined,
-            }, input.providerOptions);
+            const params = withProviderOptions(
+                {
+                    model: (input.model ?? DEFAULTS.manualSTTModel) as ManualModel,
+                    encoding,
+                    sample_rate,
+                    keyterm: input.keyterms,
+                    language: input.language as "en" | undefined,
+                },
+                input.providerOptions,
+            );
 
             return new CartesiaSTTSession(client.stt.manualFinalize.websocket(params), mode);
         }
@@ -53,14 +56,18 @@ export class CartesiaSTTSession implements STTSession {
         }
 
         const turn = input.turnDetection?.mode === "vad" ? input.turnDetection : undefined;
-        const params = withProviderOptions({
-            model,
-            encoding,
-            sample_rate,
-            keyterm: input.keyterms,
-            turn_end_threshold: turn?.threshold,
-            turn_end_timeout_ms: turn?.silence === undefined ? undefined : Math.round(turn.silence * 1000),
-        }, input.providerOptions);
+        const params = withProviderOptions(
+            {
+                model,
+                encoding,
+                sample_rate,
+                keyterm: input.keyterms,
+                turn_end_threshold: turn?.threshold,
+                turn_end_timeout_ms:
+                    turn?.silence === undefined ? undefined : Math.round(turn.silence * 1000),
+            },
+            input.providerOptions,
+        );
 
         return new CartesiaSTTSession(client.stt.autoFinalize.websocket(params), mode);
     }
@@ -69,9 +76,16 @@ export class CartesiaSTTSession implements STTSession {
         this.#ws = ws;
         this.#mode = mode;
         this.#closed = new Promise((resolve) => {
-            // Both sockets emit the same close event; the union of their
-            // listener maps is not callable, so narrow to either one.
-            (ws as ManualWS).on("close", () => resolve());
+            // Both sockets emit the same events; the union of their listener
+            // maps is not callable, so narrow to either one.
+            const socket = ws as ManualWS;
+            socket.on("close", () => resolve());
+            // With nothing listening for `error` the SDK calls Promise.reject
+            // itself, which is an unhandled rejection and fatal on current
+            // Node. The error still reaches the caller through stream(), which
+            // yields it as an `error` event; binding here settles the session
+            // and keeps the SDK from throwing at the process as well.
+            socket.on("error", () => resolve());
         });
     }
 

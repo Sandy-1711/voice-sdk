@@ -21,17 +21,17 @@ want once, and it talks to whichever company you picked.
 
 **In practice:** a provider-agnostic contract over speech APIs. Four operations:
 
-| Operation        | You give it              | You get back                 | Shape                |
-| ---------------- | ------------------------ | ---------------------------- | -------------------- |
-| **TTS**          | all your text            | all the audio                | one request          |
-| **STT**          | all your audio           | all the text                 | one request          |
-| **realtime TTS** | text, a piece at a time  | audio, as it is generated    | a live session       |
-| **realtime STT** | audio, a piece at a time | text, as it is recognized    | a live session       |
+| Operation        | You give it              | You get back              | Shape          |
+| ---------------- | ------------------------ | ------------------------- | -------------- |
+| **TTS**          | all your text            | all the audio             | one request    |
+| **STT**          | all your audio           | all the text              | one request    |
+| **realtime TTS** | text, a piece at a time  | audio, as it is generated | a live session |
+| **realtime STT** | audio, a piece at a time | text, as it is recognized | a live session |
 
 The distinction that trips people up: **streaming output is not realtime.**
 Every TTS provider can hand back audio in chunks from a single request — that is
 `speakStream`, and it lives under the `tts` capability. Only some providers let
-you *keep feeding text in* while audio comes out — that is `openTTSSession`, and
+you _keep feeding text in_ while audio comes out — that is `openTTSSession`, and
 it lives under `realtimeTTS`. OpenAI can do the first but not the second.
 
 ---
@@ -68,8 +68,8 @@ not a quieter voice.
 
 ### AudioFormat and ResolvedAudioFormat
 
-**In plain words:** `AudioFormat` is what you *asked for* — and you're allowed
-to leave blanks. `ResolvedAudioFormat` is what you *actually got*, with every
+**In plain words:** `AudioFormat` is what you _asked for_ — and you're allowed
+to leave blanks. `ResolvedAudioFormat` is what you _actually got_, with every
 blank filled in.
 
 **In practice:**
@@ -112,7 +112,7 @@ type AudioSource =
     | { url: string };
 ```
 
-`{ url }` is in there because AssemblyAI accepts *only* a URL and ElevenLabs
+`{ url }` is in there because AssemblyAI accepts _only_ a URL and ElevenLabs
 accepts `source_url`. Providers that need bytes fetch it; providers that need a
 URL upload first. The caller never has to know which kind they are talking to.
 
@@ -134,7 +134,7 @@ interface AudioStream extends AsyncIterable<AudioChunk> {
 ```
 
 `AudioChunk` deliberately does **not** carry the format. Format is a property of
-the *stream*, not of each 20 ms frame — repeating it thousands of times is both
+the _stream_, not of each 20 ms frame — repeating it thousands of times is both
 wasteful and a chance for it to disagree with itself. It lives on `AudioStream`
 instead, where it is known before the first chunk arrives, so a caller can set
 up playback in advance.
@@ -229,7 +229,7 @@ problem, not the caller's.
 
 ### VoiceControls
 
-**In plain words:** knobs for *how* the voice sounds — faster, louder, happier.
+**In plain words:** knobs for _how_ the voice sounds — faster, louder, happier.
 
 ```ts
 interface VoiceControls {
@@ -310,12 +310,12 @@ type STTSession = RealtimeSession<Uint8Array, STTEvent>;
 One generic covers both directions. The verbs are what make this a session
 rather than a stream:
 
-| Verb       | On a TTS session                    | On an STT session                        |
-| ---------- | ----------------------------------- | ---------------------------------------- |
-| `push`     | send text to be spoken              | send audio to be transcribed             |
-| `flush`    | synthesize what is buffered **now** | finalize what is buffered **now**        |
-| `cancel`   | barge-in: drop queued audio         | drop the in-progress turn                |
-| `close`    | end the session cleanly             | end the session cleanly                  |
+| Verb     | On a TTS session                    | On an STT session                 |
+| -------- | ----------------------------------- | --------------------------------- |
+| `push`   | send text to be spoken              | send audio to be transcribed      |
+| `flush`  | synthesize what is buffered **now** | finalize what is buffered **now** |
+| `cancel` | barge-in: drop queued audio         | drop the in-progress turn         |
+| `close`  | end the session cleanly             | end the session cleanly           |
 
 `push` returns `void`, not a promise, so an LLM token loop never has to await
 per token. Failures surface on `output` and `closed` instead.
@@ -346,13 +346,13 @@ ids that tell a voice agent **which audio survived a barge-in**, and `timing` is
 how you drive a caption track. Throwing those away at the core boundary would
 force every serious consumer to reach past the SDK.
 
-Fatal errors are *not* events — they reject the `output` iterator, so a plain
+Fatal errors are _not_ events — they reject the `output` iterator, so a plain
 `try`/`catch` around `for await` works.
 
 ### STTEvent and Finality
 
 **In plain words:** while someone talks, the computer keeps changing its guess.
-First "I *think* you said hello", then "you definitely said hello", then "and
+First "I _think_ you said hello", then "you definitely said hello", then "and
 you've stopped talking now". Those are three different messages, and a robot
 that answers you needs the third one to know when to speak.
 
@@ -385,19 +385,19 @@ type STTEvent =
 `Finality` has three states because a boolean cannot hold what providers
 actually send:
 
-| Provider              | What they send                                                    |
-| --------------------- | ----------------------------------------------------------------- |
-| Deepgram (nova-3)     | `is_final` **and** `speech_final` — two independent flags          |
-| Deepgram (Flux)       | 5 turn events, incl. a revocable `EagerEndOfTurn`                  |
-| ElevenLabs            | partial → final → committed — three levels                        |
-| Cartesia (ink-2)      | `turn.update` / `turn.eager_end` ⇄ `turn.resume` / `turn.end`      |
-| Cartesia (ink-whisper)| `is_final`, but only after you explicitly ask                     |
-| OpenAI                | `delta` → `completed`                                             |
+| Provider               | What they send                                                |
+| ---------------------- | ------------------------------------------------------------- |
+| Deepgram (nova-3)      | `is_final` **and** `speech_final` — two independent flags     |
+| Deepgram (Flux)        | 5 turn events, incl. a revocable `EagerEndOfTurn`             |
+| ElevenLabs             | partial → final → committed — three levels                    |
+| Cartesia (ink-2)       | `turn.update` / `turn.eager_end` ⇄ `turn.resume` / `turn.end` |
+| Cartesia (ink-whisper) | `is_final`, but only after you explicitly ask                 |
+| OpenAI                 | `delta` → `completed`                                         |
 
 `partial` means "will be revised", `final` means "this segment is stable but the
 turn may continue", `turn_end` means "the speaker is done".
 
-### text *and* delta
+### text _and_ delta
 
 **In plain words:** some services send you only the new words; others resend the
 whole sentence every time. Core gives you both, always, so you never have to
@@ -492,12 +492,12 @@ const result = await voice.speak({ text: "Hello there" });
 
 [`packages/core/src/errors.ts`](../packages/core/src/errors.ts)
 
-| Error             | Means                                          | Thrown when                       |
-| ----------------- | ---------------------------------------------- | --------------------------------- |
-| `VoiceError`      | base class for everything                      | —                                 |
-| `CapabilityError` | this provider cannot do that at all            | calling a method it does not have |
-| `ConfigError`     | the provider was set up wrong                  | construction, e.g. missing key    |
-| `ValidationError` | this request field cannot be represented       | before the request goes out       |
+| Error             | Means                                    | Thrown when                       |
+| ----------------- | ---------------------------------------- | --------------------------------- |
+| `VoiceError`      | base class for everything                | —                                 |
+| `CapabilityError` | this provider cannot do that at all      | calling a method it does not have |
+| `ConfigError`     | the provider was set up wrong            | construction, e.g. missing key    |
+| `ValidationError` | this request field cannot be represented | before the request goes out       |
 
 `ValidationError` names the offending field, so you see
 `format.sampleRate: 12345 is not supported. Supported: 8000, 16000, ...`
@@ -549,32 +549,32 @@ its own users miserable.
 
 ## Type index
 
-| Type                        | File          | What it is                              |
-| --------------------------- | ------------- | --------------------------------------- |
-| `AudioEncoding`             | `audio.ts`    | how samples are written                 |
-| `AudioContainer`            | `audio.ts`    | the wrapper around the samples          |
-| `AudioFormat`               | `audio.ts`    | a format you asked for                  |
-| `ResolvedAudioFormat`       | `audio.ts`    | the format you actually got             |
-| `AudioSource`               | `audio.ts`    | any way of handing over audio           |
-| `AudioChunk`                | `audio.ts`    | one frame of audio                      |
-| `AudioStream`               | `audio.ts`    | chunks + the format they are in         |
-| `TimingSpan` / `Alignment`  | `audio.ts`    | which text happened when                |
-| `collectAudio` / `concatAudio` | `audio.ts` | flatten any source into one buffer      |
-| `RequestContext`            | `types.ts`    | signal, timeout, retries                |
-| `VoiceControls`             | `types.ts`    | prosody knobs                           |
-| `SpeakInput` / `SpeakResult`| `types.ts`    | batch TTS                               |
-| `TranscribeInput` / `TranscriptResult` | `types.ts` | batch STT                     |
-| `TranscriptWord` / `TranscriptSegment` | `types.ts` | recognized text with timing   |
-| `RealtimeSession`           | `realtime.ts` | the duplex session contract             |
-| `RealtimeTTSInput` / `TTSEvent` / `TTSSession` | `realtime.ts` | realtime TTS         |
-| `RealtimeSTTInput` / `STTEvent` / `STTSession` | `realtime.ts` | realtime STT         |
-| `Finality`                  | `realtime.ts` | partial / final / turn_end              |
-| `TurnDetection`             | `realtime.ts` | manual vs VAD boundaries                |
-| `Capabilities` / `VoiceProvider` / `VoiceInfo` | `provider.ts` | the provider contract |
-| `Voice`                     | `voice.ts`    | the entry point                         |
-| `VoiceError` and friends    | `errors.ts`   | typed failures                          |
-| `audioOnly` / `turns`       | `stream.ts`   | event stream filters                    |
-| `TurnTextTracker`           | `turn-text.ts`| derives text ⇄ delta                    |
+| Type                                           | File           | What it is                         |
+| ---------------------------------------------- | -------------- | ---------------------------------- |
+| `AudioEncoding`                                | `audio.ts`     | how samples are written            |
+| `AudioContainer`                               | `audio.ts`     | the wrapper around the samples     |
+| `AudioFormat`                                  | `audio.ts`     | a format you asked for             |
+| `ResolvedAudioFormat`                          | `audio.ts`     | the format you actually got        |
+| `AudioSource`                                  | `audio.ts`     | any way of handing over audio      |
+| `AudioChunk`                                   | `audio.ts`     | one frame of audio                 |
+| `AudioStream`                                  | `audio.ts`     | chunks + the format they are in    |
+| `TimingSpan` / `Alignment`                     | `audio.ts`     | which text happened when           |
+| `collectAudio` / `concatAudio`                 | `audio.ts`     | flatten any source into one buffer |
+| `RequestContext`                               | `types.ts`     | signal, timeout, retries           |
+| `VoiceControls`                                | `types.ts`     | prosody knobs                      |
+| `SpeakInput` / `SpeakResult`                   | `types.ts`     | batch TTS                          |
+| `TranscribeInput` / `TranscriptResult`         | `types.ts`     | batch STT                          |
+| `TranscriptWord` / `TranscriptSegment`         | `types.ts`     | recognized text with timing        |
+| `RealtimeSession`                              | `realtime.ts`  | the duplex session contract        |
+| `RealtimeTTSInput` / `TTSEvent` / `TTSSession` | `realtime.ts`  | realtime TTS                       |
+| `RealtimeSTTInput` / `STTEvent` / `STTSession` | `realtime.ts`  | realtime STT                       |
+| `Finality`                                     | `realtime.ts`  | partial / final / turn_end         |
+| `TurnDetection`                                | `realtime.ts`  | manual vs VAD boundaries           |
+| `Capabilities` / `VoiceProvider` / `VoiceInfo` | `provider.ts`  | the provider contract              |
+| `Voice`                                        | `voice.ts`     | the entry point                    |
+| `VoiceError` and friends                       | `errors.ts`    | typed failures                     |
+| `audioOnly` / `turns`                          | `stream.ts`    | event stream filters               |
+| `TurnTextTracker`                              | `turn-text.ts` | derives text ⇄ delta               |
 
 Next: [building-a-provider.md](./building-a-provider.md) — how these types were
 used to implement Cartesia, step by step.

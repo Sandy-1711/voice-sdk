@@ -5,7 +5,6 @@ import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
 
-
 type TTSWebsocket = Awaited<ReturnType<Cartesia["tts"]["websocket"]>>;
 type TTSContext = ReturnType<TTSWebsocket["context"]>;
 
@@ -27,16 +26,22 @@ export class CartesiaTTSSession implements TTSSession {
         config: ResolvedConfig,
         input: RealtimeTTSInput = {},
     ): Promise<CartesiaTTSSession> {
-        const { payload, resolved } = toRawOutputFormat(input.format ?? config.defaultFormat, DEFAULT_STREAM_FORMAT);
+        const { payload, resolved } = toRawOutputFormat(
+            input.format ?? config.defaultFormat,
+            DEFAULT_STREAM_FORMAT,
+        );
 
-        const options = withProviderOptions({
-            model_id: (input.model ?? config.defaultModel) as Cartesia.TTSModel,
-            voice: toVoice(input.voice ?? config.defaultVoice),
-            output_format: payload,
-            language: input.language as Cartesia.SupportedLanguage | undefined,
-            add_timestamps: input.timings === true || input.timings === "word",
-            add_phoneme_timestamps: input.timings === "phoneme",
-        }, input.providerOptions);
+        const options = withProviderOptions(
+            {
+                model_id: (input.model ?? config.defaultModel) as Cartesia.TTSModel,
+                voice: toVoice(input.voice ?? config.defaultVoice),
+                output_format: payload,
+                language: input.language as Cartesia.SupportedLanguage | undefined,
+                add_timestamps: input.timings === true || input.timings === "word",
+                add_phoneme_timestamps: input.timings === "phoneme",
+            },
+            input.providerOptions,
+        );
 
         const ws = await client.tts.websocket();
         const context = ws.context(options);
@@ -68,11 +73,9 @@ export class CartesiaTTSSession implements TTSSession {
     }
 
     push(text: string): void {
-        void this.#context
-            .push({ transcript: text, generation_config: this.#generationConfig })
-            .catch(() => {
-                /* surfaced on output */
-            });
+        void this.#context.push({ transcript: text, generation_config: this.#generationConfig }).catch(() => {
+            /* surfaced on output */
+        });
     }
 
     async flush(): Promise<void> {
@@ -114,7 +117,12 @@ export class CartesiaTTSSession implements TTSSession {
                     if (timings) {
                         yield {
                             type: "timing",
-                            alignment: fromTimestamps(timings.phonemes, timings.start, timings.end, "phoneme"),
+                            alignment: fromTimestamps(
+                                timings.phonemes,
+                                timings.start,
+                                timings.end,
+                                "phoneme",
+                            ),
                         };
                     }
                     break;

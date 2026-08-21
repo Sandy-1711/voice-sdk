@@ -44,12 +44,15 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "check-types": "tsc --noEmit",
-    "test": "vitest run",
-    "clean": "rm -rf dist"
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --coverage",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
+    "@voice-sdk/eslint-config": "workspace:*",
     "@voice-sdk/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
     "tsup": "^8.5.1",
     "typescript": "5.9.2"
   },

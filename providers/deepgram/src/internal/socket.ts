@@ -49,3 +49,8 @@ export function toBytes(raw: WebSocket.RawData): Uint8Array {
     if (raw instanceof ArrayBuffer) return new Uint8Array(raw);
     return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
 }
+
+/** Via toBytes, since `ArrayBuffer.toString()` yields "[object ArrayBuffer]". */
+export function toText(raw: WebSocket.RawData): string {
+    return new TextDecoder().decode(toBytes(raw));
+}

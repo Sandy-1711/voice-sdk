@@ -125,7 +125,10 @@ describe("CartesiaTTSSession", () => {
         it("asks for the granularity of timings the caller wanted", async () => {
             const word = fakeClient();
             await CartesiaTTSSession.open(word.client, CONFIG, { timings: "word" });
-            expect(word.calls.contextOptions).toMatchObject({ add_timestamps: true, add_phoneme_timestamps: false });
+            expect(word.calls.contextOptions).toMatchObject({
+                add_timestamps: true,
+                add_phoneme_timestamps: false,
+            });
 
             const phoneme = fakeClient();
             await CartesiaTTSSession.open(phoneme.client, CONFIG, { timings: "phoneme" });

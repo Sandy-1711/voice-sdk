@@ -1,0 +1,22 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{json,jsonc,yml,yaml,md}]
+indent_size = 2
+
+# Turborepo starter code, kept at the style it was generated with.
+[{apps,packages/ui,packages/eslint-config}/**]
+indent_size = 2
+
+[**/tsup.config.ts]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

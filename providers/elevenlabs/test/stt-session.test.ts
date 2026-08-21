@@ -200,13 +200,23 @@ describe("openSTTSession", () => {
         it("takes the plain variants when timestamps are off", async () => {
             const events = await eventsFrom({}, (connection) => {
                 connection.send({ message_type: "final_transcript", text: "hello" });
-                connection.send({ message_type: "final_transcript_with_timestamps", text: "hello", words: [] });
+                connection.send({
+                    message_type: "final_transcript_with_timestamps",
+                    text: "hello",
+                    words: [],
+                });
                 connection.send({ message_type: "committed_transcript", text: "hello there" });
-                connection.send({ message_type: "committed_transcript_with_timestamps", text: "hello there" });
+                connection.send({
+                    message_type: "committed_transcript_with_timestamps",
+                    text: "hello there",
+                });
             });
 
             expect(events).toHaveLength(2);
-            expect(events.map((event) => event.type === "transcript" && event.finality)).toEqual(["final", "turn_end"]);
+            expect(events.map((event) => event.type === "transcript" && event.finality)).toEqual([
+                "final",
+                "turn_end",
+            ]);
         });
 
         it("takes the timestamped variants when timestamps are on", async () => {
@@ -216,7 +226,16 @@ describe("openSTTSession", () => {
                     message_type: "final_transcript_with_timestamps",
                     text: "hello",
                     language_code: "en",
-                    words: [{ text: "hello", start: 0.1, end: 0.6, type: "word", logprob: 0, speaker_id: "speaker_0" }],
+                    words: [
+                        {
+                            text: "hello",
+                            start: 0.1,
+                            end: 0.6,
+                            type: "word",
+                            logprob: 0,
+                            speaker_id: "speaker_0",
+                        },
+                    ],
                 });
             });
 
@@ -224,7 +243,16 @@ describe("openSTTSession", () => {
             expect(events[0]).toMatchObject({
                 finality: "final",
                 language: "en",
-                words: [{ text: "hello", start: 0.1, end: 0.6, confidence: 1, speaker: "speaker_0", kind: "word" }],
+                words: [
+                    {
+                        text: "hello",
+                        start: 0.1,
+                        end: 0.6,
+                        confidence: 1,
+                        speaker: "speaker_0",
+                        kind: "word",
+                    },
+                ],
             });
         });
 

@@ -17,7 +17,8 @@ const KEY = process.env.DEEPGRAM_API_KEY;
 const TEXT = "The quick brown fox jumps over the lazy dog.";
 const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
 
-const voice = () => new Voice({ provider: new DeepgramProvider({ apiKey: KEY }), options: { timeout: 30_000 } });
+const voice = () =>
+    new Voice({ provider: new DeepgramProvider({ apiKey: KEY }), options: { timeout: 30_000 } });
 
 describe.skipIf(!KEY)("deepgram (live)", () => {
     it("speaks, and the wav header says what the resolved format claimed", async () => {
@@ -46,7 +47,11 @@ describe.skipIf(!KEY)("deepgram (live)", () => {
             format: { container: "wav", sampleRate: 24000 },
         });
 
-        const result = await voice().transcribe({ audio: spoken.audio, timestamps: "segment", diarize: true });
+        const result = await voice().transcribe({
+            audio: spoken.audio,
+            timestamps: "segment",
+            diarize: true,
+        });
 
         expect(result.text.toLowerCase()).toContain("book a table");
         expect(result.duration).toBeGreaterThan(0);
@@ -78,7 +83,9 @@ describe.skipIf(!KEY)("deepgram (live)", () => {
     });
 
     it("hears a turn end on nova-3", async () => {
-        await expect(listen({ turnDetection: { mode: "vad", silence: 1 }, interimResults: true })).resolves.toMatchObject({
+        await expect(
+            listen({ turnDetection: { mode: "vad", silence: 1 }, interimResults: true }),
+        ).resolves.toMatchObject({
             heard: expect.stringContaining("book a table"),
         });
     });

@@ -101,7 +101,9 @@ describe("toBytes", () => {
         const buffer = Buffer.from([1, 2, 3]);
 
         expect(Uint8Array.from(toBytes(buffer))).toEqual(new Uint8Array([1, 2, 3]));
-        expect(Uint8Array.from(toBytes([Buffer.from([1]), Buffer.from([2])]))).toEqual(new Uint8Array([1, 2]));
+        expect(Uint8Array.from(toBytes([Buffer.from([1]), Buffer.from([2])]))).toEqual(
+            new Uint8Array([1, 2]),
+        );
         expect(Uint8Array.from(toBytes(new Uint8Array([4, 5]).buffer))).toEqual(new Uint8Array([4, 5]));
     });
 

@@ -1,6 +1,6 @@
 import { VoiceError } from "@swungstudent/voice";
 import type { HttpHandler, RequestContext } from "@swungstudent/voice";
-import { DEFAULT_BASE_URL, PROVIDER } from "../config";
+import { PROVIDER } from "../config";
 
 export interface SendInput {
     apiKey: string;
@@ -83,15 +83,14 @@ async function toError(response: Response): Promise<VoiceError> {
 }
 
 /**
- * The mappers speak camelCase, the API speaks snake_case. The generated client
- * used to bridge the two, so this keeps doing it — including for the caller's
- * own `providerOptions`, which would otherwise silently stop reaching the wire
- * under their documented names.
+ * The mappers speak camelCase, the API speaks snake_case. Applies to the
+ * caller's own `providerOptions` too, which would otherwise stop reaching the
+ * wire under their documented names.
  *
  * Keys only. Values, including binary bodies, are never touched.
  */
 export function snakeify<T>(value: T): T {
-    if (Array.isArray(value)) return value.map((item) => snakeify(item)) as T;
+    if (Array.isArray(value)) return value.map((item: unknown) => snakeify(item)) as T;
     if (!isPlainObject(value)) return value;
 
     const out: Record<string, unknown> = {};
@@ -100,20 +99,19 @@ export function snakeify<T>(value: T): T {
 }
 
 /** Already-snake_case keys have no capitals, so they pass through untouched. */
-function toSnakeCase(key: string): string {
+export function toSnakeCase(key: string): string {
     return key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }
 
 /**
  * The other direction, for responses. `labels` is exempt because its keys are
- * the caller's own, not part of the schema — the generated client left them
- * alone too, and camelising `use_case` into `useCase` would silently rename a
- * voice's metadata.
+ * the caller's own, not part of the schema: camelising `use_case` into
+ * `useCase` would silently rename a voice's metadata.
  */
 const OPAQUE_KEYS = new Set(["labels"]);
 
 export function camelize<T>(value: T): T {
-    if (Array.isArray(value)) return value.map((item) => camelize(item)) as T;
+    if (Array.isArray(value)) return value.map((item: unknown) => camelize(item)) as T;
     if (!isPlainObject(value)) return value;
 
     const out: Record<string, unknown> = {};

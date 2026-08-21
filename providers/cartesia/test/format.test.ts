@@ -28,12 +28,16 @@ describe("toOutputFormat", () => {
 
     // Core names the bare codec; Cartesia prefixes everything with pcm_.
     it("prefixes the telephony codecs the way Cartesia spells them", () => {
-        expect(toOutputFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }, FALLBACK).payload).toEqual({
+        expect(
+            toOutputFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }, FALLBACK).payload,
+        ).toEqual({
             container: "raw",
             encoding: "pcm_mulaw",
             sample_rate: 8000,
         });
-        expect(toOutputFormat({ container: "raw", encoding: "alaw", sampleRate: 8000 }, FALLBACK).payload).toMatchObject({
+        expect(
+            toOutputFormat({ container: "raw", encoding: "alaw", sampleRate: 8000 }, FALLBACK).payload,
+        ).toMatchObject({
             encoding: "pcm_alaw",
         });
         expect(toOutputFormat({ container: "raw", encoding: "pcm_f32le" }, FALLBACK).payload).toMatchObject({
@@ -53,7 +57,9 @@ describe("toOutputFormat", () => {
             payload: { container: "mp3", bit_rate: 128_000, sample_rate: 44100 },
             resolved: { container: "mp3", encoding: "mp3", sampleRate: 44100, channels: 1, bitrate: 128 },
         });
-        expect(toOutputFormat({ container: "mp3", bitrate: 64 }, FALLBACK).payload).toMatchObject({ bit_rate: 64_000 });
+        expect(toOutputFormat({ container: "mp3", bitrate: 64 }, FALLBACK).payload).toMatchObject({
+            bit_rate: 64_000,
+        });
     });
 
     describe("rejects what Cartesia cannot produce", () => {
@@ -73,7 +79,9 @@ describe("toOutputFormat", () => {
         });
 
         it("names format.bitrate for an mp3 bitrate that does not exist", () => {
-            expect(catchError(() => toOutputFormat({ container: "mp3", bitrate: 48 }, FALLBACK))).toMatchObject({
+            expect(
+                catchError(() => toOutputFormat({ container: "mp3", bitrate: 48 }, FALLBACK)),
+            ).toMatchObject({
                 field: "format.bitrate",
             });
         });
@@ -85,7 +93,9 @@ describe("toOutputFormat", () => {
         });
 
         it("names format.encoding for a codec with no equivalent", () => {
-            expect(catchError(() => toOutputFormat({ container: "raw", encoding: "opus" }, FALLBACK))).toMatchObject({
+            expect(
+                catchError(() => toOutputFormat({ container: "raw", encoding: "opus" }, FALLBACK)),
+            ).toMatchObject({
                 field: "format.encoding",
             });
         });
@@ -128,7 +138,9 @@ describe("toSTTEncoding", () => {
     });
 
     it("names format.encoding for a codec with no equivalent", () => {
-        expect(catchError(() => toSTTEncoding({ encoding: "mp3" }))).toMatchObject({ field: "format.encoding" });
+        expect(catchError(() => toSTTEncoding({ encoding: "mp3" }))).toMatchObject({
+            field: "format.encoding",
+        });
     });
 });
 
@@ -144,14 +156,20 @@ describe("toGenerationConfig", () => {
     it("sends nothing when there is nothing to say", () => {
         expect(toGenerationConfig(undefined)).toBeUndefined();
         expect(toGenerationConfig({})).toBeUndefined();
-        expect(toGenerationConfig({ stability: 0.4, similarity: 0.8, instructions: "whisper" })).toBeUndefined();
+        expect(
+            toGenerationConfig({ stability: 0.4, similarity: 0.8, instructions: "whisper" }),
+        ).toBeUndefined();
     });
 
     // Out-of-range values are rejected here rather than by a bare 400 later.
     it("holds speed and volume to the ranges Cartesia accepts", () => {
         expect(catchError(() => toGenerationConfig({ speed: 2 }))).toMatchObject({ field: "controls.speed" });
-        expect(catchError(() => toGenerationConfig({ speed: 0.5 }))).toMatchObject({ field: "controls.speed" });
-        expect(catchError(() => toGenerationConfig({ volume: 3 }))).toMatchObject({ field: "controls.volume" });
+        expect(catchError(() => toGenerationConfig({ speed: 0.5 }))).toMatchObject({
+            field: "controls.speed",
+        });
+        expect(catchError(() => toGenerationConfig({ volume: 3 }))).toMatchObject({
+            field: "controls.volume",
+        });
 
         expect(toGenerationConfig({ speed: 0.6, volume: 0.5 })).toEqual({ speed: 0.6, volume: 0.5 });
         expect(toGenerationConfig({ speed: 1.5, volume: 2 })).toEqual({ speed: 1.5, volume: 2 });
@@ -239,7 +257,9 @@ describe("fromWords", () => {
 
     it("skips entries that are neither shape", () => {
         expect(fromWords([null, 42, { unrelated: true }])).toBeUndefined();
-        expect(fromWords([null, { word: "kept", start: 1, end: 2 }])).toEqual([{ text: "kept", start: 1, end: 2 }]);
+        expect(fromWords([null, { word: "kept", start: 1, end: 2 }])).toEqual([
+            { text: "kept", start: 1, end: 2 },
+        ]);
     });
 });
 

@@ -2,7 +2,9 @@
   "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [["@swungstudent/voice", "@swungstudent/cartesia", "@swungstudent/deepgram", "@swungstudent/elevenlabs"]],
+  "fixed": [
+    ["@swungstudent/voice", "@swungstudent/cartesia", "@swungstudent/deepgram", "@swungstudent/elevenlabs"]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

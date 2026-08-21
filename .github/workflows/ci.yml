@@ -10,27 +10,94 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  # Platform-independent, so it runs once rather than once per matrix leg.
+  static:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-
+      - name: Check formatting
+        run: pnpm format:check
+      - name: Lint
+        run: pnpm lint
       - name: Typecheck
         run: pnpm check-types
 
-      - name: Build
-        run: pnpm build
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        # vitest 4 requires ^20 || ^22 || >=24, so 18 is covered by the
+        # dist-import job below instead.
+        node: [20, 22, 24]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
 
       # The offline tier only: fake servers on ephemeral ports, no API keys.
       # The live tier is opt-in and never runs here.
       - name: Test
         run: pnpm test
+
+      - name: Coverage summary
+        if: matrix.node == 22
+        run: node .github/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+  # Development happens on Windows, and .gitattributes pins the working tree to
+  # LF. This is the job that notices if either of those stops being true.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+      - name: Check formatting
+        run: pnpm format:check
+
+  # The published packages claim engines.node >= 18, which vitest cannot verify.
+  # Importing the built output on 18 is what keeps that claim honest.
+  node18-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build --filter=@swungstudent/voice --filter=./providers/*
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Import every built package on Node 18
+        run: |
+          node --version
+          for pkg in packages/core providers/cartesia providers/deepgram providers/elevenlabs; do
+            node -e "require('./$pkg/dist/index.cjs')" && echo "cjs ok: $pkg"
+            node --input-type=module -e "await import('./$pkg/dist/index.mjs')" && echo "esm ok: $pkg"
+          done

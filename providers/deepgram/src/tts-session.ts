@@ -3,9 +3,9 @@ import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from
 import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import { DEFAULT_STREAM_FORMAT, type ResolvedConfig } from "./config";
 import { assertNoTimings, toRealtimeOutputFormat, toSpeed } from "./format";
-import { AsyncQueue } from "./internal/async-queue";
+import { AsyncQueue } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toBytes } from "./internal/socket";
+import { handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
 
 /** Wire shape. Audio arrives as binary frames; everything else is JSON. */
 interface ServerMessage {
@@ -38,13 +38,15 @@ export class DeepgramTTSSession implements TTSSession {
             input.format ?? config.defaultFormat,
             DEFAULT_STREAM_FORMAT,
         );
-        const query = withProviderOptions({
-            ...params,
-            // Deepgram has neither a voice nor a language parameter — both are
-            // folded into the model name, as in `aura-2-thalia-en`.
-            model: input.model ?? input.voice ?? config.defaultModel,
-            speed: toSpeed(input.controls),
-        }, input.providerOptions);
+        const query = withProviderOptions(
+            {
+                ...params,
+                // A Deepgram voice is a model name.
+                model: input.model ?? input.voice ?? config.defaultModel,
+                speed: toSpeed(input.controls),
+            },
+            input.providerOptions,
+        );
 
         const ws = open(buildUrl(config.baseUrl, "/v1/speak", query), config.apiKey);
         // Both listener sets are attached in this tick, before any I/O can be
@@ -108,7 +110,7 @@ export class DeepgramTTSSession implements TTSSession {
 
         let message: ServerMessage;
         try {
-            message = JSON.parse(raw.toString()) as ServerMessage;
+            message = JSON.parse(toText(raw)) as ServerMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`Deepgram TTS socket sent invalid JSON: ${String(error)}`));
             return;
@@ -147,7 +149,9 @@ export class DeepgramTTSSession implements TTSSession {
             default:
                 if (message.type === "Error" || message.type === "Fatal") {
                     this.#queue.fail(
-                        new VoiceError(`Deepgram TTS session: ${message.code ?? message.type}: ${message.description ?? ""}`),
+                        new VoiceError(
+                            `Deepgram TTS session: ${message.code ?? message.type}: ${message.description ?? ""}`,
+                        ),
                     );
                 }
         }

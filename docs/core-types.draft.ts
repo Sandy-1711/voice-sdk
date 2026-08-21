@@ -46,14 +46,7 @@ export type AudioEncoding =
     | "flac";
 
 /** Byte framing around the samples. `raw` = headerless. */
-export type AudioContainer =
-    | "raw"
-    | "wav"
-    | "mp3"
-    | "ogg"
-    | "webm"
-    | "flac"
-    | "aac";
+export type AudioContainer = "raw" | "wav" | "mp3" | "ogg" | "webm" | "flac" | "aac";
 
 /**
  * A *requested* format. Every field optional: providers differ in what is
@@ -367,14 +360,14 @@ export interface TTSSession extends RealtimeSession<string, TTSEvent> {
 export type TurnDetection =
     | { mode: "manual" }
     | {
-        mode: "vad";
-        /** Silence before a turn is closed. Deepgram `endpointing`/`utterance_end_ms`. */
-        silence?: number;
-        /** 0–1 sensitivity. ElevenLabs `vad_threshold`, Deepgram Flux `eot_threshold`. */
-        threshold?: number;
-        /** Minimum speech before a turn opens, in seconds. */
-        minSpeech?: number;
-    };
+          mode: "vad";
+          /** Silence before a turn is closed. Deepgram `endpointing`/`utterance_end_ms`. */
+          silence?: number;
+          /** 0–1 sensitivity. ElevenLabs `vad_threshold`, Deepgram Flux `eot_threshold`. */
+          threshold?: number;
+          /** Minimum speech before a turn opens, in seconds. */
+          minSpeech?: number;
+      };
 
 export interface RealtimeSTTInput {
     model?: string;
@@ -479,10 +472,7 @@ export interface VoiceProvider {
     speakStream?(input: SpeakInput, context?: RequestContext): AudioStream;
 
     /** `stt` */
-    transcribe?(
-        input: TranscribeInput,
-        context?: RequestContext,
-    ): Promise<TranscriptResult>;
+    transcribe?(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult>;
 
     /** `realtimeTTS` */
     openTTSSession?(input?: RealtimeTTSInput): Promise<TTSSession>;
@@ -499,18 +489,14 @@ export interface VoiceProvider {
 // ---------------------------------------------------------------------------
 
 /** Drop everything but the bytes, for callers that just want to play audio. */
-export async function* audioOnly(
-    events: AsyncIterable<TTSEvent>,
-): AsyncIterable<Uint8Array> {
+export async function* audioOnly(events: AsyncIterable<TTSEvent>): AsyncIterable<Uint8Array> {
     for await (const event of events) {
         if (event.type === "audio") yield event.data;
     }
 }
 
 /** Keep only the events that close a turn — the voice-agent trigger. */
-export async function* turns(
-    events: AsyncIterable<STTEvent>,
-): AsyncIterable<STTTranscriptEvent> {
+export async function* turns(events: AsyncIterable<STTEvent>): AsyncIterable<STTTranscriptEvent> {
     for await (const event of events) {
         if (event.type === "transcript" && event.finality === "turn_end") {
             yield event;
@@ -538,9 +524,7 @@ export class TurnTextTracker {
 
     /** For providers that resend the whole turn each time. */
     fromCumulative(text: string): { text: string; delta: string; turn: number } {
-        const delta = text.startsWith(this.#current)
-            ? text.slice(this.#current.length)
-            : text;
+        const delta = text.startsWith(this.#current) ? text.slice(this.#current.length) : text;
         this.#current = text;
         return { text, delta, turn: this.#turn };
     }

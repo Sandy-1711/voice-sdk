@@ -89,8 +89,6 @@ export function resolveConfig(config: DeepgramConfig): ResolvedConfig {
     return {
         apiKey,
         baseUrl: config.baseUrl,
-        // A voice *is* a model here, so `defaultVoice` collapses into
-        // `defaultModel` rather than being carried as a second knob.
         defaultModel: config.defaultModel ?? config.defaultVoice ?? DEFAULTS.ttsModel,
         defaultSTTModel: config.defaultSTTModel ?? DEFAULTS.sttModel,
         defaultRealtimeSTTModel: config.defaultRealtimeSTTModel ?? DEFAULTS.realtimeSTTModel,

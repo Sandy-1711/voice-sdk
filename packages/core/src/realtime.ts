@@ -50,14 +50,14 @@ export interface TTSSession extends RealtimeSession<string, TTSEvent> {
 export type TurnDetection =
     | { mode: "manual" }
     | {
-        mode: "vad";
-        /** Silence before a turn closes, in seconds. */
-        silence?: number;
-        /** Sensitivity, 0 to 1. */
-        threshold?: number;
-        /** Minimum speech before a turn opens, in seconds. */
-        minSpeech?: number;
-    };
+          mode: "vad";
+          /** Silence before a turn closes, in seconds. */
+          silence?: number;
+          /** Sensitivity, 0 to 1. */
+          threshold?: number;
+          /** Minimum speech before a turn opens, in seconds. */
+          minSpeech?: number;
+      };
 
 export interface RealtimeSTTInput {
     model?: string;

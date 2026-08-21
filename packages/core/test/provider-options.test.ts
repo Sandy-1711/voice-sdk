@@ -47,7 +47,9 @@ describe("withProviderOptions", () => {
     });
 
     it("replaces arrays rather than merging them", () => {
-        expect(withProviderOptions({ keyterms: ["a", "b"] }, { keyterms: ["c"] })).toEqual({ keyterms: ["c"] });
+        expect(withProviderOptions({ keyterms: ["a", "b"] }, { keyterms: ["c"] })).toEqual({
+            keyterms: ["c"],
+        });
     });
 
     it("replaces class instances, which are not safe to spread", () => {

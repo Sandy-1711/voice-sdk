@@ -1,15 +1,9 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
-import type {
-    AudioStream,
-    RequestContext,
-    SpeakInput,
-    SpeakResult,
-} from "@swungstudent/voice";
+import type { AudioStream, RequestContext, SpeakInput, SpeakResult } from "@swungstudent/voice";
 import { decodeBase64, withProviderOptions } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_FORMAT, DEFAULT_STREAM_FORMAT } from "./config";
 import { toGenerationConfig, toOutputFormat, toRawOutputFormat, toRequestOptions, toVoice } from "./format";
-
 
 export class CartesiaTTS {
     #client: Cartesia;
@@ -21,7 +15,10 @@ export class CartesiaTTS {
     }
 
     async speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
-        const { payload, resolved } = toOutputFormat(input.format ?? this.#config.defaultFormat, DEFAULT_FORMAT);
+        const { payload, resolved } = toOutputFormat(
+            input.format ?? this.#config.defaultFormat,
+            DEFAULT_FORMAT,
+        );
 
         const response = await this.#client.tts.generate(
             { ...this.#body(input), output_format: payload },
@@ -59,12 +56,15 @@ export class CartesiaTTS {
 
     /** Everything but `output_format`, which differs per endpoint. */
     #body(input: SpeakInput) {
-        return withProviderOptions({
-            model_id: (input.model ?? this.#config.defaultModel) as Cartesia.TTSModel,
-            transcript: input.text,
-            voice: toVoice(input.voice ?? this.#config.defaultVoice),
-            language: input.language as Cartesia.SupportedLanguage | undefined,
-            generation_config: toGenerationConfig(input.controls),
-        }, input.providerOptions);
+        return withProviderOptions(
+            {
+                model_id: (input.model ?? this.#config.defaultModel) as Cartesia.TTSModel,
+                transcript: input.text,
+                voice: toVoice(input.voice ?? this.#config.defaultVoice),
+                language: input.language as Cartesia.SupportedLanguage | undefined,
+                generation_config: toGenerationConfig(input.controls),
+            },
+            input.providerOptions,
+        );
     }
 }

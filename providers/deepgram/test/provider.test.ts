@@ -27,6 +27,9 @@ describe("DeepgramProvider", () => {
         const voice = new Voice({ provider: new DeepgramProvider({ apiKey: "k" }) });
 
         await expect(voice.listVoices()).rejects.toBeInstanceOf(CapabilityError);
-        await expect(voice.listVoices()).rejects.toMatchObject({ provider: "deepgram", capability: "listVoices" });
+        await expect(voice.listVoices()).rejects.toMatchObject({
+            provider: "deepgram",
+            capability: "listVoices",
+        });
     });
 });

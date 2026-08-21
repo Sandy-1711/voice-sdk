@@ -2,7 +2,7 @@ import type { RequestContext, TranscribeInput, TranscriptResult } from "@swungst
 import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { fromWord, toFileFormat, toGranularity, toSource, type WordResponse } from "./format";
-import { camelize, send } from "./internal/http";
+import { camelize, send, toSnakeCase } from "./internal/http";
 
 /** Wire shape of `POST /v1/speech-to-text`, after camelising. */
 interface TranscriptionResponse {
@@ -22,16 +22,19 @@ export class ElevenLabsSTT {
     }
 
     async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
-        const fields = withProviderOptions({
-            ...(await toSource(input.audio)),
-            modelId: input.model ?? this.#config.defaultSTTModel,
-            languageCode: input.language,
-            fileFormat: toFileFormat(input.format),
-            timestampsGranularity: toGranularity(input.timestamps),
-            diarize: input.diarize,
-            numSpeakers: input.speakerCount,
-            keyterms: input.keyterms,
-        }, input.providerOptions);
+        const fields = withProviderOptions(
+            {
+                ...(await toSource(input.audio)),
+                modelId: input.model ?? this.#config.defaultSTTModel,
+                languageCode: input.language,
+                fileFormat: toFileFormat(input.format),
+                timestampsGranularity: toGranularity(input.timestamps),
+                diarize: input.diarize,
+                numSpeakers: input.speakerCount,
+                keyterms: input.keyterms,
+            },
+            input.providerOptions,
+        );
 
         const url = new URL("/v1/speech-to-text", this.#config.baseUrl ?? DEFAULT_BASE_URL);
         const response = await send({
@@ -84,13 +87,11 @@ function toFormData(fields: Record<string, unknown>): FormData {
         } else if (typeof value === "object") {
             form.append(name, JSON.stringify(value));
         } else {
-            form.append(name, String(value));
+            // Objects and arrays are handled above, so what is left stringifies
+            // to something meaningful.
+            form.append(name, String(value as string | number | boolean));
         }
     }
 
     return form;
-}
-
-function toSnakeCase(key: string): string {
-    return key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }

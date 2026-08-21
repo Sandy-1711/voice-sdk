@@ -59,14 +59,23 @@ export async function fakeHttp(routes: Routes = {}): Promise<FakeHttp> {
         incoming.on("data", (chunk: Buffer) => chunks.push(chunk));
         incoming.on("end", () => {
             void (async () => {
-                const request = record(incoming.method ?? "GET", incoming.url ?? "/", incoming.headers, Buffer.concat(chunks));
+                const request = record(
+                    incoming.method ?? "GET",
+                    incoming.url ?? "/",
+                    incoming.headers,
+                    Buffer.concat(chunks),
+                );
                 requests.push(request);
 
                 const key = `${request.method} ${request.path}`;
                 const route = routes[key] ?? routes["*"];
                 if (!route) {
                     response.writeHead(404, { "content-type": "application/json" });
-                    response.end(JSON.stringify({ error: `No route for "${key}". Known routes: ${Object.keys(routes).join(", ") || "(none)"}` }));
+                    response.end(
+                        JSON.stringify({
+                            error: `No route for "${key}". Known routes: ${Object.keys(routes).join(", ") || "(none)"}`,
+                        }),
+                    );
                     return;
                 }
 
@@ -121,7 +130,8 @@ export async function fakeHttp(routes: Routes = {}): Promise<FakeHttp> {
         requests,
         last(back = 0) {
             const request = requests[requests.length - 1 - back];
-            if (!request) throw new Error(`No request recorded ${back} back; the server saw ${requests.length}.`);
+            if (!request)
+                throw new Error(`No request recorded ${back} back; the server saw ${requests.length}.`);
             return request;
         },
         close() {
@@ -159,7 +169,7 @@ function record(
         headers: flat,
         body: new Uint8Array(body),
         text: () => body.toString("utf8"),
-        json: <T,>() => JSON.parse(body.toString("utf8")) as T,
+        json: <T>() => JSON.parse(body.toString("utf8")) as T,
     };
 }
 

@@ -13,15 +13,14 @@ export function withProviderOptions<T extends object>(body: T, options?: Provide
     const merged = { ...body } as Record<string, unknown>;
     for (const [key, override] of Object.entries(options)) {
         const current = merged[key];
-        merged[key] = isPlainObject(current) && isPlainObject(override)
-            ? { ...current, ...override }
-            : override;
+        merged[key] =
+            isPlainObject(current) && isPlainObject(override) ? { ...current, ...override } : override;
     }
     return merged as T;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-    const prototype = Object.getPrototypeOf(value);
+    const prototype: unknown = Object.getPrototypeOf(value);
     return prototype === Object.prototype || prototype === null;
 }

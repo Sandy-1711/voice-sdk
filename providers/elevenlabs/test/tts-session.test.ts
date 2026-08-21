@@ -6,7 +6,12 @@ import { ElevenLabsProvider } from "../src/index";
 let server: FakeSocket;
 
 function provider(config = {}) {
-    return new ElevenLabsProvider({ apiKey: "k", defaultVoice: "voice-1", baseUrl: server.baseUrl, ...config });
+    return new ElevenLabsProvider({
+        apiKey: "k",
+        defaultVoice: "voice-1",
+        baseUrl: server.baseUrl,
+        ...config,
+    });
 }
 
 beforeEach(async () => {
@@ -50,7 +55,9 @@ describe("openTTSSession", () => {
             const session = await provider({ defaultVoice: "voice/../admin" }).openTTSSession();
             session.push("hi");
 
-            expect((await server.connection()).url.pathname).toBe("/v1/text-to-speech/voice%2F..%2Fadmin/stream-input");
+            expect((await server.connection()).url.pathname).toBe(
+                "/v1/text-to-speech/voice%2F..%2Fadmin/stream-input",
+            );
         });
 
         it("asks for alignment only when the caller wants timings", async () => {
@@ -77,7 +84,9 @@ describe("openTTSSession", () => {
         });
 
         it("lets providerOptions ride along on the handshake", async () => {
-            const session = await provider().openTTSSession({ providerOptions: { chunk_length_schedule: [50] } });
+            const session = await provider().openTTSSession({
+                providerOptions: { chunk_length_schedule: [50] },
+            });
             session.push("hello");
 
             expect(await (await server.connection()).nextJson()).toMatchObject({
@@ -92,7 +101,9 @@ describe("openTTSSession", () => {
         });
 
         it("refuses word timings, which ElevenLabs cannot report", async () => {
-            await expect(provider().openTTSSession({ timings: "word" })).rejects.toMatchObject({ field: "timings" });
+            await expect(provider().openTTSSession({ timings: "word" })).rejects.toMatchObject({
+                field: "timings",
+            });
         });
     });
 

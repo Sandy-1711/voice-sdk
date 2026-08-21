@@ -51,16 +51,19 @@ export class DeepgramSTT {
             );
         }
 
-        const query = withProviderOptions({
-            ...toSTTFormat(input.format),
-            model: input.model ?? this.#config.defaultSTTModel,
-            language: input.language,
-            diarize: input.diarize,
-            keyterm: input.keyterms,
-            // Deepgram groups words into utterances only when asked, and that
-            // grouping is the only thing core's `segments` can be built from.
-            utterances: input.timestamps === "segment" ? true : undefined,
-        }, input.providerOptions);
+        const query = withProviderOptions(
+            {
+                ...toSTTFormat(input.format),
+                model: input.model ?? this.#config.defaultSTTModel,
+                language: input.language,
+                diarize: input.diarize,
+                keyterm: input.keyterms,
+                // Deepgram groups words into utterances only when asked, and that
+                // grouping is the only thing core's `segments` can be built from.
+                utterances: input.timestamps === "segment" ? true : undefined,
+            },
+            input.providerOptions,
+        );
 
         const url = buildUrl(this.#config.baseUrl, "/v1/listen", query);
 
@@ -78,7 +81,7 @@ export class DeepgramSTT {
             context,
         });
 
-        return this.#result(await response.json() as ListenResponse, input);
+        return this.#result((await response.json()) as ListenResponse, input);
     }
 
     #result(response: ListenResponse, input: TranscribeInput): TranscriptResult {
@@ -100,7 +103,9 @@ export class DeepgramSTT {
     }
 }
 
-function fromUtterances(utterances: NonNullable<ListenResponse["results"]>["utterances"]): TranscriptSegment[] | undefined {
+function fromUtterances(
+    utterances: NonNullable<ListenResponse["results"]>["utterances"],
+): TranscriptSegment[] | undefined {
     if (!utterances || utterances.length === 0) return undefined;
 
     return utterances.map((utterance) => ({

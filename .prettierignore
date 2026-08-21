@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.next
+.turbo
+
+# Written by `next typegen` during a build, so it only exists on machines that
+# have run one — and it is not ours to format.
+next-env.d.ts
+
+# Generated, and rewritten by tooling that has its own formatting.
+pnpm-lock.yaml
+**/CHANGELOG.md
+.changeset/*.md
+
+# Agent tooling config, not project source.
+.claude

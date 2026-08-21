@@ -1,4 +1,5 @@
 import type { Logger } from "../logger";
+import { sleep } from "./sleep";
 import type { HttpMiddleware, HttpRequest } from "./types";
 
 export interface RetryOptions {
@@ -23,9 +24,7 @@ function retryableStatus(response: Response): boolean {
 }
 
 /**
- * Retries transient failures, including thrown network errors — which the
- * generated provider SDKs never did, since they only ever inspected a status
- * code they had already received.
+ * Retries transient failures, including thrown network errors.
  *
  * A non-retryable failure is returned, not thrown. Only the provider knows the
  * shape of its own error envelope, so turning a 400 into a `VoiceError` stays
@@ -108,24 +107,4 @@ function delayFor(response: Response, attempt: number, base: number, max: number
 /** Full jitter, so a fleet that fails together does not retry together. */
 function backoff(attempt: number, base: number, max: number): number {
     return Math.min(base * 2 ** attempt, max) * (0.5 + Math.random() / 2);
-}
-
-function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
-    return new Promise((resolve, reject) => {
-        if (signal?.aborted) {
-            reject(signal.reason);
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            signal?.removeEventListener("abort", onAbort);
-            resolve();
-        }, ms);
-
-        const onAbort = () => {
-            clearTimeout(timer);
-            reject(signal?.reason);
-        };
-        signal?.addEventListener("abort", onAbort, { once: true });
-    });
 }

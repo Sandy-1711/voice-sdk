@@ -46,12 +46,17 @@ describe("toOutputFormat", () => {
     });
 
     it("maps the telephony codecs", () => {
-        expect(toOutputFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }, FALLBACK).params).toEqual({
+        expect(
+            toOutputFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }, FALLBACK).params,
+        ).toEqual({
             encoding: "mulaw",
             container: "none",
             sample_rate: 8000,
         });
-        expect(toOutputFormat({ container: "raw", encoding: "alaw", sampleRate: 8000 }, FALLBACK).params.encoding).toBe("alaw");
+        expect(
+            toOutputFormat({ container: "raw", encoding: "alaw", sampleRate: 8000 }, FALLBACK).params
+                .encoding,
+        ).toBe("alaw");
     });
 
     describe("self-framing containers ride the none container", () => {
@@ -119,7 +124,9 @@ describe("toOutputFormat", () => {
         });
 
         it("names format.encoding for a codec that cannot be headerless", () => {
-            expect(catchError(() => toOutputFormat({ container: "raw", encoding: "opus" }, FALLBACK))).toMatchObject({
+            expect(
+                catchError(() => toOutputFormat({ container: "raw", encoding: "opus" }, FALLBACK)),
+            ).toMatchObject({
                 field: "format.encoding",
                 message: expect.stringContaining("pcm_s16le, mulaw, alaw"),
             });
@@ -198,7 +205,10 @@ describe("toSTTFormat", () => {
 
 describe("toRealtimeSTTFormat", () => {
     it("always names both fields, since a live socket has nothing to sniff", () => {
-        expect(toRealtimeSTTFormat(undefined, FALLBACK)).toEqual({ encoding: "linear16", sample_rate: 24000 });
+        expect(toRealtimeSTTFormat(undefined, FALLBACK)).toEqual({
+            encoding: "linear16",
+            sample_rate: 24000,
+        });
     });
 
     it("prefers what the caller asked for", () => {
@@ -250,7 +260,14 @@ describe("fromWords", () => {
         expect(
             fromWords([{ word: "hello", start: 0.1, end: 0.4, confidence: 0.99, punctuated_word: "Hello," }]),
         ).toEqual([
-            { text: "hello", start: 0.1, end: 0.4, confidence: 0.99, punctuated: "Hello,", speaker: undefined },
+            {
+                text: "hello",
+                start: 0.1,
+                end: 0.4,
+                confidence: 0.99,
+                punctuated: "Hello,",
+                speaker: undefined,
+            },
         ]);
     });
 

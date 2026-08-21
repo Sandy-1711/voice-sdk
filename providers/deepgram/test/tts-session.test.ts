@@ -63,7 +63,9 @@ describe("openTTSSession", () => {
         });
 
         it("refuses a request for timings before opening a socket", async () => {
-            await expect(provider().openTTSSession({ timings: true })).rejects.toMatchObject({ field: "timings" });
+            await expect(provider().openTTSSession({ timings: true })).rejects.toMatchObject({
+                field: "timings",
+            });
 
             expect(server.connections).toHaveLength(0);
         });
@@ -118,7 +120,9 @@ describe("openTTSSession", () => {
     });
 
     describe("receiving", () => {
-        async function eventsFrom(script: (connection: Awaited<ReturnType<FakeSocket["connection"]>>) => void) {
+        async function eventsFrom(
+            script: (connection: Awaited<ReturnType<FakeSocket["connection"]>>) => void,
+        ) {
             const session = await provider().openTTSSession();
             const connection = await server.connection();
 
@@ -150,7 +154,11 @@ describe("openTTSSession", () => {
                 connection.send({ type: "Metadata", request_id: "req-9", model_name: "aura-2-thalia-en" });
             });
 
-            expect(events[0]).toMatchObject({ type: "metadata", requestId: "req-9", model: "aura-2-thalia-en" });
+            expect(events[0]).toMatchObject({
+                type: "metadata",
+                requestId: "req-9",
+                model: "aura-2-thalia-en",
+            });
         });
 
         // Deepgram has no separate "generation complete" event, so Flushed has
@@ -165,7 +173,9 @@ describe("openTTSSession", () => {
         });
 
         it("reports a Cleared as the barge-in landing", async () => {
-            const events = await eventsFrom((connection) => connection.send({ type: "Cleared", sequence_id: 1 }));
+            const events = await eventsFrom((connection) =>
+                connection.send({ type: "Cleared", sequence_id: 1 }),
+            );
 
             expect(events[0]).toEqual({ type: "cleared", id: 1 });
         });

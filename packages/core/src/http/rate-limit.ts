@@ -1,3 +1,4 @@
+import { sleep } from "./sleep";
 import type { HttpMiddleware } from "./types";
 
 export interface RateLimitOptions {
@@ -8,10 +9,7 @@ export interface RateLimitOptions {
 }
 
 /**
- * Gates how fast requests leave. Sits inside `retry` so every attempt takes its
- * own slot — a retry storm is exactly what this is here to hold back — and
- * outside `timeout` so a queued request is not burning its own deadline while
- * it waits.
+ * Gates how fast requests leave.
  *
  * State is per-middleware-instance, so one provider's limiter never throttles
  * another's.
@@ -75,18 +73,4 @@ export function rateLimit(options: RateLimitOptions = {}): HttpMiddleware {
             release();
         }
     };
-}
-
-function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            signal?.removeEventListener("abort", onAbort);
-            resolve();
-        }, ms);
-        const onAbort = () => {
-            clearTimeout(timer);
-            reject(signal?.reason);
-        };
-        signal?.addEventListener("abort", onAbort, { once: true });
-    });
 }

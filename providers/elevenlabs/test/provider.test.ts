@@ -46,7 +46,10 @@ describe("ElevenLabsProvider", () => {
 
     describe("listVoices", () => {
         it("maps the catalogue onto core's shape", async () => {
-            const voices = await new ElevenLabsProvider({ apiKey: "k", baseUrl: server.baseUrl }).listVoices();
+            const voices = await new ElevenLabsProvider({
+                apiKey: "k",
+                baseUrl: server.baseUrl,
+            }).listVoices();
 
             expect(voices).toEqual([
                 {

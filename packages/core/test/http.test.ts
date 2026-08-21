@@ -1,13 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-    compose,
-    createTransport,
-    logging,
-    rateLimit,
-    redact,
-    retry,
-    timeout,
-} from "../src/index";
+import { compose, createTransport, logging, rateLimit, redact, retry, timeout } from "../src/index";
 import type { HttpHandler, HttpRequest, RequestMeta } from "../src/index";
 
 function request(overrides: Partial<HttpRequest> = {}): HttpRequest {
@@ -42,12 +34,15 @@ const fast = { baseDelay: 1, maxDelay: 2 };
 describe("compose", () => {
     it("puts the first middleware outermost", async () => {
         const order: string[] = [];
-        const tag = (name: string) => (next: HttpHandler): HttpHandler => async (incoming) => {
-            order.push(`${name} in`);
-            const response = await next(incoming);
-            order.push(`${name} out`);
-            return response;
-        };
+        const tag =
+            (name: string) =>
+            (next: HttpHandler): HttpHandler =>
+            async (incoming) => {
+                order.push(`${name} in`);
+                const response = await next(incoming);
+                order.push(`${name} out`);
+                return response;
+            };
 
         await compose([tag("a"), tag("b")])(async () => new Response())(request());
 
@@ -167,6 +162,47 @@ describe("retry", () => {
         expect(Date.now() - started).toBeLessThan(500);
     });
 
+    it("reads a Retry-After given as an HTTP-date, not just as seconds", async () => {
+        let call = 0;
+        const handler: HttpHandler = async () => {
+            call += 1;
+            return call === 1
+                ? new Response("slow down", {
+                      status: 429,
+                      // toUTCString truncates to whole seconds, so a 2s target
+                      // lands somewhere in (1s, 2s] however the clock falls.
+                      headers: { "retry-after": new Date(Date.now() + 2_000).toUTCString() },
+                  })
+                : new Response("ok", { status: 200 });
+        };
+
+        const started = Date.now();
+        const response = await retry({ baseDelay: 1, maxDelay: 5000 })(handler)(request());
+
+        expect(response.status).toBe(200);
+        expect(Date.now() - started).toBeGreaterThanOrEqual(900);
+    });
+
+    it("falls back to X-RateLimit-Reset when there is no Retry-After", async () => {
+        let call = 0;
+        const handler: HttpHandler = async () => {
+            call += 1;
+            return call === 1
+                ? new Response("slow down", {
+                      status: 429,
+                      headers: { "x-ratelimit-reset": String(Math.ceil(Date.now() / 1000) + 1) },
+                  })
+                : new Response("ok", { status: 200 });
+        };
+
+        const started = Date.now();
+        const response = await retry({ baseDelay: 1, maxDelay: 5000 })(handler)(request());
+
+        expect(response.status).toBe(200);
+        // An epoch timestamp, so the 1ms backoff would not have waited.
+        expect(Date.now() - started).toBeGreaterThanOrEqual(300);
+    });
+
     it("releases the socket of a response it is about to discard", async () => {
         const cancel = vi.fn(async () => {});
         let call = 0;
@@ -211,9 +247,9 @@ describe("timeout", () => {
         const controller = new AbortController();
         setTimeout(() => controller.abort(new Error("caller left")), 10);
 
-        await expect(
-            timeout({ ms: 10_000 })(hangs)(request({ signal: controller.signal })),
-        ).rejects.toThrow("caller left");
+        await expect(timeout({ ms: 10_000 })(hangs)(request({ signal: controller.signal }))).rejects.toThrow(
+            "caller left",
+        );
     });
 
     it("stops holding the deadline once the headers land", async () => {
@@ -235,7 +271,9 @@ describe("timeout", () => {
             return new Response("ok");
         };
 
-        await timeout({ ms: 10_000 })(handler)(request({ signal: controller.signal, meta: { stream: true } as RequestMeta }));
+        await timeout({ ms: 10_000 })(handler)(
+            request({ signal: controller.signal, meta: { stream: true } as RequestMeta }),
+        );
         controller.abort(new Error("barge-in"));
 
         expect(aborted).toBe(true);
@@ -283,6 +321,58 @@ describe("rateLimit", () => {
         await expect(limited(request())).rejects.toThrow("boom");
         // A leaked slot would leave this one queued forever.
         await expect(limited(request())).rejects.toThrow("boom");
+    });
+
+    it("refuses a signal that was already aborted rather than spacing it out", async () => {
+        const handler = vi.fn<HttpHandler>(async () => new Response("ok"));
+        const limited = rateLimit({ minInterval: 10_000 })(handler);
+
+        await limited(request());
+        const started = Date.now();
+        // Uncontended, so the aborted check inside the concurrency branch is
+        // never reached and only the spacing wait is left to notice.
+        await expect(limited(request({ signal: AbortSignal.abort(new Error("gone")) }))).rejects.toThrow(
+            "gone",
+        );
+
+        expect(Date.now() - started).toBeLessThan(1_000);
+        expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives the slot back when the spacing wait is aborted", async () => {
+        const handler = vi.fn<HttpHandler>(async () => new Response("ok"));
+        const limited = rateLimit({ concurrency: 1, minInterval: 50 })(handler);
+        const controller = new AbortController();
+
+        await limited(request());
+        const spaced = limited(request({ signal: controller.signal }));
+        controller.abort(new Error("gone"));
+        await expect(spaced).rejects.toThrow("gone");
+
+        // The slot was taken before the wait began, so an unreleased one would
+        // leave this last request queued forever.
+        await expect(limited(request())).resolves.toBeInstanceOf(Response);
+    });
+
+    it("drops a queued request from the queue when it aborts", async () => {
+        let release!: () => void;
+        const blocked = new Promise<void>((resolve) => (release = resolve));
+        const handler = vi.fn<HttpHandler>(async () => {
+            await blocked;
+            return new Response("ok");
+        });
+
+        const limited = rateLimit({ concurrency: 1 })(handler);
+        const controller = new AbortController();
+        const holding = limited(request());
+        const queued = limited(request({ signal: controller.signal }));
+
+        controller.abort(new Error("gone"));
+        await expect(queued).rejects.toThrow("gone");
+        release();
+
+        await expect(holding).resolves.toBeInstanceOf(Response);
+        expect(handler).toHaveBeenCalledTimes(1);
     });
 });
 
@@ -370,6 +460,8 @@ describe("createTransport", () => {
     it("carries a per-call timeout into the chain", async () => {
         const transport = createTransport({ provider: "fake", fetch: hangs });
 
-        await expect(transport(request({ meta: { timeout: 20 } as RequestMeta }))).rejects.toThrow(/timed out/);
+        await expect(transport(request({ meta: { timeout: 20 } as RequestMeta }))).rejects.toThrow(
+            /timed out/,
+        );
     });
 });

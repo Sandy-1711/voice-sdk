@@ -12,7 +12,12 @@ beforeEach(async () => {
             {
                 body: {
                     data: [
-                        { id: "voice-1", name: "Barbershop Man", language: "en", description: "A warm baritone" },
+                        {
+                            id: "voice-1",
+                            name: "Barbershop Man",
+                            language: "en",
+                            description: "A warm baritone",
+                        },
                         { id: "voice-2", name: "Sarah", language: "en" },
                     ],
                     has_more: true,
@@ -43,6 +48,27 @@ describe("CartesiaProvider", () => {
 
     it("names itself the way its errors do", () => {
         expect(new CartesiaProvider({ apiKey: "k" }).name).toBe("cartesia");
+    });
+
+    it("supplies the global WebSocket the SDK needs on node 18 and 20", () => {
+        const original = globalThis.WebSocket;
+        // Node 22 has one and older versions do not. Without this, the SDK
+        // throws "requires the ws package" the moment a session opens.
+        delete (globalThis as { WebSocket?: unknown }).WebSocket;
+
+        try {
+            new CartesiaProvider({ apiKey: "k" });
+            expect(globalThis.WebSocket).toBeDefined();
+        } finally {
+            globalThis.WebSocket = original;
+        }
+    });
+
+    it("leaves a WebSocket the runtime already provides alone", () => {
+        const original = globalThis.WebSocket;
+        new CartesiaProvider({ apiKey: "k" });
+
+        expect(globalThis.WebSocket).toBe(original);
     });
 
     describe("listVoices", () => {

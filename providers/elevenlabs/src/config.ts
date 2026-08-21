@@ -1,11 +1,5 @@
 import { ConfigError, createTransport } from "@swungstudent/voice";
-import type {
-    AudioFormat,
-    HttpHandler,
-    HttpMiddleware,
-    Logger,
-    RateLimitOptions,
-} from "@swungstudent/voice";
+import type { AudioFormat, HttpHandler, HttpMiddleware, Logger, RateLimitOptions } from "@swungstudent/voice";
 
 /** Single source of truth for the name this provider reports in errors. */
 export const PROVIDER = "elevenlabs";

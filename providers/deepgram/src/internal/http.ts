@@ -7,11 +7,7 @@ export type QueryValue = string | number | boolean | string[] | undefined;
 /** Deepgram configures everything through the query string, so this is the one
  * place that decides how a mapped value reaches the wire. Undefined is dropped
  * rather than sent as "undefined", and arrays repeat the key. */
-export function buildUrl(
-    baseUrl: string | undefined,
-    path: string,
-    params: Record<string, QueryValue>,
-): URL {
+export function buildUrl(baseUrl: string | undefined, path: string, params: Record<string, QueryValue>): URL {
     const url = new URL(path, baseUrl ?? DEFAULT_BASE_URL);
 
     for (const [key, value] of Object.entries(params)) {
@@ -39,13 +35,14 @@ export interface SendInput {
     context?: RequestContext;
 }
 
-/**
- * Retry, backoff and deadlines now live in `@swungstudent/voice`, so this is
- * only the two things that are Deepgram's own: the token auth scheme, and
- * reading `{ err_code, err_msg }` out of a failure.
- */
+// Built once, on first use by a caller that supplied no transport.
 let fallback: HttpHandler | undefined;
 
+/**
+ * Retry, backoff and deadlines live in `@swungstudent/voice`, so this is only
+ * the two things that are Deepgram's own: the token auth scheme, and reading
+ * `{ err_code, err_msg }` out of a failure.
+ */
 export async function send({
     apiKey,
     url,

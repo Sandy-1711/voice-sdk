@@ -1,7 +1,6 @@
-/**
- * Lives on its own so both the transport middleware and the `Voice` wrapper can
- * take one without importing each other.
- */
+// Its own module so the transport middleware and the `Voice` wrapper can both
+// take a Logger without importing each other.
+
 export interface Logger {
     debug(message: string, ...args: unknown[]): void;
     info(message: string, ...args: unknown[]): void;

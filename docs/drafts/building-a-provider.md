@@ -132,11 +132,11 @@ translation.
 This is the file that stops the abstraction from leaking. Four vocabularies for
 one concept:
 
-| Core                                        | Cartesia                                | Deepgram              | ElevenLabs      |
-| ------------------------------------------- | --------------------------------------- | --------------------- | --------------- |
-| `{container:"raw", encoding:"pcm_s16le", sampleRate:16000}` | `{container:"raw", encoding:"pcm_s16le", sample_rate:16000}` | `encoding=linear16&sample_rate=16000` | `pcm_16000` |
-| `{container:"raw", encoding:"mulaw", sampleRate:8000}`       | `{..., encoding:"pcm_mulaw", ...}`      | `encoding=mulaw`      | `ulaw_8000`     |
-| `{container:"mp3", bitrate:128}`            | `{container:"mp3", bit_rate:128000}`    | ❌ throws             | `mp3_44100_128` |
+| Core                                                        | Cartesia                                                     | Deepgram                              | ElevenLabs      |
+| ----------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------- | --------------- |
+| `{container:"raw", encoding:"pcm_s16le", sampleRate:16000}` | `{container:"raw", encoding:"pcm_s16le", sample_rate:16000}` | `encoding=linear16&sample_rate=16000` | `pcm_16000`     |
+| `{container:"raw", encoding:"mulaw", sampleRate:8000}`      | `{..., encoding:"pcm_mulaw", ...}`                           | `encoding=mulaw`                      | `ulaw_8000`     |
+| `{container:"mp3", bitrate:128}`                            | `{container:"mp3", bit_rate:128000}`                         | ❌ throws                             | `mp3_44100_128` |
 
 The mapping is a partial record so an encoding with no equivalent is a lookup
 miss rather than a compile error:
@@ -443,10 +443,10 @@ what you said, and different services change their minds in different ways.
 Cartesia splits realtime STT across **two endpoints**, and `turnDetection` picks
 between them:
 
-| `turnDetection`     | Endpoint                  | Model         | Behaviour                                      |
-| ------------------- | ------------------------- | ------------- | ---------------------------------------------- |
-| `{ mode: "vad" }`   | `stt.autoFinalize`        | `ink-2`       | detects turns, emits turn events               |
-| `{ mode: "manual" }`| `stt.manualFinalize`      | `ink-whisper` | **no** turn detection; `finalize` or nothing   |
+| `turnDetection`      | Endpoint             | Model         | Behaviour                                    |
+| -------------------- | -------------------- | ------------- | -------------------------------------------- |
+| `{ mode: "vad" }`    | `stt.autoFinalize`   | `ink-2`       | detects turns, emits turn events             |
+| `{ mode: "manual" }` | `stt.manualFinalize` | `ink-whisper` | **no** turn detection; `finalize` or nothing |
 
 Getting this wrong is not a small bug — `ink-whisper` with no `finalize` returns
 silence forever. So the mismatch is caught up front:
@@ -462,14 +462,14 @@ if (model.startsWith("ink-whisper")) {
 
 **Auto mode** resends the whole turn on every event:
 
-| Cartesia event    | Core                                     | Why                                             |
-| ----------------- | ---------------------------------------- | ----------------------------------------------- |
-| `connected`       | `metadata`                               | carries `request_id`                            |
-| `turn.start`      | `speech_started`                         | VAD signal, no timestamp available              |
-| `turn.update`     | `transcript`, `partial`                  | still being revised                             |
-| `turn.eager_end`  | `transcript`, `final`                    | predicted end — **revocable**, so not turn_end  |
-| `turn.resume`     | `transcript`, `partial`                  | the prediction was wrong; turn continues        |
-| `turn.end`        | `transcript`, `turn_end` → `endTurn()`   | speaker is done                                 |
+| Cartesia event   | Core                                   | Why                                            |
+| ---------------- | -------------------------------------- | ---------------------------------------------- |
+| `connected`      | `metadata`                             | carries `request_id`                           |
+| `turn.start`     | `speech_started`                       | VAD signal, no timestamp available             |
+| `turn.update`    | `transcript`, `partial`                | still being revised                            |
+| `turn.eager_end` | `transcript`, `final`                  | predicted end — **revocable**, so not turn_end |
+| `turn.resume`    | `transcript`, `partial`                | the prediction was wrong; turn continues       |
+| `turn.end`       | `transcript`, `turn_end` → `endTurn()` | speaker is done                                |
 
 `turn.eager_end` is exactly why `Finality` has three states. It is a stable
 segment the model can still take back, which is neither "will be revised" nor
@@ -477,12 +477,12 @@ segment the model can still take back, which is neither "will be revised" nor
 
 **Manual mode** sends deltas scoped to the last final:
 
-| Cartesia event         | Core                                    |
-| ---------------------- | --------------------------------------- |
-| `transcript`, `is_final: false` | `transcript`, `partial`        |
+| Cartesia event                  | Core                                      |
+| ------------------------------- | ----------------------------------------- |
+| `transcript`, `is_final: false` | `transcript`, `partial`                   |
 | `transcript`, `is_final: true`  | `transcript`, `final` → `commitSegment()` |
-| `flush_done`           | synthesized `transcript`, `turn_end`    |
-| `done`                 | end the stream                          |
+| `flush_done`                    | synthesized `transcript`, `turn_end`      |
+| `done`                          | end the stream                            |
 
 That `flush_done` mapping is the interesting one. Manual mode has no turn
 concept at all, but a push-to-talk app still needs to know when to reply — so
@@ -509,7 +509,7 @@ which endpoint it is talking to.
 ### Two modes, two tracker entry points
 
 Because the modes disagree about what `text` even means, each uses the matching
-`TurnTextTracker` method — and both come out with cumulative text *and* a delta:
+`TurnTextTracker` method — and both come out with cumulative text _and_ a delta:
 
 ```ts
 // manual: text is a delta relative to the last final
@@ -608,12 +608,14 @@ key is a separate, necessary step.
 ## Checklist for the next provider
 
 **Research**
+
 - [ ] Capability matrix: which of the four, with a real endpoint
 - [ ] Field mapping table, both directions, all four operations
 - [ ] Finality model for realtime STT, written down before coding
 - [ ] Check `node_modules` for an official SDK and what it already handles
 
 **Build**
+
 - [ ] `config.ts` — env fallback, `ConfigError` at construction, defaults
 - [ ] `format.ts` — throw `ValidationError` naming the field; never substitute
 - [ ] `speak` / `speakStream` — return `ResolvedAudioFormat`; format resolved before the call
@@ -624,6 +626,7 @@ key is a separate, necessary step.
 - [ ] `index.ts` — export the provider class and its config type, nothing else
 
 **Rules that apply everywhere**
+
 - [ ] All times in **seconds**
 - [ ] Base64 decoded before it reaches core
 - [ ] `providerOptions` spread last so callers can override
@@ -632,6 +635,7 @@ key is a separate, necessary step.
 - [ ] `ValidationError` for unrepresentable audio, silence for unsupported prosody
 
 **Verify**
+
 - [ ] `tsc --noEmit` clean
 - [ ] Composition check through `Voice`
 - [ ] `pnpm build` emits declarations

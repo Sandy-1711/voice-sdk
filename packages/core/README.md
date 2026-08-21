@@ -32,14 +32,14 @@ Providers are deliberately narrow. Every one declares which of these it has, and
 `Voice` throws a `CapabilityError` naming the provider rather than failing
 somewhere deeper.
 
-| Capability    | Method                            | What it means                                    |
-| ------------- | --------------------------------- | ------------------------------------------------ |
-| `tts`         | `speak`, `speakStream`            | Full text in, audio out — buffered or streamed   |
-| `stt`         | `transcribe`                      | A complete recording in, a transcript out        |
-| `realtimeTTS` | `openTTSSession`                  | Push text as it is generated, audio streams back |
-| `realtimeSTT` | `openSTTSession`                  | Push audio frames live, transcripts stream back  |
+| Capability    | Method                 | What it means                                    |
+| ------------- | ---------------------- | ------------------------------------------------ |
+| `tts`         | `speak`, `speakStream` | Full text in, audio out — buffered or streamed   |
+| `stt`         | `transcribe`           | A complete recording in, a transcript out        |
+| `realtimeTTS` | `openTTSSession`       | Push text as it is generated, audio streams back |
+| `realtimeSTT` | `openSTTSession`       | Push audio frames live, transcripts stream back  |
 
-`speakStream` streaming *out* is not the same as `realtimeTTS`: the duplex
+`speakStream` streaming _out_ is not the same as `realtimeTTS`: the duplex
 session lets you push text **in** incrementally, a token at a time, which is
 what a spoken LLM response needs.
 
@@ -118,13 +118,13 @@ await voice.speak({
 
 All of them extend `VoiceError`, so one `catch` covers the SDK.
 
-| Error              | Thrown when                                                     |
-| ------------------ | --------------------------------------------------------------- |
-| `CapabilityError`  | The provider does not implement what you called                  |
-| `ConfigError`      | A provider was built without something it needs, like an API key |
-| `ValidationError`  | A request field this provider cannot represent — before it is sent |
+| Error             | Thrown when                                                        |
+| ----------------- | ------------------------------------------------------------------ |
+| `CapabilityError` | The provider does not implement what you called                    |
+| `ConfigError`     | A provider was built without something it needs, like an API key   |
+| `ValidationError` | A request field this provider cannot represent — before it is sent |
 
-`ValidationError` is deliberately thrown *before* the request goes out, so you
+`ValidationError` is deliberately thrown _before_ the request goes out, so you
 see the offending field instead of a bare 400.
 
 ## Helpers

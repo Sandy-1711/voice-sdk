@@ -13,7 +13,10 @@ const METHODS: Record<string, string[]> = {
 };
 
 export function assertCapabilityInvariants(provider: VoiceProvider): void {
-    check(typeof provider.name === "string" && provider.name.length > 0, "provider.name must be a non-empty string");
+    check(
+        typeof provider.name === "string" && provider.name.length > 0,
+        "provider.name must be a non-empty string",
+    );
 
     for (const [capability, methods] of Object.entries(METHODS)) {
         const enabled = provider.capabilities[capability as keyof typeof provider.capabilities];
@@ -73,7 +76,10 @@ export function assertSTTEvent(event: STTEvent): void {
             );
             check(typeof event.text === "string", "transcript.text must be a string");
             check(typeof event.delta === "string", "transcript.delta must be a string");
-            check(Number.isInteger(event.turn) && event.turn >= 0, "transcript.turn must be a non-negative integer");
+            check(
+                Number.isInteger(event.turn) && event.turn >= 0,
+                "transcript.turn must be a non-negative integer",
+            );
             checkOptionalNumber(event.start, "transcript.start");
             checkOptionalNumber(event.end, "transcript.end");
             for (const word of event.words ?? []) {
@@ -127,8 +133,14 @@ function assertAlignment(alignment: Alignment): void {
     check(Array.isArray(alignment.spans), "alignment.spans must be an array");
     for (const span of alignment.spans) {
         check(typeof span.text === "string", "span.text must be a string");
-        check(typeof span.start === "number" && typeof span.end === "number", "span.start/end must be numbers");
-        check(span.end >= span.start, `span "${span.text}" ends (${span.end}) before it starts (${span.start})`);
+        check(
+            typeof span.start === "number" && typeof span.end === "number",
+            "span.start/end must be numbers",
+        );
+        check(
+            span.end >= span.start,
+            `span "${span.text}" ends (${span.end}) before it starts (${span.start})`,
+        );
     }
 }
 

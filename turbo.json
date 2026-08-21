@@ -20,7 +20,13 @@
     "test:live": {
       "dependsOn": ["^build"],
       "cache": false,
-      "env": ["CARTESIA_API_KEY", "DEEPGRAM_API_KEY", "ELEVENLABS_API_KEY"]
+      "env": [
+        "CARTESIA_API_KEY",
+        "CARTESIA_VOICE_ID",
+        "DEEPGRAM_API_KEY",
+        "ELEVENLABS_API_KEY",
+        "ELEVENLABS_VOICE_ID"
+      ]
     },
     "dev": {
       "cache": false,

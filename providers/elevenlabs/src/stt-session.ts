@@ -1,15 +1,10 @@
 import WebSocket from "ws";
 import { encodeBase64, TurnTextTracker, VoiceError } from "@swungstudent/voice";
-import type {
-    Finality,
-    RealtimeSTTInput,
-    STTEvent,
-    STTSession,
-    TranscriptWord,
-} from "@swungstudent/voice";
+import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
-import { AsyncQueue } from "./internal/async-queue";
+import { AsyncQueue } from "@voice-sdk/internal";
+import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -17,7 +12,14 @@ interface ServerMessage {
     session_id?: string;
     text?: string;
     language_code?: string;
-    words?: { text: string; start?: number; end?: number; type?: string; speaker_id?: string; logprob?: number }[];
+    words?: {
+        text: string;
+        start?: number;
+        end?: number;
+        type?: string;
+        speaker_id?: string;
+        logprob?: number;
+    }[];
     message?: string;
     error?: string;
 }
@@ -129,7 +131,7 @@ export class ElevenLabsSTTSession implements STTSession {
     #receive(raw: WebSocket.RawData): void {
         let message: ServerMessage;
         try {
-            message = JSON.parse(raw.toString()) as ServerMessage;
+            message = JSON.parse(toText(raw)) as ServerMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`ElevenLabs STT socket sent invalid JSON: ${String(error)}`));
             return;
