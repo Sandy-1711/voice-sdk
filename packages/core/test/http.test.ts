@@ -162,6 +162,47 @@ describe("retry", () => {
         expect(Date.now() - started).toBeLessThan(500);
     });
 
+    it("reads a Retry-After given as an HTTP-date, not just as seconds", async () => {
+        let call = 0;
+        const handler: HttpHandler = async () => {
+            call += 1;
+            return call === 1
+                ? new Response("slow down", {
+                      status: 429,
+                      // toUTCString truncates to whole seconds, so a 2s target
+                      // lands somewhere in (1s, 2s] however the clock falls.
+                      headers: { "retry-after": new Date(Date.now() + 2_000).toUTCString() },
+                  })
+                : new Response("ok", { status: 200 });
+        };
+
+        const started = Date.now();
+        const response = await retry({ baseDelay: 1, maxDelay: 5000 })(handler)(request());
+
+        expect(response.status).toBe(200);
+        expect(Date.now() - started).toBeGreaterThanOrEqual(900);
+    });
+
+    it("falls back to X-RateLimit-Reset when there is no Retry-After", async () => {
+        let call = 0;
+        const handler: HttpHandler = async () => {
+            call += 1;
+            return call === 1
+                ? new Response("slow down", {
+                      status: 429,
+                      headers: { "x-ratelimit-reset": String(Math.ceil(Date.now() / 1000) + 1) },
+                  })
+                : new Response("ok", { status: 200 });
+        };
+
+        const started = Date.now();
+        const response = await retry({ baseDelay: 1, maxDelay: 5000 })(handler)(request());
+
+        expect(response.status).toBe(200);
+        // An epoch timestamp, so the 1ms backoff would not have waited.
+        expect(Date.now() - started).toBeGreaterThanOrEqual(300);
+    });
+
     it("releases the socket of a response it is about to discard", async () => {
         const cancel = vi.fn(async () => {});
         let call = 0;

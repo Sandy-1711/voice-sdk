@@ -3,7 +3,9 @@ import { Voice } from "../src/index";
 import type {
     AudioStream,
     SpeakResult,
+    STTSession,
     TranscriptResult,
+    TTSSession,
     VoiceMiddleware,
     VoiceProvider,
 } from "../src/index";
@@ -35,7 +37,25 @@ function provider(): VoiceProvider {
         }),
         speakStream: () => stream,
         transcribe: async (): Promise<TranscriptResult> => ({ text: "hello there" }),
+        openTTSSession: async (): Promise<TTSSession> => ({ ...session(), format: FORMAT }),
+        openSTTSession: async (): Promise<STTSession> => session(),
         listVoices: async () => [{ id: "voice-1" }],
+    };
+}
+
+/**
+ * The capability flags claim both realtime modes, and `Voice` gates on method
+ * presence — so without these the session hooks throw before any middleware runs.
+ */
+function session() {
+    return {
+        // eslint-disable-next-line @typescript-eslint/require-await
+        output: (async function* () {})(),
+        push: () => {},
+        flush: async () => {},
+        cancel: () => {},
+        close: async () => {},
+        closed: Promise.resolve(),
     };
 }
 
@@ -230,5 +250,83 @@ describe("the built-in logger", () => {
 
         expect(order).toEqual(["caller in", "caller out"]);
         expect(log.debug).toHaveBeenCalled();
+    });
+
+    it("names the voice and model on speakStream, the same as speak", () => {
+        const log = logger();
+        const voice = new Voice({ provider: provider(), options: { logger: log } });
+
+        voice.speakStream({ text: "hello", model: "m1", voice: "v1" });
+
+        const line = String(log.debug.mock.calls[0]?.[0]);
+        expect(line).toContain("speakStream");
+        expect(line).toContain("5 chars");
+        expect(line).toContain("model=m1");
+    });
+
+    it("reports a speakStream that fails while opening, which used to pass silently", () => {
+        const log = logger();
+        const failing = {
+            ...provider(),
+            speakStream: () => {
+                throw new Error("no socket");
+            },
+        };
+        const voice = new Voice({ provider: failing, options: { logger: log } });
+
+        expect(() => voice.speakStream({ text: "hi" })).toThrow("no socket");
+        expect(String(log.error.mock.calls[0]?.[0])).toContain("no socket");
+    });
+
+    it("reports the transcript length, not just that transcribe returned", async () => {
+        const log = logger();
+        const voice = new Voice({ provider: provider(), options: { logger: log } });
+
+        await voice.transcribe({ audio: AUDIO, model: "m1", language: "en" });
+
+        const lines = log.debug.mock.calls.map(([line]) => String(line));
+        expect(lines[0]).toContain("model=m1");
+        expect(lines[0]).toContain("language=en");
+        expect(lines[1]).toContain("11 chars");
+    });
+
+    it("reports how many voices listVoices found", async () => {
+        const log = logger();
+        const voice = new Voice({ provider: provider(), options: { logger: log } });
+
+        await voice.listVoices();
+
+        expect(String(log.debug.mock.calls[0]?.[0])).toContain("1 voices");
+    });
+
+    it.each([
+        ["openTTSSession", (v: Voice<VoiceProvider>) => v.openTTSSession()],
+        ["openSTTSession", (v: Voice<VoiceProvider>) => v.openSTTSession()],
+    ])("times %s", async (operation, open) => {
+        const log = logger();
+        const voice = new Voice({ provider: provider(), options: { logger: log } });
+
+        await open(voice);
+
+        expect(String(log.debug.mock.calls[0]?.[0])).toMatch(new RegExp(`fake\\.${operation} ok in \\d+ms`));
+    });
+
+    it.each([
+        ["transcribe", (v: Voice<VoiceProvider>) => v.transcribe({ audio: AUDIO })],
+        ["openTTSSession", (v: Voice<VoiceProvider>) => v.openTTSSession()],
+        ["openSTTSession", (v: Voice<VoiceProvider>) => v.openSTTSession()],
+        ["listVoices", (v: Voice<VoiceProvider>) => v.listVoices()],
+    ])("reports a failing %s at error level and rethrows", async (operation, call) => {
+        const log = logger();
+        const failing = {
+            ...provider(),
+            [operation]: () => Promise.reject(new Error("upstream")),
+        } as VoiceProvider;
+        const voice = new Voice({ provider: failing, options: { logger: log } });
+
+        await expect(call(voice)).rejects.toThrow("upstream");
+        const line = String(log.error.mock.calls[0]?.[0]);
+        expect(line).toContain(operation);
+        expect(line).toContain("upstream");
     });
 });
