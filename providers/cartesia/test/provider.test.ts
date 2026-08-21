@@ -50,27 +50,6 @@ describe("CartesiaProvider", () => {
         expect(new CartesiaProvider({ apiKey: "k" }).name).toBe("cartesia");
     });
 
-    it("supplies the global WebSocket the SDK needs on node 18 and 20", () => {
-        const original = globalThis.WebSocket;
-        // Node 22 has one and older versions do not. Without this, the SDK
-        // throws "requires the ws package" the moment a session opens.
-        delete (globalThis as { WebSocket?: unknown }).WebSocket;
-
-        try {
-            new CartesiaProvider({ apiKey: "k" });
-            expect(globalThis.WebSocket).toBeDefined();
-        } finally {
-            globalThis.WebSocket = original;
-        }
-    });
-
-    it("leaves a WebSocket the runtime already provides alone", () => {
-        const original = globalThis.WebSocket;
-        new CartesiaProvider({ apiKey: "k" });
-
-        expect(globalThis.WebSocket).toBe(original);
-    });
-
     describe("listVoices", () => {
         it("walks the paginated catalogue onto core's shape", async () => {
             const voices = await new CartesiaProvider({ apiKey: "k", baseUrl: server.baseUrl }).listVoices();
@@ -85,6 +64,39 @@ describe("CartesiaProvider", () => {
                 { id: "voice-2", name: "Sarah", language: "en", labels: undefined },
             ]);
             expect(server.last().path).toBe("/voices");
+        });
+
+        // The cursor is this package's own now, not the SDK's pagination helper.
+        it("asks for the next page starting after the last id it saw", async () => {
+            await new CartesiaProvider({ apiKey: "k", baseUrl: server.baseUrl }).listVoices();
+
+            expect(server.requests).toHaveLength(2);
+            expect(server.requests[0]?.query).toMatchObject({ limit: "100" });
+            expect(server.requests[0]?.query).not.toHaveProperty("starting_after");
+            expect(server.requests[1]?.query).toMatchObject({ starting_after: "voice-2" });
+        });
+
+        it("stops at a page that says there is no more", async () => {
+            await server.close();
+            server = await fakeHttp({
+                "GET /voices": { body: { data: [{ id: "only" }], has_more: false } },
+            });
+
+            const voices = await new CartesiaProvider({ apiKey: "k", baseUrl: server.baseUrl }).listVoices();
+
+            expect(voices).toEqual([{ id: "only", name: undefined, language: undefined, labels: undefined }]);
+            expect(server.requests).toHaveLength(1);
+        });
+
+        // A server that sets has_more and then runs dry must not loop forever.
+        it("stops at an empty page even when the server still claims more", async () => {
+            await server.close();
+            server = await fakeHttp({ "GET /voices": { body: { data: [], has_more: true } } });
+
+            await expect(
+                new CartesiaProvider({ apiKey: "k", baseUrl: server.baseUrl }).listVoices(),
+            ).resolves.toEqual([]);
+            expect(server.requests).toHaveLength(1);
         });
     });
 });

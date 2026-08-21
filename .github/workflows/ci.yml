@@ -101,3 +101,10 @@ jobs:
             node -e "require('./$pkg/dist/index.cjs')" && echo "cjs ok: $pkg"
             node --input-type=module -e "await import('./$pkg/dist/index.mjs')" && echo "esm ok: $pkg"
           done
+
+      # An import never reaches inside a session constructor, so it cannot
+      # catch a runtime global that node 18 does not have. vitest 4 does not
+      # run on node 18 either, which leaves this as the only place a
+      # version-specific break can surface before release.
+      - name: Exercise the built package on Node 18
+        run: node providers/cartesia/test/node18/smoke.mjs

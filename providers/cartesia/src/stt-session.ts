@@ -1,66 +1,92 @@
-import type { Cartesia } from "@cartesia/cartesia-js";
+import type WebSocket from "ws";
 import type { RealtimeSTTInput, STTEvent, STTSession } from "@swungstudent/voice";
-import { TurnTextTracker, ValidationError, VoiceError, withProviderOptions } from "@swungstudent/voice";
+import {
+    DEFAULT_REALTIME_INPUT_FORMAT,
+    TurnTextTracker,
+    ValidationError,
+    VoiceError,
+    withProviderOptions,
+} from "@swungstudent/voice";
+import { AsyncQueue } from "@voice-sdk/internal";
 import type { ResolvedConfig } from "./config";
-import { DEFAULTS, DEFAULT_INPUT_FORMAT, PROVIDER } from "./config";
-import { fromWords, toSTTEncoding } from "./format";
+import { DEFAULTS, PROVIDER } from "./config";
+import { fromWords, toRealtimeSTTFormat } from "./format";
+import { buildUrl } from "./internal/http";
+import { handshake, open, sendIfOpen, toText } from "./internal/socket";
 
-type AutoWS = ReturnType<Cartesia["stt"]["autoFinalize"]["websocket"]>;
-type ManualWS = ReturnType<Cartesia["stt"]["manualFinalize"]["websocket"]>;
-type ManualModel = Parameters<Cartesia["stt"]["manualFinalize"]["websocket"]>[0]["model"];
+/** Wire shapes for both endpoints, narrowed to the fields core models. */
+interface STTMessage {
+    type: string;
+    request_id?: string;
+    /** Manual: the segment just transcribed. */
+    text?: string;
+    is_final?: boolean;
+    words?: unknown;
+    language?: string;
+    /** Auto: the whole turn, re-sent on every event. */
+    transcript?: string;
+    title?: string;
+    message?: string;
+}
 
 /**
- * Cartesia splits realtime STT across two endpoints:
+ * Push audio, receive transcripts. Cartesia splits realtime STT across two
+ * endpoints:
  *
- * - `auto` (ink-2) detects turns and emits turn events
- * - `manual` (ink-whisper) has no turn detection at all — transcription only
- *   happens when the caller sends `finalize`
+ * - `auto` (ink-2) -> `WSS /stt/turns/websocket`, detects turns and emits turn
+ *   events
+ * - `manual` (ink-whisper) -> `WSS /stt/websocket`, no turn detection at all —
+ *   transcription only happens when the caller sends `finalize`
  *
- * `turnDetection` picks between them, and both are normalized to the same
- * event stream.
+ * `turnDetection` picks between them, and both are normalized to the same event
+ * stream, so a consumer cannot tell which endpoint it is talking to.
  */
 export class CartesiaSTTSession implements STTSession {
-    #ws: AutoWS | ManualWS;
+    #ws: WebSocket;
     #mode: "auto" | "manual";
     #tracker = new TurnTextTracker();
+    #queue = new AsyncQueue<STTEvent>();
     #closed: Promise<void>;
 
-    static open(client: Cartesia, config: ResolvedConfig, input: RealtimeSTTInput = {}): CartesiaSTTSession {
-        const format = input.inputFormat ?? DEFAULT_INPUT_FORMAT;
-        const encoding = toSTTEncoding(format) ?? "pcm_s16le";
-        const sample_rate = format.sampleRate ?? DEFAULT_INPUT_FORMAT.sampleRate;
+    static async open(config: ResolvedConfig, input: RealtimeSTTInput = {}): Promise<CartesiaSTTSession> {
+        const format = toRealtimeSTTFormat(input.inputFormat, DEFAULT_REALTIME_INPUT_FORMAT);
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
+        const model = input.model ?? config.defaultRealtimeSTTModel;
 
         if (mode === "manual") {
-            const params = withProviderOptions(
+            const query = withProviderOptions(
                 {
-                    model: (input.model ?? DEFAULTS.manualSTTModel) as ManualModel,
-                    encoding,
-                    sample_rate,
+                    ...format,
+                    model: model ?? DEFAULTS.manualSTTModel,
                     keyterm: input.keyterms,
-                    language: input.language as "en" | undefined,
+                    language: input.language,
                 },
                 input.providerOptions,
             );
 
-            return new CartesiaSTTSession(client.stt.manualFinalize.websocket(params), mode);
+            return CartesiaSTTSession.#connect(
+                buildUrl(config.baseUrl, "/stt/websocket", query),
+                config.apiKey,
+                mode,
+            );
         }
 
-        const model = input.model ?? DEFAULTS.vadSTTModel;
-        if (model.startsWith("ink-whisper")) {
+        const autoModel = model ?? DEFAULTS.vadSTTModel;
+        // Getting this wrong is not a small bug: ink-whisper would simply never
+        // report a turn, and the caller would wait for one forever.
+        if (autoModel.startsWith("ink-whisper")) {
             throw new ValidationError(
                 PROVIDER,
                 "model",
-                `"${model}" has no turn detection. Use turnDetection: { mode: "manual" }, or the ink-2 model.`,
+                `"${autoModel}" has no turn detection. Use turnDetection: { mode: "manual" }, or the ink-2 model.`,
             );
         }
 
         const turn = input.turnDetection?.mode === "vad" ? input.turnDetection : undefined;
-        const params = withProviderOptions(
+        const query = withProviderOptions(
             {
-                model,
-                encoding,
-                sample_rate,
+                ...format,
+                model: autoModel,
                 keyterm: input.keyterms,
                 turn_end_threshold: turn?.threshold,
                 turn_end_timeout_ms:
@@ -69,30 +95,44 @@ export class CartesiaSTTSession implements STTSession {
             input.providerOptions,
         );
 
-        return new CartesiaSTTSession(client.stt.autoFinalize.websocket(params), mode);
+        return CartesiaSTTSession.#connect(
+            buildUrl(config.baseUrl, "/stt/turns/websocket", query),
+            config.apiKey,
+            mode,
+        );
     }
 
-    private constructor(ws: AutoWS | ManualWS, mode: "auto" | "manual") {
+    /**
+     * Listeners are attached in this tick, before any I/O can be processed:
+     * the auto endpoint sends `connected` the instant the socket opens, and
+     * awaiting the handshake first would drop it on the floor.
+     */
+    static async #connect(url: URL, apiKey: string, mode: "auto" | "manual"): Promise<CartesiaSTTSession> {
+        const ws = open(url, apiKey);
+        const ready = handshake(ws, "STT");
+        const session = new CartesiaSTTSession(ws, mode);
+
+        await ready;
+        return session;
+    }
+
+    private constructor(ws: WebSocket, mode: "auto" | "manual") {
         this.#ws = ws;
         this.#mode = mode;
+
+        ws.on("message", (raw: WebSocket.RawData) => this.#receive(raw));
+        ws.on("error", (error) => this.#queue.fail(new VoiceError(`Cartesia STT socket: ${String(error)}`)));
+
         this.#closed = new Promise((resolve) => {
-            // Both sockets emit the same events; the union of their listener
-            // maps is not callable, so narrow to either one.
-            const socket = ws as ManualWS;
-            socket.on("close", () => resolve());
-            // With nothing listening for `error` the SDK calls Promise.reject
-            // itself, which is an unhandled rejection and fatal on current
-            // Node. The error still reaches the caller through stream(), which
-            // yields it as an `error` event; binding here settles the session
-            // and keeps the SDK from throwing at the process as well.
-            socket.on("error", () => resolve());
+            ws.on("close", () => {
+                this.#queue.close();
+                resolve();
+            });
         });
     }
 
     get output(): AsyncIterable<STTEvent> {
-        return this.#mode === "manual"
-            ? this.#manualEvents(this.#ws as ManualWS)
-            : this.#autoEvents(this.#ws as AutoWS);
+        return this.#queue;
     }
 
     get closed(): Promise<void> {
@@ -100,12 +140,12 @@ export class CartesiaSTTSession implements STTSession {
     }
 
     push(audio: Uint8Array): void {
-        this.#ws.sendRaw(audio);
+        sendIfOpen(this.#ws, audio);
     }
 
     /** Manual mode transcribes on `finalize`; auto mode decides for itself. */
     async flush(): Promise<void> {
-        if (this.#mode === "manual") (this.#ws as ManualWS).send("finalize");
+        if (this.#mode === "manual") sendIfOpen(this.#ws, "finalize");
     }
 
     /** Cartesia has no server-side discard, so this only drops the local turn. */
@@ -114,116 +154,116 @@ export class CartesiaSTTSession implements STTSession {
     }
 
     async close(): Promise<void> {
-        if (this.#mode === "manual") (this.#ws as ManualWS).send("close");
-        else (this.#ws as AutoWS).send({ type: "close" });
+        // The two endpoints say goodbye differently: manual takes a bare text
+        // frame, auto takes a JSON message.
+        if (this.#mode === "manual") sendIfOpen(this.#ws, "close");
+        else sendIfOpen(this.#ws, JSON.stringify({ type: "close" }));
         await this.#closed;
     }
 
-    async *#manualEvents(ws: ManualWS): AsyncIterable<STTEvent> {
-        for await (const event of ws.stream()) {
-            if (event.type === "error") throw toSessionError(event.error);
-            if (event.type !== "message") continue;
-            const message = event.message;
+    #receive(raw: WebSocket.RawData): void {
+        let message: STTMessage;
+        try {
+            message = JSON.parse(toText(raw)) as STTMessage;
+        } catch (error) {
+            this.#queue.fail(new VoiceError(`Cartesia STT socket sent invalid JSON: ${String(error)}`));
+            return;
+        }
 
-            switch (message.type) {
-                case "transcript": {
-                    const { text, delta, turn } = this.#tracker.fromSegment(message.text);
-                    if (message.is_final) this.#tracker.commitSegment();
-                    yield {
-                        type: "transcript",
-                        finality: message.is_final ? "final" : "partial",
-                        text,
-                        delta,
-                        turn,
-                        words: fromWords(message.words),
-                        language: message.language,
-                        raw: message,
-                    };
-                    break;
-                }
-                case "flush_done": {
-                    // The caller declared the turn over and the server has now
-                    // drained it, which is the closest thing manual mode has to
-                    // a turn boundary.
-                    yield {
-                        type: "transcript",
-                        finality: "turn_end",
-                        text: this.#tracker.text,
-                        delta: "",
-                        turn: this.#tracker.turn,
-                        raw: message,
-                    };
-                    this.#tracker.endTurn();
-                    break;
-                }
-                case "done":
-                    return;
-                case "error":
-                    throw new VoiceError(`Cartesia STT session: ${message.title}: ${message.message}`);
+        if (this.#mode === "manual") this.#receiveManual(message);
+        else this.#receiveAuto(message);
+    }
+
+    /**
+     * ink-whisper sends text scoped to a **segment**, not the whole turn, so
+     * each final has to be committed before the next segment is appended to it.
+     */
+    #receiveManual(message: STTMessage): void {
+        switch (message.type) {
+            case "transcript": {
+                const { text, delta, turn } = this.#tracker.fromSegment(message.text ?? "");
+                if (message.is_final) this.#tracker.commitSegment();
+
+                this.#queue.push({
+                    type: "transcript",
+                    finality: message.is_final ? "final" : "partial",
+                    text,
+                    delta,
+                    turn,
+                    words: fromWords(message.words),
+                    language: message.language,
+                    raw: message,
+                });
+                return;
             }
+
+            case "flush_done":
+                // The caller declared the turn over and the server has now
+                // drained it, which is the closest thing manual mode has to a
+                // turn boundary.
+                this.#queue.push({
+                    type: "transcript",
+                    finality: "turn_end",
+                    text: this.#tracker.text,
+                    delta: "",
+                    turn: this.#tracker.turn,
+                    raw: message,
+                });
+                this.#tracker.endTurn();
+                return;
+
+            case "done":
+                this.#queue.close();
+                return;
+
+            default:
+                this.#maybeFail(message);
         }
     }
 
-    async *#autoEvents(ws: AutoWS): AsyncIterable<STTEvent> {
-        for await (const event of ws.stream()) {
-            if (event.type === "error") throw toSessionError(event.error);
-            if (event.type !== "message") continue;
-            const message = event.message;
+    /** ink-2 re-sends the whole turn on every event, and names its lifecycle. */
+    #receiveAuto(message: STTMessage): void {
+        switch (message.type) {
+            case "connected":
+                this.#queue.push({ type: "metadata", requestId: message.request_id });
+                return;
 
-            switch (message.type) {
-                case "connected":
-                    yield { type: "metadata", requestId: message.request_id };
-                    break;
-                case "turn.start":
-                    yield { type: "speech_started" };
-                    break;
-                case "turn.update":
-                    yield this.#turn(message.transcript, "partial", message);
-                    break;
-                // A predicted boundary the model can still revoke with turn.resume,
-                // so it is a stable segment rather than the end of the turn.
-                case "turn.eager_end":
-                    yield this.#turn(message.transcript, "final", message);
-                    break;
-                case "turn.resume":
-                    yield this.#turn(this.#tracker.text, "partial", message);
-                    break;
-                case "turn.end": {
-                    yield this.#turn(message.transcript, "turn_end", message);
-                    this.#tracker.endTurn();
-                    break;
-                }
-                case "error":
-                    throw new VoiceError(`Cartesia STT session: ${message.title}: ${message.message}`);
-            }
+            case "turn.start":
+                this.#queue.push({ type: "speech_started" });
+                return;
+
+            case "turn.update":
+                this.#turn(message.transcript ?? "", "partial", message);
+                return;
+
+            // A predicted boundary turn.resume can still revoke, so it is a
+            // stable segment rather than the end of the turn.
+            case "turn.eager_end":
+                this.#turn(message.transcript ?? "", "final", message);
+                return;
+
+            case "turn.resume":
+                this.#turn(this.#tracker.text, "partial", message);
+                return;
+
+            case "turn.end":
+                this.#turn(message.transcript ?? "", "turn_end", message);
+                this.#tracker.endTurn();
+                return;
+
+            default:
+                this.#maybeFail(message);
         }
     }
 
-    #turn(transcript: string, finality: "partial" | "final" | "turn_end", raw: unknown): STTEvent {
+    #turn(transcript: string, finality: "partial" | "final" | "turn_end", raw: STTMessage): void {
         const { text, delta, turn } = this.#tracker.fromCumulative(transcript);
-        return { type: "transcript", finality, text, delta, turn, raw };
-    }
-}
-
-/**
- * The SDK never yields an API error as a message: both API failures and socket
- * failures are funnelled into the stream's own `error` event. Skipping those
- * would leave a failed session silently waiting for transcripts that are never
- * coming.
- *
- * An API failure arrives as the JSON payload stringified into the message, so
- * it is unwrapped back into "title: message" rather than shown as raw JSON.
- */
-function toSessionError(error: unknown): VoiceError {
-    const detail = error instanceof Error ? error.message : String(error);
-
-    try {
-        const parsed = JSON.parse(detail) as { title?: string; message?: string };
-        const summary = [parsed.title, parsed.message].filter(Boolean).join(": ");
-        if (summary) return new VoiceError(`Cartesia STT session: ${summary}`);
-    } catch {
-        /* not JSON; the raw message is the best we have */
+        this.#queue.push({ type: "transcript", finality, text, delta, turn, raw });
     }
 
-    return new VoiceError(`Cartesia STT session: ${detail}`);
+    #maybeFail(message: STTMessage): void {
+        if (message.type !== "error") return;
+
+        this.#queue.fail(new VoiceError(`Cartesia STT session: ${message.title}: ${message.message}`));
+    }
 }

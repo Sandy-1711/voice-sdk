@@ -6,6 +6,17 @@ import type { ProviderOptions } from "./types";
  * Nested plain objects merge one level deep, so reaching for a single
  * provider-specific setting does not silently drop the siblings a mapper
  * produced. Scalars, arrays and class instances replace outright.
+ *
+ * **A field the SDK reports back is not mergeable.** Where a mapped value also
+ * appears in the result — the audio format, above all — apply it *after* this
+ * call rather than passing it in, so `providerOptions` cannot change what goes
+ * on the wire while the reported value stays as it was:
+ *
+ * ```ts
+ * { ...withProviderOptions(body, input.providerOptions), output_format }
+ * ```
+ *
+ * Everything a caller cannot observe from the result is fair game to merge.
  */
 export function withProviderOptions<T extends object>(body: T, options?: ProviderOptions): T {
     if (!options) return body;

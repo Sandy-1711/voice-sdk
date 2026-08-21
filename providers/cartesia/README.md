@@ -27,12 +27,20 @@ new CartesiaProvider({
   defaultVoice: "a0e99841-...",
   defaultModel: "sonic-3.5",
   defaultSTTModel: "ink-whisper",
+  defaultRealtimeSTTModel: "ink-2",
   defaultFormat: { container: "wav", sampleRate: 44100 },
+
+  retries: 2,                 // extra attempts after a retryable failure
+  timeout: 30_000,            // milliseconds allowed for response headers
+  logger: console,            // supplying one turns request logging on
+  rateLimit: { concurrency: 4 },
+  middleware: [],             // extra HTTP middleware, outside the built-in chain
 });
 ```
 
 Models are pinned rather than tracking `-latest`, so generated audio does not
-shift under you between releases.
+shift under you between releases. A per-call `RequestContext` wins over
+`retries` and `timeout`.
 
 ## What is worth knowing
 
@@ -49,7 +57,13 @@ call; otherwise you get a `ValidationError` naming both ways to supply one.
 
 Both are normalised to the same event stream. Asking for automatic turns from
 `ink-whisper` raises a `ValidationError` at open time rather than leaving you
-waiting for turns that will never arrive.
+waiting for turns that will never arrive. `defaultRealtimeSTTModel` overrides
+whichever default the mode would otherwise pick.
+
+**Opening a session waits for the socket.** `openTTSSession` and
+`openSTTSession` resolve once the connection is up, so a bad key or an
+unreachable host rejects there rather than ending your `for await` later with
+nothing.
 
 **Streaming synthesis is headerless.** The SSE and WebSocket endpoints only
 accept the `raw` container; ask for `wav` or `mp3` there and you get a

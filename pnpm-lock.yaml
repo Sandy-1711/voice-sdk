@@ -239,9 +239,6 @@ importers:
 
   providers/cartesia:
     dependencies:
-      '@cartesia/cartesia-js':
-        specifier: ^3.5.0
-        version: 3.5.0(ws@8.21.1)
       ws:
         specifier: ^8.21.1
         version: 8.21.1
@@ -258,6 +255,9 @@ importers:
       '@voice-sdk/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      '@voice-sdk/internal':
+        specifier: workspace:^
+        version: link:../../packages/internal
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit
@@ -370,14 +370,6 @@ packages:
   '@bcoe/v8-coverage@1.0.2':
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
-
-  '@cartesia/cartesia-js@3.5.0':
-    resolution: {integrity: sha512-rQdspxPOgezHXQfhC7/FqiuOyjtmB/iS2V9azmjh5seiGZhxnvInvfGztqozUO6BQK8QYeyMBHsp5cPRvyfbjw==}
-    peerDependencies:
-      ws: ^8.18.0
-    peerDependenciesMeta:
-      ws:
-        optional: true
 
   '@changesets/apply-release-plan@8.0.0':
     resolution: {integrity: sha512-kUd2pbf1w5/AYmBMb0Tt+rkIPCjFJdT0SZMrkOjJT/WV/QbtmvkyB5jkV0oaNPheavprZk+SfUiozUti7TIL2w==}
@@ -2699,10 +2691,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.29.7
 
   '@bcoe/v8-coverage@1.0.2': {}
-
-  '@cartesia/cartesia-js@3.5.0(ws@8.21.1)':
-    optionalDependencies:
-      ws: 8.21.1
 
   '@changesets/apply-release-plan@8.0.0':
     dependencies:

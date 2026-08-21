@@ -6,8 +6,8 @@ import {
     toGenerationConfig,
     toOutputFormat,
     toRawOutputFormat,
-    toRequestOptions,
-    toSTTEncoding,
+    toRealtimeSTTFormat,
+    toSTTFormat,
     toVoice,
 } from "../src/format";
 
@@ -124,21 +124,57 @@ describe("toRawOutputFormat", () => {
     });
 });
 
-describe("toSTTEncoding", () => {
+describe("toSTTFormat", () => {
     it("says nothing when the caller named no encoding", () => {
-        expect(toSTTEncoding(undefined)).toBeUndefined();
-        expect(toSTTEncoding({ sampleRate: 16000 })).toBeUndefined();
+        expect(toSTTFormat(undefined).encoding).toBeUndefined();
+        expect(toSTTFormat({ sampleRate: 16000 }).encoding).toBeUndefined();
     });
 
     it("maps the input codecs Cartesia accepts", () => {
-        expect(toSTTEncoding({ encoding: "pcm_s16le" })).toBe("pcm_s16le");
-        expect(toSTTEncoding({ encoding: "pcm_s32le" })).toBe("pcm_s32le");
-        expect(toSTTEncoding({ encoding: "mulaw" })).toBe("pcm_mulaw");
-        expect(toSTTEncoding({ encoding: "alaw" })).toBe("pcm_alaw");
+        expect(toSTTFormat({ encoding: "pcm_s16le" }).encoding).toBe("pcm_s16le");
+        expect(toSTTFormat({ encoding: "pcm_s32le" }).encoding).toBe("pcm_s32le");
+        expect(toSTTFormat({ encoding: "mulaw" }).encoding).toBe("pcm_mulaw");
+        expect(toSTTFormat({ encoding: "alaw" }).encoding).toBe("pcm_alaw");
     });
 
     it("names format.encoding for a codec with no equivalent", () => {
-        expect(catchError(() => toSTTEncoding({ encoding: "mp3" }))).toMatchObject({
+        expect(catchError(() => toSTTFormat({ encoding: "mp3" }))).toMatchObject({
+            field: "format.encoding",
+        });
+    });
+
+    // Batch leaves the rate off when unset and lets Cartesia read the header.
+    it("carries the sample rate through as given", () => {
+        expect(toSTTFormat({ encoding: "mulaw", sampleRate: 8000 }).sample_rate).toBe(8000);
+        expect(toSTTFormat({ encoding: "mulaw" }).sample_rate).toBeUndefined();
+    });
+});
+
+describe("toRealtimeSTTFormat", () => {
+    const INPUT: ResolvedAudioFormat = {
+        container: "raw",
+        encoding: "pcm_s16le",
+        sampleRate: 16000,
+        channels: 1,
+    };
+
+    // Realtime has no header to fall back on, so both fields are always sent.
+    it("fills both fields in from the fallback", () => {
+        expect(toRealtimeSTTFormat(undefined, INPUT)).toEqual({
+            encoding: "pcm_s16le",
+            sample_rate: 16000,
+        });
+    });
+
+    it("prefers what the caller asked for", () => {
+        expect(toRealtimeSTTFormat({ encoding: "mulaw", sampleRate: 8000 }, INPUT)).toEqual({
+            encoding: "pcm_mulaw",
+            sample_rate: 8000,
+        });
+    });
+
+    it("names format.encoding for a codec with no equivalent", () => {
+        expect(catchError(() => toRealtimeSTTFormat({ encoding: "mp3" }, INPUT))).toMatchObject({
             field: "format.encoding",
         });
     });
@@ -186,28 +222,6 @@ describe("toVoice", () => {
 
         expect(thrown).toMatchObject({ name: "ValidationError", field: "voice" });
         expect((thrown as Error).message).toContain("defaultVoice");
-    });
-});
-
-describe("toRequestOptions", () => {
-    it("carries the deadline, the signal and the retry count", () => {
-        const signal = AbortSignal.abort();
-
-        expect(toRequestOptions({ signal, timeout: 30_000, retries: 2 })).toEqual({
-            signal,
-            timeout: 30_000,
-            maxRetries: 2,
-        });
-    });
-
-    // Cartesia's client validates `timeout` on key presence rather than value,
-    // so an unset deadline has to be absent, not present-and-undefined -
-    // otherwise every request fails with "timeout must be an integer".
-    it("omits what the caller did not set, rather than sending undefined", () => {
-        expect(toRequestOptions()).toEqual({});
-        expect(toRequestOptions({})).toEqual({});
-        expect("timeout" in toRequestOptions({ retries: 1 })).toBe(false);
-        expect(toRequestOptions({ retries: 1 })).toEqual({ maxRetries: 1 });
     });
 });
 

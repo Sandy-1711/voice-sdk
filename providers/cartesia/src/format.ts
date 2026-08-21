@@ -1,10 +1,8 @@
-import type { Cartesia } from "@cartesia/cartesia-js";
 import { ValidationError } from "@swungstudent/voice";
 import type {
     Alignment,
     AudioEncoding,
     AudioFormat,
-    RequestContext,
     ResolvedAudioFormat,
     TranscriptWord,
     VoiceControls,
@@ -16,23 +14,60 @@ import { PROVIDER } from "./config";
 //   to<Thing>   core -> provider   (building a request)
 //   from<Thing> provider -> core   (reading a response)
 
-type CartesiaOutputFormat = Cartesia.RawOutputFormat | Cartesia.WAVOutputFormat | Cartesia.MP3OutputFormat;
+// Cartesia's own vocabulary. `model`, `language` and `emotion` are open string
+// unions on the wire, so they are typed as strings rather than restated here —
+// a closed list would go stale every time Cartesia ships a voice or a model.
 
-type SampleRate = Cartesia.RawOutputFormat["sample_rate"];
-type BitRate = Cartesia.MP3OutputFormat["bit_rate"];
+export type SampleRate = 8000 | 16000 | 22050 | 24000 | 44100 | 48000;
+export type BitRate = 32000 | 64000 | 96000 | 128000 | 192000;
+
+export type RawEncoding = "pcm_f32le" | "pcm_s16le" | "pcm_mulaw" | "pcm_alaw";
+export type STTEncoding = "pcm_s16le" | "pcm_s32le" | "pcm_f16le" | "pcm_f32le" | "pcm_mulaw" | "pcm_alaw";
+
+export interface RawOutputFormat {
+    container: "raw";
+    encoding: RawEncoding;
+    sample_rate: SampleRate;
+}
+
+export interface WAVOutputFormat {
+    container: "wav";
+    encoding: RawEncoding;
+    sample_rate: SampleRate;
+}
+
+export interface MP3OutputFormat {
+    container: "mp3";
+    bit_rate: BitRate;
+    sample_rate: SampleRate;
+}
+
+export type CartesiaOutputFormat = RawOutputFormat | WAVOutputFormat | MP3OutputFormat;
+
+/** Only for `sonic-3` and newer; earlier models ignore it. */
+export interface GenerationConfig {
+    emotion?: string;
+    speed?: number;
+    volume?: number;
+}
+
+export interface VoiceSpecifier {
+    mode: "id";
+    id: string;
+}
 
 const SAMPLE_RATES: SampleRate[] = [8000, 16000, 22050, 24000, 44100, 48000];
 const BIT_RATES: BitRate[] = [32000, 64000, 96000, 128000, 192000];
 
 /** Core names the bare codec (`mulaw`); Cartesia prefixes everything with `pcm_`. */
-const RAW_ENCODING: Partial<Record<AudioEncoding, Cartesia.RawEncoding>> = {
+const RAW_ENCODING: Partial<Record<AudioEncoding, RawEncoding>> = {
     pcm_s16le: "pcm_s16le",
     pcm_f32le: "pcm_f32le",
     mulaw: "pcm_mulaw",
     alaw: "pcm_alaw",
 };
 
-const STT_ENCODING: Partial<Record<AudioEncoding, Cartesia.STTEncoding>> = {
+const STT_ENCODING: Partial<Record<AudioEncoding, STTEncoding>> = {
     pcm_s16le: "pcm_s16le",
     pcm_s32le: "pcm_s32le",
     pcm_f32le: "pcm_f32le",
@@ -116,7 +151,7 @@ export function toOutputFormat(
 export function toRawOutputFormat(
     requested: AudioFormat | undefined,
     fallback: ResolvedAudioFormat,
-): { payload: Cartesia.RawOutputFormat; resolved: ResolvedAudioFormat } {
+): { payload: RawOutputFormat; resolved: ResolvedAudioFormat } {
     const { payload, resolved } = toOutputFormat(requested, fallback);
     if (payload.container !== "raw") {
         throw new ValidationError(
@@ -128,35 +163,60 @@ export function toRawOutputFormat(
     return { payload, resolved };
 }
 
-export function toSTTEncoding(format: AudioFormat | undefined): Cartesia.STTEncoding | undefined {
-    if (!format?.encoding) return undefined;
+/**
+ * Both STT endpoints take the input format as an `encoding` + `sample_rate`
+ * pair on the query string, so that pair is what the mappers return — the same
+ * shape Deepgram's `toSTTFormat` and `toRealtimeSTTFormat` hand back.
+ *
+ * Unlike Deepgram, Cartesia does not sniff containers, so whatever the caller
+ * named is sent as named. Batch leaves both fields off when unset and lets
+ * Cartesia read the file header instead.
+ */
+export function toSTTFormat(format: AudioFormat | undefined): {
+    encoding?: STTEncoding;
+    sample_rate?: number;
+} {
+    return { encoding: toSTTEncoding(format?.encoding), sample_rate: format?.sampleRate };
+}
 
-    const encoding = STT_ENCODING[format.encoding];
-    if (!encoding) {
+/** Realtime has no header to fall back on, so both fields are always sent. */
+export function toRealtimeSTTFormat(
+    format: AudioFormat | undefined,
+    fallback: ResolvedAudioFormat,
+): { encoding: STTEncoding; sample_rate: number } {
+    return {
+        encoding: toSTTEncoding(format?.encoding) ?? "pcm_s16le",
+        sample_rate: format?.sampleRate ?? fallback.sampleRate,
+    };
+}
+
+function toSTTEncoding(encoding: AudioEncoding | undefined): STTEncoding | undefined {
+    if (!encoding) return undefined;
+
+    const mapped = STT_ENCODING[encoding];
+    if (!mapped) {
         throw new ValidationError(
             PROVIDER,
             "format.encoding",
-            `"${format.encoding}" has no Cartesia equivalent. Supported: ${Object.keys(STT_ENCODING).join(", ")}.`,
+            `"${encoding}" has no Cartesia equivalent. Supported: ${Object.keys(STT_ENCODING).join(", ")}.`,
         );
     }
-    return encoding;
+    return mapped;
 }
 
 /** Only speed, volume and emotion have Cartesia equivalents; the rest are ignored. */
-export function toGenerationConfig(
-    controls: VoiceControls | undefined,
-): Cartesia.GenerationConfig | undefined {
+export function toGenerationConfig(controls: VoiceControls | undefined): GenerationConfig | undefined {
     if (!controls) return undefined;
 
-    const config: Cartesia.GenerationConfig = {};
+    const config: GenerationConfig = {};
     if (controls.speed !== undefined) config.speed = inRange("controls.speed", controls.speed, 0.6, 1.5);
     if (controls.volume !== undefined) config.volume = inRange("controls.volume", controls.volume, 0.5, 2);
-    if (controls.emotion !== undefined) config.emotion = controls.emotion as Cartesia.Emotion;
+    if (controls.emotion !== undefined) config.emotion = controls.emotion;
 
     return Object.keys(config).length > 0 ? config : undefined;
 }
 
-export function toVoice(voice: string | undefined): Cartesia.VoiceSpecifier {
+export function toVoice(voice: string | undefined): VoiceSpecifier {
     if (!voice) {
         throw new ValidationError(
             PROVIDER,
@@ -165,25 +225,6 @@ export function toVoice(voice: string | undefined): Cartesia.VoiceSpecifier {
         );
     }
     return { mode: "id", id: voice };
-}
-
-/**
- * Only the fields the caller actually set are included. Cartesia's client
- * validates `timeout` on key presence rather than value, so passing
- * `timeout: undefined` fails every request with "timeout must be an integer".
- */
-export function toRequestOptions(context?: RequestContext): {
-    signal?: AbortSignal;
-    timeout?: number;
-    maxRetries?: number;
-} {
-    const options: { signal?: AbortSignal; timeout?: number; maxRetries?: number } = {};
-
-    if (context?.signal !== undefined) options.signal = context.signal;
-    if (context?.timeout !== undefined) options.timeout = context.timeout;
-    if (context?.retries !== undefined) options.maxRetries = context.retries;
-
-    return options;
 }
 
 /** Cartesia returns parallel arrays; core carries spans. */
