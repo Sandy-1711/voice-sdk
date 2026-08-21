@@ -23,9 +23,7 @@ function retryableStatus(response: Response): boolean {
 }
 
 /**
- * Retries transient failures, including thrown network errors — which the
- * generated provider SDKs never did, since they only ever inspected a status
- * code they had already received.
+ * Retries transient failures, including thrown network errors.
  *
  * A non-retryable failure is returned, not thrown. Only the provider knows the
  * shape of its own error envelope, so turning a 400 into a `VoiceError` stays

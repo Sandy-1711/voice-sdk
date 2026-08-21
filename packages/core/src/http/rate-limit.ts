@@ -8,10 +8,7 @@ export interface RateLimitOptions {
 }
 
 /**
- * Gates how fast requests leave. Sits inside `retry` so every attempt takes its
- * own slot — a retry storm is exactly what this is here to hold back — and
- * outside `timeout` so a queued request is not burning its own deadline while
- * it waits.
+ * Gates how fast requests leave.
  *
  * State is per-middleware-instance, so one provider's limiter never throttles
  * another's.

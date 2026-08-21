@@ -16,8 +16,6 @@ export interface TimeoutOptions {
  * open for as long as the audio takes to generate — a deadline that outlived
  * the headers would abort it mid-body. For a budget over the whole operation,
  * pass an `AbortSignal`: it travels untouched through every layer.
- *
- * Sits innermost by default, so each retry attempt gets its own fresh deadline.
  */
 export function timeout(options: TimeoutOptions = {}): HttpMiddleware {
     return (next) => async (request) => {

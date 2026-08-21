@@ -83,10 +83,9 @@ async function toError(response: Response): Promise<VoiceError> {
 }
 
 /**
- * The mappers speak camelCase, the API speaks snake_case. The generated client
- * used to bridge the two, so this keeps doing it — including for the caller's
- * own `providerOptions`, which would otherwise silently stop reaching the wire
- * under their documented names.
+ * The mappers speak camelCase, the API speaks snake_case. Applies to the
+ * caller's own `providerOptions` too, which would otherwise stop reaching the
+ * wire under their documented names.
  *
  * Keys only. Values, including binary bodies, are never touched.
  */
@@ -106,9 +105,8 @@ function toSnakeCase(key: string): string {
 
 /**
  * The other direction, for responses. `labels` is exempt because its keys are
- * the caller's own, not part of the schema — the generated client left them
- * alone too, and camelising `use_case` into `useCase` would silently rename a
- * voice's metadata.
+ * the caller's own, not part of the schema: camelising `use_case` into
+ * `useCase` would silently rename a voice's metadata.
  */
 const OPAQUE_KEYS = new Set(["labels"]);
 

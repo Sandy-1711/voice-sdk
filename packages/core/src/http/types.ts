@@ -33,8 +33,7 @@ export interface HttpRequest {
 export type HttpHandler = (request: HttpRequest) => Promise<Response>;
 
 /**
- * Wraps a handler in another handler. The classic onion: whatever a middleware
- * does before calling `next` happens on the way down, whatever it does after
- * happens on the way back up.
+ * Wraps a handler in another handler. Whatever runs before `next` happens on
+ * the way down, whatever runs after it happens on the way back up.
  */
 export type HttpMiddleware = (next: HttpHandler) => HttpHandler;

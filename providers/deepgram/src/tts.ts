@@ -86,8 +86,7 @@ export class DeepgramTTS {
         const query = withProviderOptions(
             {
                 ...params,
-                // Deepgram has neither a voice nor a language parameter — both are
-                // folded into the model name, as in `aura-2-thalia-en`.
+                // A Deepgram voice is a model name.
                 model: input.model ?? input.voice ?? this.#config.defaultModel,
                 speed: toSpeed(input.controls),
             },

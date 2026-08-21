@@ -16,10 +16,7 @@ import { PROVIDER } from "./config";
 //   to<Thing>   core -> provider   (building a request)
 //   from<Thing> provider -> core   (reading a response)
 
-/**
- * The API's own vocabulary, which used to arrive as generated enums. Kept as
- * plain arrays so the whole 22 MB client is not a dependency of four constants.
- */
+/** The API's own vocabulary. */
 // Grouped one codec family per line, which reads better than the 28-line
 // column Prettier would otherwise produce.
 // prettier-ignore

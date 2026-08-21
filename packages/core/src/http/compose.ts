@@ -9,7 +9,6 @@ export function compose(middleware: HttpMiddleware[]): HttpMiddleware {
     return (next) => middleware.reduceRight((handler, wrap) => wrap(handler), next);
 }
 
-/** The innermost handler: the one that actually goes to the network. */
 export const fetchHandler: HttpHandler = (request: HttpRequest) =>
     fetch(request.url, {
         method: request.method,
