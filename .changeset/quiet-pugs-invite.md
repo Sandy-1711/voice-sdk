@@ -1,5 +1,6 @@
 ---
 "@swungstudent/voice": patch
+"@swungstudent/cartesia": patch
 "@swungstudent/deepgram": patch
 "@swungstudent/elevenlabs": patch
 ---
@@ -18,3 +19,9 @@ the message that actually arrived.
 
 `speakStream` failures now reach the configured logger. A provider that threw
 while opening a stream was previously logged as neither success nor failure.
+
+Fix Cartesia realtime sessions on Node 18 and 20, where they threw "requires
+the `ws` package but it could not be loaded". `@cartesia/cartesia-js` calls
+`require('ws')` from its ESM build, where `require` does not exist, and then
+falls back to a global `WebSocket` that only Node 22 and later provide.
+Cartesia now supplies that global from the `ws` it already depends on.
