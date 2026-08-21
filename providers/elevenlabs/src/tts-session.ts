@@ -10,7 +10,7 @@ import {
     toVoiceSettings,
     type WsAlignment,
 } from "./format";
-import { AsyncQueue } from "./internal/async-queue";
+import { AsyncQueue } from "@voice-sdk/internal";
 import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */

@@ -3,7 +3,7 @@ import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from
 import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import { DEFAULT_STREAM_FORMAT, type ResolvedConfig } from "./config";
 import { assertNoTimings, toRealtimeOutputFormat, toSpeed } from "./format";
-import { AsyncQueue } from "./internal/async-queue";
+import { AsyncQueue } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
 import { handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
 

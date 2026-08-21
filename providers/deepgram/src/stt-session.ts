@@ -9,7 +9,7 @@ import {
 } from "@swungstudent/voice";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import { fromWords, toRealtimeSTTFormat, type WireWord } from "./format";
-import { AsyncQueue } from "./internal/async-queue";
+import { AsyncQueue } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
 import { handshake, open, sendWhenOpen, toText } from "./internal/socket";
 

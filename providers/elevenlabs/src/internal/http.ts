@@ -99,7 +99,7 @@ export function snakeify<T>(value: T): T {
 }
 
 /** Already-snake_case keys have no capitals, so they pass through untouched. */
-function toSnakeCase(key: string): string {
+export function toSnakeCase(key: string): string {
     return key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }
 

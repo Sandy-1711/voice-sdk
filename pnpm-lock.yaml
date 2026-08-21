@@ -158,6 +158,24 @@ importers:
         specifier: ^8.50.0
         version: 8.50.0(eslint@9.39.1)(typescript@5.9.2)
 
+  packages/internal:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
+      '@voice-sdk/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
+      '@voice-sdk/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      eslint:
+        specifier: ^9.39.1
+        version: 9.39.1
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+
   packages/test-kit:
     dependencies:
       ws:
@@ -274,6 +292,9 @@ importers:
       '@voice-sdk/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      '@voice-sdk/internal':
+        specifier: workspace:*
+        version: link:../../packages/internal
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit
@@ -308,6 +329,9 @@ importers:
       '@voice-sdk/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      '@voice-sdk/internal':
+        specifier: workspace:*
+        version: link:../../packages/internal
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit

@@ -2,7 +2,7 @@ import type { RequestContext, TranscribeInput, TranscriptResult } from "@swungst
 import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { fromWord, toFileFormat, toGranularity, toSource, type WordResponse } from "./format";
-import { camelize, send } from "./internal/http";
+import { camelize, send, toSnakeCase } from "./internal/http";
 
 /** Wire shape of `POST /v1/speech-to-text`, after camelising. */
 interface TranscriptionResponse {
@@ -94,8 +94,4 @@ function toFormData(fields: Record<string, unknown>): FormData {
     }
 
     return form;
-}
-
-function toSnakeCase(key: string): string {
-    return key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }

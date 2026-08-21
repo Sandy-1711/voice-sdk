@@ -3,7 +3,7 @@ import { encodeBase64, TurnTextTracker, VoiceError } from "@swungstudent/voice";
 import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
-import { AsyncQueue } from "./internal/async-queue";
+import { AsyncQueue } from "@voice-sdk/internal";
 import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
