@@ -10,16 +10,19 @@
   },
   "sideEffects": false,
   "scripts": {
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
     "ws": "^8.21.1"
   },
   "devDependencies": {
+    "@swungstudent/voice": "workspace:^",
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
-    "@swungstudent/voice": "workspace:^",
+    "@voice-sdk/eslint-config": "workspace:*",
     "@voice-sdk/typescript-config": "workspace:^",
+    "eslint": "^9.39.1",
     "typescript": "^5.9.2"
   },
   "peerDependencies": {

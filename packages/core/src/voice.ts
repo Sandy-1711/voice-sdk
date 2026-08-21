@@ -61,77 +61,75 @@ export class Voice<TProvider extends VoiceProvider> {
     }
 
     async speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
-        const speak = this.#provider.speak;
+        const speak = this.#provider.speak?.bind(this.#provider);
         if (!speak) throw new CapabilityError(this.#provider.name, "speak");
 
         const resolved = this.#context(context);
         return chain(
             this.#middleware,
-            (entry) => entry.speak,
+            (entry) => entry.speak?.bind(entry),
             this.#call("speak", resolved),
-            (next) => speak.call(this.#provider, next, resolved),
+            (next) => speak(next, resolved),
         )(input);
     }
 
     speakStream(input: SpeakInput, context?: RequestContext): AudioStream {
-        const speakStream = this.#provider.speakStream;
+        const speakStream = this.#provider.speakStream?.bind(this.#provider);
         if (!speakStream) throw new CapabilityError(this.#provider.name, "speakStream");
 
         const resolved = this.#context(context);
         return chain(
             this.#middleware,
-            (entry) => entry.speakStream,
+            (entry) => entry.speakStream?.bind(entry),
             this.#call("speakStream", resolved),
-            (next) => speakStream.call(this.#provider, next, resolved),
+            (next) => speakStream(next, resolved),
         )(input);
     }
 
     async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
-        const transcribe = this.#provider.transcribe;
+        const transcribe = this.#provider.transcribe?.bind(this.#provider);
         if (!transcribe) throw new CapabilityError(this.#provider.name, "transcribe");
 
         const resolved = this.#context(context);
         return chain(
             this.#middleware,
-            (entry) => entry.transcribe,
+            (entry) => entry.transcribe?.bind(entry),
             this.#call("transcribe", resolved),
-            (next) => transcribe.call(this.#provider, next, resolved),
+            (next) => transcribe(next, resolved),
         )(input);
     }
 
     /** Opens a session that takes pushed text and streams audio back. */
     async openTTSSession(input?: RealtimeTTSInput): Promise<TTSSession> {
-        const open = this.#provider.openTTSSession;
+        const open = this.#provider.openTTSSession?.bind(this.#provider);
         if (!open) throw new CapabilityError(this.#provider.name, "openTTSSession");
 
         return chain(
             this.#middleware,
-            (entry) => entry.openTTSSession,
+            (entry) => entry.openTTSSession?.bind(entry),
             this.#call("openTTSSession"),
-            (next) => open.call(this.#provider, next),
+            (next) => open(next),
         )(input);
     }
 
     /** Opens a session that takes pushed audio and streams transcripts back. */
     async openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
-        const open = this.#provider.openSTTSession;
+        const open = this.#provider.openSTTSession?.bind(this.#provider);
         if (!open) throw new CapabilityError(this.#provider.name, "openSTTSession");
 
         return chain(
             this.#middleware,
-            (entry) => entry.openSTTSession,
+            (entry) => entry.openSTTSession?.bind(entry),
             this.#call("openSTTSession"),
-            (next) => open.call(this.#provider, next),
+            (next) => open(next),
         )(input);
     }
 
     async listVoices(): Promise<VoiceInfo[]> {
-        const listVoices = this.#provider.listVoices;
+        const listVoices = this.#provider.listVoices?.bind(this.#provider);
         if (!listVoices) throw new CapabilityError(this.#provider.name, "listVoices");
 
-        return chainListVoices(this.#middleware, this.#call("listVoices"), () =>
-            listVoices.call(this.#provider),
-        )();
+        return chainListVoices(this.#middleware, this.#call("listVoices"), () => listVoices())();
     }
 
     async close(): Promise<void> {

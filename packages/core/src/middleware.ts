@@ -102,9 +102,9 @@ export function chainListVoices(
     base: () => Promise<VoiceInfo[]>,
 ): () => Promise<VoiceInfo[]> {
     return middleware.reduceRight<() => Promise<VoiceInfo[]>>((next, entry) => {
-        const hook = entry.listVoices;
+        const hook = entry.listVoices?.bind(entry);
         if (!hook) return next;
-        return () => hook.call(entry, call, next);
+        return () => hook(call, next);
     }, base);
 }
 

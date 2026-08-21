@@ -87,7 +87,9 @@ function toFormData(fields: Record<string, unknown>): FormData {
         } else if (typeof value === "object") {
             form.append(name, JSON.stringify(value));
         } else {
-            form.append(name, String(value));
+            // Objects and arrays are handled above, so what is left stringifies
+            // to something meaningful.
+            form.append(name, String(value as string | number | boolean));
         }
     }
 

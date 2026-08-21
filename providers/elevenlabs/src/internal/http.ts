@@ -1,6 +1,6 @@
 import { VoiceError } from "@swungstudent/voice";
 import type { HttpHandler, RequestContext } from "@swungstudent/voice";
-import { DEFAULT_BASE_URL, PROVIDER } from "../config";
+import { PROVIDER } from "../config";
 
 export interface SendInput {
     apiKey: string;
@@ -91,7 +91,7 @@ async function toError(response: Response): Promise<VoiceError> {
  * Keys only. Values, including binary bodies, are never touched.
  */
 export function snakeify<T>(value: T): T {
-    if (Array.isArray(value)) return value.map((item) => snakeify(item)) as T;
+    if (Array.isArray(value)) return value.map((item: unknown) => snakeify(item)) as T;
     if (!isPlainObject(value)) return value;
 
     const out: Record<string, unknown> = {};
@@ -113,7 +113,7 @@ function toSnakeCase(key: string): string {
 const OPAQUE_KEYS = new Set(["labels"]);
 
 export function camelize<T>(value: T): T {
-    if (Array.isArray(value)) return value.map((item) => camelize(item)) as T;
+    if (Array.isArray(value)) return value.map((item: unknown) => camelize(item)) as T;
     if (!isPlainObject(value)) return value;
 
     const out: Record<string, unknown> = {};
