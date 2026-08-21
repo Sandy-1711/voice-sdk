@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type WebSocket from "ws";
 import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@swungstudent/voice";
 import { decodeBase64, VoiceError, withProviderOptions } from "@swungstudent/voice";
@@ -80,7 +81,9 @@ export class CartesiaTTSSession implements TTSSession {
         generationConfig: GenerationConfig | undefined,
     ) {
         this.#ws = ws;
-        this.#contextId = crypto.randomUUID();
+        // Imported rather than reached for on `globalThis`: the global `crypto`
+        // only exists from node 19, and this package supports 18.
+        this.#contextId = randomUUID();
         this.#options = options;
         this.format = format;
         this.#generationConfig = generationConfig;

@@ -20,7 +20,9 @@ import tseslint from "typescript-eslint";
  * @returns {import("eslint").Linter.Config[]}
  */
 export const config = (tsconfigRootDir) => [
-  { ignores: ["dist/**", "coverage/**"] },
+  // `test/node18/` holds plain-JS scripts that run against `dist/` on the
+  // oldest supported node, outside the typed build the rules below need.
+  { ignores: ["dist/**", "coverage/**", "test/node18/**"] },
 
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
