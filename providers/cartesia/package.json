@@ -58,6 +58,7 @@
     "@types/node": "^22.15.3",
     "@types/ws": "^8.18.1",
     "@voice-sdk/eslint-config": "workspace:*",
+    "@voice-sdk/internal": "workspace:^",
     "@voice-sdk/test-kit": "workspace:^",
     "@voice-sdk/typescript-config": "workspace:^",
     "eslint": "^9.39.1",

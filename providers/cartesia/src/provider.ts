@@ -64,8 +64,8 @@ export class CartesiaProvider implements VoiceProvider {
         return CartesiaTTSSession.open(this.#client, this.#config, input);
     }
 
-    async openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
-        return CartesiaSTTSession.open(this.#client, this.#config, input);
+    openSTTSession(input?: RealtimeSTTInput): Promise<STTSession> {
+        return CartesiaSTTSession.open(this.#config, input);
     }
 
     async listVoices(): Promise<VoiceInfo[]> {

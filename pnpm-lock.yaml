@@ -258,6 +258,9 @@ importers:
       '@voice-sdk/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
+      '@voice-sdk/internal':
+        specifier: workspace:^
+        version: link:../../packages/internal
       '@voice-sdk/test-kit':
         specifier: workspace:^
         version: link:../../packages/test-kit

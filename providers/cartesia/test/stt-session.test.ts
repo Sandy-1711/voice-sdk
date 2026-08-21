@@ -45,6 +45,44 @@ afterEach(async () => {
  * between them: auto (ink-2) detects turns, manual (ink-whisper) has no turn
  * detection at all and only transcribes when told to.
  */
+describe("opening", () => {
+    // Deepgram already waits for the handshake, so a bad key throws where you
+    // called it rather than ending a for-await silently later.
+    it("rejects from open() when the socket never connects", async () => {
+        const unreachable = new CartesiaProvider({ apiKey: "k", baseUrl: "http://127.0.0.1:1" });
+
+        await expect(unreachable.openSTTSession()).rejects.toThrow(/socket failed to open/);
+    });
+
+    it("authenticates in the handshake headers rather than the query", async () => {
+        await provider({ apiKey: "secret-key" }).openSTTSession();
+        const connection = await server.connection();
+
+        expect(connection.headers["authorization"]).toBe("Bearer secret-key");
+        expect(connection.headers["cartesia-version"]).toBe("2025-11-04");
+        // A key in the URL would end up in logs and proxies.
+        expect(connection.url.searchParams.has("api_key")).toBe(false);
+    });
+
+    // Cartesia picks its realtime model by turn-detection mode, so before this
+    // there was no way to name one for both.
+    it("takes a configured realtime default in either mode", async () => {
+        await provider({ defaultRealtimeSTTModel: "ink-2-2025" }).openSTTSession();
+        expect((await server.connection(0)).url.searchParams.get("model")).toBe("ink-2-2025");
+
+        await provider({ defaultRealtimeSTTModel: "ink-custom" }).openSTTSession({
+            turnDetection: { mode: "manual" },
+        });
+        expect((await server.connection(1)).url.searchParams.get("model")).toBe("ink-custom");
+    });
+
+    it("still lets a per-call model win over the configured default", async () => {
+        await provider({ defaultRealtimeSTTModel: "ink-2-2025" }).openSTTSession({ model: "ink-2" });
+
+        expect((await server.connection()).url.searchParams.get("model")).toBe("ink-2");
+    });
+});
+
 describe("openSTTSession in auto mode", () => {
     it("connects to the turns endpoint with the vad model", async () => {
         await provider().openSTTSession();
