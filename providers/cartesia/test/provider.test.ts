@@ -50,6 +50,27 @@ describe("CartesiaProvider", () => {
         expect(new CartesiaProvider({ apiKey: "k" }).name).toBe("cartesia");
     });
 
+    it("supplies the global WebSocket the SDK needs on node 18 and 20", () => {
+        const original = globalThis.WebSocket;
+        // Node 22 has one and older versions do not. Without this, the SDK
+        // throws "requires the ws package" the moment a session opens.
+        delete (globalThis as { WebSocket?: unknown }).WebSocket;
+
+        try {
+            new CartesiaProvider({ apiKey: "k" });
+            expect(globalThis.WebSocket).toBeDefined();
+        } finally {
+            globalThis.WebSocket = original;
+        }
+    });
+
+    it("leaves a WebSocket the runtime already provides alone", () => {
+        const original = globalThis.WebSocket;
+        new CartesiaProvider({ apiKey: "k" });
+
+        expect(globalThis.WebSocket).toBe(original);
+    });
+
     describe("listVoices", () => {
         it("walks the paginated catalogue onto core's shape", async () => {
             const voices = await new CartesiaProvider({ apiKey: "k", baseUrl: server.baseUrl }).listVoices();
