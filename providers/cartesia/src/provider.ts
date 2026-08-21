@@ -44,7 +44,7 @@ export class CartesiaProvider implements VoiceProvider {
             apiKey: this.#config.apiKey,
             baseURL: this.#config.baseUrl,
         });
-        this.#tts = new CartesiaTTS(this.#client, this.#config);
+        this.#tts = new CartesiaTTS(this.#config);
         this.#stt = new CartesiaSTT(this.#client, this.#config);
     }
 

@@ -1,8 +1,14 @@
 import type { Cartesia } from "@cartesia/cartesia-js";
 import type { RealtimeSTTInput, STTEvent, STTSession } from "@swungstudent/voice";
-import { TurnTextTracker, ValidationError, VoiceError, withProviderOptions } from "@swungstudent/voice";
+import {
+    DEFAULT_REALTIME_INPUT_FORMAT,
+    TurnTextTracker,
+    ValidationError,
+    VoiceError,
+    withProviderOptions,
+} from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
-import { DEFAULTS, DEFAULT_INPUT_FORMAT, PROVIDER } from "./config";
+import { DEFAULTS, PROVIDER } from "./config";
 import { fromWords, toSTTEncoding } from "./format";
 
 type AutoWS = ReturnType<Cartesia["stt"]["autoFinalize"]["websocket"]>;
@@ -26,9 +32,9 @@ export class CartesiaSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static open(client: Cartesia, config: ResolvedConfig, input: RealtimeSTTInput = {}): CartesiaSTTSession {
-        const format = input.inputFormat ?? DEFAULT_INPUT_FORMAT;
+        const format = input.inputFormat ?? DEFAULT_REALTIME_INPUT_FORMAT;
         const encoding = toSTTEncoding(format) ?? "pcm_s16le";
-        const sample_rate = format.sampleRate ?? DEFAULT_INPUT_FORMAT.sampleRate;
+        const sample_rate = format.sampleRate ?? DEFAULT_REALTIME_INPUT_FORMAT.sampleRate;
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
 
         if (mode === "manual") {

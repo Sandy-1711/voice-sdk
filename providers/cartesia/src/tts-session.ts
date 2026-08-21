@@ -46,7 +46,12 @@ export class CartesiaTTSSession implements TTSSession {
         const ws = await client.tts.websocket();
         const context = ws.context(options);
 
-        return new CartesiaTTSSession(ws, context, resolved, toGenerationConfig(input.controls));
+        // The cast bridges our own GenerationConfig, whose `emotion` is the open
+        // string the wire accepts, to the SDK's closed union. It goes away with
+        // the SDK when this session moves onto its own socket.
+        const generationConfig = toGenerationConfig(input.controls) as Cartesia.GenerationConfig | undefined;
+
+        return new CartesiaTTSSession(ws, context, resolved, generationConfig);
     }
 
     private constructor(
