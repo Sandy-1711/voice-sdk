@@ -1,3 +1,4 @@
+import { sleep } from "./sleep";
 import type { HttpMiddleware } from "./types";
 
 export interface RateLimitOptions {
@@ -72,18 +73,4 @@ export function rateLimit(options: RateLimitOptions = {}): HttpMiddleware {
             release();
         }
     };
-}
-
-function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            signal?.removeEventListener("abort", onAbort);
-            resolve();
-        }, ms);
-        const onAbort = () => {
-            clearTimeout(timer);
-            reject(signal?.reason);
-        };
-        signal?.addEventListener("abort", onAbort, { once: true });
-    });
 }

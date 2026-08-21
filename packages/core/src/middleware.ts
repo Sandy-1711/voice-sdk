@@ -114,85 +114,84 @@ export function chainListVoices(
  * sits at the operation layer rather than the transport one.
  */
 export function logOperations(logger: Logger): VoiceMiddleware {
-    const done = (call: OperationCall, started: number, detail = "") =>
-        logger.debug(`${call.provider}.${call.operation} ok in ${Date.now() - started}ms${detail}`);
-
-    const failed = (call: OperationCall, started: number, error: unknown) => {
+    const failed = (call: OperationCall, started: number, error: unknown): void => {
         logger.error(
             `${call.provider}.${call.operation} failed after ${Date.now() - started}ms: ${String(error)}`,
         );
-        return error;
     };
+
+    /** Times an operation and reports its outcome exactly once. */
+    const timed = async <T>(
+        call: OperationCall,
+        run: () => Promise<T>,
+        detail?: (result: T) => string,
+    ): Promise<T> => {
+        const started = Date.now();
+        try {
+            const result = await run();
+            const suffix = detail ? detail(result) : "";
+            logger.debug(`${call.provider}.${call.operation} ok in ${Date.now() - started}ms${suffix}`);
+            return result;
+        } catch (error) {
+            failed(call, started, error);
+            throw error;
+        }
+    };
+
+    const synthesis = (call: OperationCall, input: SpeakInput) =>
+        `${call.provider}.${call.operation} ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`;
 
     return {
         name: "log",
 
-        async speak(input, call, next) {
-            const started = Date.now();
-            logger.debug(
-                `${call.provider}.speak ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`,
+        speak(input, call, next) {
+            logger.debug(synthesis(call, input));
+            return timed(
+                call,
+                () => next(input),
+                (r) => `, ${r.audio.length} bytes ${r.format.container}`,
             );
-            try {
-                const result = await next(input);
-                done(call, started, `, ${result.audio.length} bytes ${result.format.container}`);
-                return result;
-            } catch (error) {
-                throw failed(call, started, error);
-            }
         },
 
         speakStream(input, call, next) {
-            logger.debug(
-                `${call.provider}.speakStream ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`,
-            );
-            return next(input);
+            logger.debug(synthesis(call, input));
+            // Returns a stream rather than a promise, so there is no duration to
+            // report — but a provider that throws while opening it still counts
+            // as a failure.
+            const started = Date.now();
+            try {
+                return next(input);
+            } catch (error) {
+                failed(call, started, error);
+                throw error;
+            }
         },
 
-        async transcribe(input, call, next) {
-            const started = Date.now();
+        transcribe(input, call, next) {
             logger.debug(
                 `${call.provider}.transcribe model=${input.model ?? "default"}, language=${input.language ?? "auto"}`,
             );
-            try {
-                const result = await next(input);
-                done(call, started, `, ${result.text.length} chars`);
-                return result;
-            } catch (error) {
-                throw failed(call, started, error);
-            }
+            return timed(
+                call,
+                () => next(input),
+                (r) => `, ${r.text.length} chars`,
+            );
         },
 
-        async openTTSSession(input, call, next) {
-            const started = Date.now();
-            try {
-                const session = await next(input);
-                done(call, started);
-                return session;
-            } catch (error) {
-                throw failed(call, started, error);
-            }
+        openTTSSession(input, call, next) {
+            return timed(call, () => next(input));
         },
 
-        async openSTTSession(input, call, next) {
-            const started = Date.now();
-            try {
-                const session = await next(input);
-                done(call, started);
-                return session;
-            } catch (error) {
-                throw failed(call, started, error);
-            }
+        openSTTSession(input, call, next) {
+            return timed(call, () => next(input));
         },
 
-        async listVoices(call, next) {
-            const started = Date.now();
-            try {
-                const voices = await next();
-                done(call, started, `, ${voices.length} voices`);
-                return voices;
-            } catch (error) {
-                throw failed(call, started, error);
-            }
+        listVoices(call, next) {
+            return timed(
+                call,
+                () => next(),
+                (v) => `, ${v.length} voices`,
+            );
         },
     };
 }

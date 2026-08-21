@@ -281,6 +281,58 @@ describe("rateLimit", () => {
         // A leaked slot would leave this one queued forever.
         await expect(limited(request())).rejects.toThrow("boom");
     });
+
+    it("refuses a signal that was already aborted rather than spacing it out", async () => {
+        const handler = vi.fn<HttpHandler>(async () => new Response("ok"));
+        const limited = rateLimit({ minInterval: 10_000 })(handler);
+
+        await limited(request());
+        const started = Date.now();
+        // Uncontended, so the aborted check inside the concurrency branch is
+        // never reached and only the spacing wait is left to notice.
+        await expect(limited(request({ signal: AbortSignal.abort(new Error("gone")) }))).rejects.toThrow(
+            "gone",
+        );
+
+        expect(Date.now() - started).toBeLessThan(1_000);
+        expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it("gives the slot back when the spacing wait is aborted", async () => {
+        const handler = vi.fn<HttpHandler>(async () => new Response("ok"));
+        const limited = rateLimit({ concurrency: 1, minInterval: 50 })(handler);
+        const controller = new AbortController();
+
+        await limited(request());
+        const spaced = limited(request({ signal: controller.signal }));
+        controller.abort(new Error("gone"));
+        await expect(spaced).rejects.toThrow("gone");
+
+        // The slot was taken before the wait began, so an unreleased one would
+        // leave this last request queued forever.
+        await expect(limited(request())).resolves.toBeInstanceOf(Response);
+    });
+
+    it("drops a queued request from the queue when it aborts", async () => {
+        let release!: () => void;
+        const blocked = new Promise<void>((resolve) => (release = resolve));
+        const handler = vi.fn<HttpHandler>(async () => {
+            await blocked;
+            return new Response("ok");
+        });
+
+        const limited = rateLimit({ concurrency: 1 })(handler);
+        const controller = new AbortController();
+        const holding = limited(request());
+        const queued = limited(request({ signal: controller.signal }));
+
+        controller.abort(new Error("gone"));
+        await expect(queued).rejects.toThrow("gone");
+        release();
+
+        await expect(holding).resolves.toBeInstanceOf(Response);
+        expect(handler).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe("logging", () => {
