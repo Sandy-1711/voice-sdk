@@ -1,6 +1,6 @@
 {
   "name": "@swungstudent/voice",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Provider-agnostic types and helpers for text-to-speech and speech-to-text, batch and realtime.",
   "keywords": [
     "voice",
