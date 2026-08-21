@@ -1,5 +1,12 @@
 # @swungstudent/elevenlabs
 
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [0e1193d]
+  - @swungstudent/voice@0.3.0
+
 ## 0.2.1
 
 ### Patch Changes
