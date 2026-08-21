@@ -9,7 +9,7 @@ import {
 } from "@swungstudent/voice";
 import type { ResolvedConfig } from "./config";
 import { DEFAULTS, PROVIDER } from "./config";
-import { fromWords, toSTTEncoding } from "./format";
+import { fromWords, toRealtimeSTTFormat } from "./format";
 
 type AutoWS = ReturnType<Cartesia["stt"]["autoFinalize"]["websocket"]>;
 type ManualWS = ReturnType<Cartesia["stt"]["manualFinalize"]["websocket"]>;
@@ -32,9 +32,10 @@ export class CartesiaSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static open(client: Cartesia, config: ResolvedConfig, input: RealtimeSTTInput = {}): CartesiaSTTSession {
-        const format = input.inputFormat ?? DEFAULT_REALTIME_INPUT_FORMAT;
-        const encoding = toSTTEncoding(format) ?? "pcm_s16le";
-        const sample_rate = format.sampleRate ?? DEFAULT_REALTIME_INPUT_FORMAT.sampleRate;
+        const { encoding, sample_rate } = toRealtimeSTTFormat(
+            input.inputFormat,
+            DEFAULT_REALTIME_INPUT_FORMAT,
+        );
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
 
         if (mode === "manual") {

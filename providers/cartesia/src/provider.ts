@@ -45,7 +45,7 @@ export class CartesiaProvider implements VoiceProvider {
             baseURL: this.#config.baseUrl,
         });
         this.#tts = new CartesiaTTS(this.#config);
-        this.#stt = new CartesiaSTT(this.#client, this.#config);
+        this.#stt = new CartesiaSTT(this.#config);
     }
 
     speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {

@@ -164,18 +164,45 @@ export function toRawOutputFormat(
     return { payload, resolved };
 }
 
-export function toSTTEncoding(format: AudioFormat | undefined): STTEncoding | undefined {
-    if (!format?.encoding) return undefined;
+/**
+ * Both STT endpoints take the input format as an `encoding` + `sample_rate`
+ * pair on the query string, so that pair is what the mappers return — the same
+ * shape Deepgram's `toSTTFormat` and `toRealtimeSTTFormat` hand back.
+ *
+ * Unlike Deepgram, Cartesia does not sniff containers, so whatever the caller
+ * named is sent as named. Batch leaves both fields off when unset and lets
+ * Cartesia read the file header instead.
+ */
+export function toSTTFormat(format: AudioFormat | undefined): {
+    encoding?: STTEncoding;
+    sample_rate?: number;
+} {
+    return { encoding: toSTTEncoding(format?.encoding), sample_rate: format?.sampleRate };
+}
 
-    const encoding = STT_ENCODING[format.encoding];
-    if (!encoding) {
+/** Realtime has no header to fall back on, so both fields are always sent. */
+export function toRealtimeSTTFormat(
+    format: AudioFormat | undefined,
+    fallback: ResolvedAudioFormat,
+): { encoding: STTEncoding; sample_rate: number } {
+    return {
+        encoding: toSTTEncoding(format?.encoding) ?? "pcm_s16le",
+        sample_rate: format?.sampleRate ?? fallback.sampleRate,
+    };
+}
+
+function toSTTEncoding(encoding: AudioEncoding | undefined): STTEncoding | undefined {
+    if (!encoding) return undefined;
+
+    const mapped = STT_ENCODING[encoding];
+    if (!mapped) {
         throw new ValidationError(
             PROVIDER,
             "format.encoding",
-            `"${format.encoding}" has no Cartesia equivalent. Supported: ${Object.keys(STT_ENCODING).join(", ")}.`,
+            `"${encoding}" has no Cartesia equivalent. Supported: ${Object.keys(STT_ENCODING).join(", ")}.`,
         );
     }
-    return encoding;
+    return mapped;
 }
 
 /** Only speed, volume and emotion have Cartesia equivalents; the rest are ignored. */
