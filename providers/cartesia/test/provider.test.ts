@@ -12,7 +12,12 @@ beforeEach(async () => {
             {
                 body: {
                     data: [
-                        { id: "voice-1", name: "Barbershop Man", language: "en", description: "A warm baritone" },
+                        {
+                            id: "voice-1",
+                            name: "Barbershop Man",
+                            language: "en",
+                            description: "A warm baritone",
+                        },
                         { id: "voice-2", name: "Sarah", language: "en" },
                     ],
                     has_more: true,

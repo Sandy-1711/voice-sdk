@@ -29,7 +29,12 @@ describe("speak", () => {
         expect(result.audio).toEqual(AUDIO);
         expect(result.requestId).toBe("req-42");
         // Batch audio is written to a file more often than not, so it is framed.
-        expect(result.format).toEqual({ container: "wav", encoding: "pcm_s16le", sampleRate: 24000, channels: 1 });
+        expect(result.format).toEqual({
+            container: "wav",
+            encoding: "pcm_s16le",
+            sampleRate: 24000,
+            channels: 1,
+        });
     });
 
     it("sends the default model when the caller names none", async () => {
@@ -80,7 +85,9 @@ describe("speak", () => {
     });
 
     it("uses the provider default format when a call gives none", async () => {
-        const result = await provider({ defaultFormat: { container: "raw", sampleRate: 16000 } }).speak({ text: "hi" });
+        const result = await provider({ defaultFormat: { container: "raw", sampleRate: 16000 } }).speak({
+            text: "hi",
+        });
 
         expect(server.last().query).toMatchObject({ container: "none", sample_rate: "16000" });
         expect(result.format.container).toBe("raw");
@@ -94,7 +101,10 @@ describe("speak", () => {
     });
 
     it("lets providerOptions reach the query for settings core does not model", async () => {
-        await provider().speak({ text: "hi", providerOptions: { mip_opt_out: true, model: "aura-2-orpheus-en" } });
+        await provider().speak({
+            text: "hi",
+            providerOptions: { mip_opt_out: true, model: "aura-2-orpheus-en" },
+        });
 
         expect(server.last().query).toMatchObject({ mip_opt_out: "true", model: "aura-2-orpheus-en" });
     });
@@ -123,7 +133,12 @@ describe("speakStream", () => {
         const stream = provider().speakStream({ text: "hi" });
 
         // Streamed audio goes to a speaker or a socket, where a header is noise.
-        expect(stream.format).toEqual({ container: "raw", encoding: "pcm_s16le", sampleRate: 24000, channels: 1 });
+        expect(stream.format).toEqual({
+            container: "raw",
+            encoding: "pcm_s16le",
+            sampleRate: 24000,
+            channels: 1,
+        });
     });
 
     it("sends nothing until the caller starts iterating", async () => {
@@ -147,7 +162,9 @@ describe("speakStream", () => {
 
     it("streams headerless audio, and refuses a container that has to be framed", () => {
         expect(() => provider().speakStream({ text: "hi", format: { container: "wav" } })).not.toThrow();
-        expect(provider().speakStream({ text: "hi", format: { container: "wav" } }).format.container).toBe("wav");
+        expect(provider().speakStream({ text: "hi", format: { container: "wav" } }).format.container).toBe(
+            "wav",
+        );
     });
 
     it("surfaces a failure from the far side on the stream itself", async () => {

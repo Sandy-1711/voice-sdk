@@ -60,14 +60,28 @@ describe("case bridging", () => {
                     language_probability: 0.9,
                     audio_duration_secs: 2,
                     transcription_id: "t-1",
-                    words: [{ text: "hello", start: 0, end: 1, type: "word", logprob: 0, speaker_id: "speaker_0" }],
+                    words: [
+                        {
+                            text: "hello",
+                            start: 0,
+                            end: 1,
+                            type: "word",
+                            logprob: 0,
+                            speaker_id: "speaker_0",
+                        },
+                    ],
                 },
             },
         });
 
         const result = await provider().transcribe({ audio: new Uint8Array([1]) });
 
-        expect(result).toMatchObject({ language: "en", languageConfidence: 0.9, duration: 2, requestId: "t-1" });
+        expect(result).toMatchObject({
+            language: "en",
+            languageConfidence: 0.9,
+            duration: 2,
+            requestId: "t-1",
+        });
         expect(result.words?.[0]).toMatchObject({ speaker: "speaker_0" });
     });
 
@@ -102,13 +116,13 @@ describe("speech-to-text upload", () => {
         const body = server.last().text();
         expect(server.last().headers["content-type"]).toContain("multipart/form-data");
         for (const field of [
-            "name=\"file\"",
-            "name=\"model_id\"",
-            "name=\"language_code\"",
-            "name=\"timestamps_granularity\"",
-            "name=\"diarize\"",
-            "name=\"num_speakers\"",
-            "name=\"keyterms\"",
+            'name="file"',
+            'name="model_id"',
+            'name="language_code"',
+            'name="timestamps_granularity"',
+            'name="diarize"',
+            'name="num_speakers"',
+            'name="keyterms"',
         ]) {
             expect(body).toContain(field);
         }
@@ -117,7 +131,7 @@ describe("speech-to-text upload", () => {
     it("sends a url as source_url rather than downloading it", async () => {
         await provider().transcribe({ audio: { url: "https://audio.test/clip.wav" } });
 
-        expect(server.last().text()).toContain("name=\"source_url\"");
+        expect(server.last().text()).toContain('name="source_url"');
     });
 });
 
@@ -139,7 +153,9 @@ describe("transport wiring", () => {
 
         await provider({ logger: log, apiKey: "super-secret" }).speak({ text: "hi" });
 
-        const lines = [...log.debug.mock.calls, ...log.warn.mock.calls, ...log.error.mock.calls].flat().join("\n");
+        const lines = [...log.debug.mock.calls, ...log.warn.mock.calls, ...log.error.mock.calls]
+            .flat()
+            .join("\n");
         expect(lines).toContain("elevenlabs.speak");
         expect(lines).not.toContain("super-secret");
     });

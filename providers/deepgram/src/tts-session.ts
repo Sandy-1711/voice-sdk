@@ -38,13 +38,16 @@ export class DeepgramTTSSession implements TTSSession {
             input.format ?? config.defaultFormat,
             DEFAULT_STREAM_FORMAT,
         );
-        const query = withProviderOptions({
-            ...params,
-            // Deepgram has neither a voice nor a language parameter — both are
-            // folded into the model name, as in `aura-2-thalia-en`.
-            model: input.model ?? input.voice ?? config.defaultModel,
-            speed: toSpeed(input.controls),
-        }, input.providerOptions);
+        const query = withProviderOptions(
+            {
+                ...params,
+                // Deepgram has neither a voice nor a language parameter — both are
+                // folded into the model name, as in `aura-2-thalia-en`.
+                model: input.model ?? input.voice ?? config.defaultModel,
+                speed: toSpeed(input.controls),
+            },
+            input.providerOptions,
+        );
 
         const ws = open(buildUrl(config.baseUrl, "/v1/speak", query), config.apiKey);
         // Both listener sets are attached in this tick, before any I/O can be
@@ -147,7 +150,9 @@ export class DeepgramTTSSession implements TTSSession {
             default:
                 if (message.type === "Error" || message.type === "Fatal") {
                     this.#queue.fail(
-                        new VoiceError(`Deepgram TTS session: ${message.code ?? message.type}: ${message.description ?? ""}`),
+                        new VoiceError(
+                            `Deepgram TTS session: ${message.code ?? message.type}: ${message.description ?? ""}`,
+                        ),
                     );
                 }
         }

@@ -42,7 +42,11 @@ describe("resolveConfig", () => {
     });
 
     it("lets a caller override each model independently", () => {
-        const config = resolveConfig({ apiKey: "k", defaultModel: "eleven_flash_v2_5", defaultSTTModel: "scribe_v1" });
+        const config = resolveConfig({
+            apiKey: "k",
+            defaultModel: "eleven_flash_v2_5",
+            defaultSTTModel: "scribe_v1",
+        });
 
         expect(config.defaultModel).toBe("eleven_flash_v2_5");
         expect(config.defaultSTTModel).toBe("scribe_v1");
@@ -57,9 +61,9 @@ describe("resolveConfig", () => {
     });
 
     it("carries a residency host through", () => {
-        expect(resolveConfig({ apiKey: "k", baseUrl: "https://api.eu.residency.elevenlabs.io" }).baseUrl).toBe(
-            "https://api.eu.residency.elevenlabs.io",
-        );
+        expect(
+            resolveConfig({ apiKey: "k", baseUrl: "https://api.eu.residency.elevenlabs.io" }).baseUrl,
+        ).toBe("https://api.eu.residency.elevenlabs.io");
         expect(resolveConfig({ apiKey: "k" }).baseUrl).toBeUndefined();
     });
 });

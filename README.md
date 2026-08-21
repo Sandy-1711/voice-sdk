@@ -45,11 +45,11 @@ in.
 | **Deepgram**   |  ✅   |  ✅   |      ✅       |      ✅       |      —       |
 | **ElevenLabs** |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
 
-Deepgram has no voice-listing endpoint because a voice *is* a model there, so
+Deepgram has no voice-listing endpoint because a voice _is_ a model there, so
 the method is absent rather than faked.
 
 `realtimeTTS` means a duplex session you push text **into** incrementally — what
-a spoken LLM response needs. Streaming audio *out* of a one-shot call is
+a spoken LLM response needs. Streaming audio _out_ of a one-shot call is
 `speakStream`, and every provider with `tts` has it.
 
 See [`@swungstudent/voice`](packages/core) for the full surface, and each

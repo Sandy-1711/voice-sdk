@@ -1,12 +1,6 @@
 import WebSocket from "ws";
 import { encodeBase64, TurnTextTracker, VoiceError } from "@swungstudent/voice";
-import type {
-    Finality,
-    RealtimeSTTInput,
-    STTEvent,
-    STTSession,
-    TranscriptWord,
-} from "@swungstudent/voice";
+import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
 import { AsyncQueue } from "./internal/async-queue";
@@ -17,7 +11,14 @@ interface ServerMessage {
     session_id?: string;
     text?: string;
     language_code?: string;
-    words?: { text: string; start?: number; end?: number; type?: string; speaker_id?: string; logprob?: number }[];
+    words?: {
+        text: string;
+        start?: number;
+        end?: number;
+        type?: string;
+        speaker_id?: string;
+        logprob?: number;
+    }[];
     message?: string;
     error?: string;
 }

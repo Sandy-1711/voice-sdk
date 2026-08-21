@@ -56,7 +56,10 @@ export async function collect<T>(source: AsyncIterable<T>, timeout = 5000): Prom
         const result = await Promise.race([
             iterator.next(),
             new Promise<never>((_, reject) => {
-                timer = setTimeout(() => reject(new Error(`collect() timed out after ${items.length} items.`)), left);
+                timer = setTimeout(
+                    () => reject(new Error(`collect() timed out after ${items.length} items.`)),
+                    left,
+                );
             }),
         ]).finally(() => clearTimeout(timer));
 

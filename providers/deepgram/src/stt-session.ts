@@ -18,7 +18,14 @@ interface ListenMessage {
     type: string;
     is_final?: boolean;
     speech_final?: boolean;
-    channel?: { alternatives?: { transcript?: string; confidence?: number; languages?: string[]; words?: WireWord[] }[] };
+    channel?: {
+        alternatives?: {
+            transcript?: string;
+            confidence?: number;
+            languages?: string[];
+            words?: WireWord[];
+        }[];
+    };
     metadata?: { request_id?: string };
     request_id?: string;
     timestamp?: number;
@@ -87,35 +94,52 @@ export class DeepgramSTTSession implements STTSession {
                 );
             }
 
-            const query = withProviderOptions({
-                ...format,
-                model,
-                language_hint: input.language,
-                keyterm: input.keyterms,
-                eot_threshold: vad?.threshold,
-                eot_timeout_ms: silenceMs,
-            }, input.providerOptions);
+            const query = withProviderOptions(
+                {
+                    ...format,
+                    model,
+                    language_hint: input.language,
+                    keyterm: input.keyterms,
+                    eot_threshold: vad?.threshold,
+                    eot_timeout_ms: silenceMs,
+                },
+                input.providerOptions,
+            );
 
-            return DeepgramSTTSession.#connect(buildUrl(config.baseUrl, "/v2/listen", query), config.apiKey, mode, input);
+            return DeepgramSTTSession.#connect(
+                buildUrl(config.baseUrl, "/v2/listen", query),
+                config.apiKey,
+                mode,
+                input,
+            );
         }
 
-        const query = withProviderOptions({
-            ...format,
-            model,
-            language: input.language,
-            interim_results: input.interimResults,
-            diarize: input.diarize,
-            keyterm: input.keyterms,
-            // Manual mode puts turn boundaries under the caller's flush(), so
-            // Deepgram's own endpointer is switched off entirely.
-            endpointing: manual ? false : silenceMs,
-            // UtteranceEnd is what becomes `speech_ended`, but Deepgram rejects
-            // a window under a second — so it is only requested when valid.
-            utterance_end_ms: manual || silenceMs === undefined || silenceMs < 1000 ? undefined : silenceMs,
-            vad_events: manual ? undefined : true,
-        }, input.providerOptions);
+        const query = withProviderOptions(
+            {
+                ...format,
+                model,
+                language: input.language,
+                interim_results: input.interimResults,
+                diarize: input.diarize,
+                keyterm: input.keyterms,
+                // Manual mode puts turn boundaries under the caller's flush(), so
+                // Deepgram's own endpointer is switched off entirely.
+                endpointing: manual ? false : silenceMs,
+                // UtteranceEnd is what becomes `speech_ended`, but Deepgram rejects
+                // a window under a second — so it is only requested when valid.
+                utterance_end_ms:
+                    manual || silenceMs === undefined || silenceMs < 1000 ? undefined : silenceMs,
+                vad_events: manual ? undefined : true,
+            },
+            input.providerOptions,
+        );
 
-        return DeepgramSTTSession.#connect(buildUrl(config.baseUrl, "/v1/listen", query), config.apiKey, mode, input);
+        return DeepgramSTTSession.#connect(
+            buildUrl(config.baseUrl, "/v1/listen", query),
+            config.apiKey,
+            mode,
+            input,
+        );
     }
 
     /**
@@ -225,7 +249,9 @@ export class DeepgramSTTSession implements STTSession {
                 // is_final that rides along with it.
                 const finality: Finality = message.speech_final
                     ? "turn_end"
-                    : message.is_final ? "final" : "partial";
+                    : message.is_final
+                      ? "final"
+                      : "partial";
 
                 this.#queue.push({
                     type: "transcript",

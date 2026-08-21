@@ -32,13 +32,16 @@ export class CartesiaSTTSession implements STTSession {
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
 
         if (mode === "manual") {
-            const params = withProviderOptions({
-                model: (input.model ?? DEFAULTS.manualSTTModel) as ManualModel,
-                encoding,
-                sample_rate,
-                keyterm: input.keyterms,
-                language: input.language as "en" | undefined,
-            }, input.providerOptions);
+            const params = withProviderOptions(
+                {
+                    model: (input.model ?? DEFAULTS.manualSTTModel) as ManualModel,
+                    encoding,
+                    sample_rate,
+                    keyterm: input.keyterms,
+                    language: input.language as "en" | undefined,
+                },
+                input.providerOptions,
+            );
 
             return new CartesiaSTTSession(client.stt.manualFinalize.websocket(params), mode);
         }
@@ -53,14 +56,18 @@ export class CartesiaSTTSession implements STTSession {
         }
 
         const turn = input.turnDetection?.mode === "vad" ? input.turnDetection : undefined;
-        const params = withProviderOptions({
-            model,
-            encoding,
-            sample_rate,
-            keyterm: input.keyterms,
-            turn_end_threshold: turn?.threshold,
-            turn_end_timeout_ms: turn?.silence === undefined ? undefined : Math.round(turn.silence * 1000),
-        }, input.providerOptions);
+        const params = withProviderOptions(
+            {
+                model,
+                encoding,
+                sample_rate,
+                keyterm: input.keyterms,
+                turn_end_threshold: turn?.threshold,
+                turn_end_timeout_ms:
+                    turn?.silence === undefined ? undefined : Math.round(turn.silence * 1000),
+            },
+            input.providerOptions,
+        );
 
         return new CartesiaSTTSession(client.stt.autoFinalize.websocket(params), mode);
     }

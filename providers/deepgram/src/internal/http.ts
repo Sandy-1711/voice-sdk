@@ -7,11 +7,7 @@ export type QueryValue = string | number | boolean | string[] | undefined;
 /** Deepgram configures everything through the query string, so this is the one
  * place that decides how a mapped value reaches the wire. Undefined is dropped
  * rather than sent as "undefined", and arrays repeat the key. */
-export function buildUrl(
-    baseUrl: string | undefined,
-    path: string,
-    params: Record<string, QueryValue>,
-): URL {
+export function buildUrl(baseUrl: string | undefined, path: string, params: Record<string, QueryValue>): URL {
     const url = new URL(path, baseUrl ?? DEFAULT_BASE_URL);
 
     for (const [key, value] of Object.entries(params)) {

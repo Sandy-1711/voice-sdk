@@ -17,7 +17,10 @@ function provider(config = {}) {
 }
 
 /** Scripts a session, then drains it once the far side hangs up. */
-async function eventsFrom(input: Parameters<DeepgramProvider["openSTTSession"]>[0], script: (connection: FakeConnection) => void) {
+async function eventsFrom(
+    input: Parameters<DeepgramProvider["openSTTSession"]>[0],
+    script: (connection: FakeConnection) => void,
+) {
     const session = await provider().openSTTSession(input);
     const connection = await server.connection();
 
@@ -156,7 +159,11 @@ describe("openSTTSession on nova-3", () => {
         it("maps the two levels of finality onto core's three", async () => {
             const events = await eventsFrom({}, (connection) => {
                 connection.send({ type: "Results", channel: { alternatives: [{ transcript: "hello" }] } });
-                connection.send({ type: "Results", is_final: true, channel: { alternatives: [{ transcript: "hello there" }] } });
+                connection.send({
+                    type: "Results",
+                    is_final: true,
+                    channel: { alternatives: [{ transcript: "hello there" }] },
+                });
                 connection.send({
                     type: "Results",
                     is_final: true,
@@ -176,7 +183,11 @@ describe("openSTTSession on nova-3", () => {
         // committed before the next segment is appended to the turn.
         it("accumulates segments into one cumulative turn", async () => {
             const events = await eventsFrom({}, (connection) => {
-                connection.send({ type: "Results", is_final: true, channel: { alternatives: [{ transcript: "hello there" }] } });
+                connection.send({
+                    type: "Results",
+                    is_final: true,
+                    channel: { alternatives: [{ transcript: "hello there" }] },
+                });
                 connection.send({
                     type: "Results",
                     is_final: true,
@@ -239,7 +250,9 @@ describe("openSTTSession on nova-3", () => {
             const events = await eventsFrom({ timestamps: false }, (connection) => {
                 connection.send({
                     type: "Results",
-                    channel: { alternatives: [{ transcript: "hello", words: [{ word: "hello", start: 0, end: 1 }] }] },
+                    channel: {
+                        alternatives: [{ transcript: "hello", words: [{ word: "hello", start: 0, end: 1 }] }],
+                    },
                 });
             });
 
@@ -391,7 +404,10 @@ describe("openSTTSession on flux", () => {
             connection.send({ type: "TurnInfo", event: "Update", transcript: "book a table" });
         });
 
-        expect(events.map((event) => event.type === "transcript" && event.delta)).toEqual(["book a", " table"]);
+        expect(events.map((event) => event.type === "transcript" && event.delta)).toEqual([
+            "book a",
+            " table",
+        ]);
     });
 
     it("carries the audio window and the end-of-turn confidence", async () => {

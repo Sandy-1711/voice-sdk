@@ -38,7 +38,14 @@ export class ElevenLabsTTS {
         // handling.
         if (input.timings) {
             assertCharacterTimings(input.timings);
-            const response = await this.#post({ voice, path: "/with-timestamps", input, value, operation: "speak", context });
+            const response = await this.#post({
+                voice,
+                path: "/with-timestamps",
+                input,
+                value,
+                operation: "speak",
+                context,
+            });
             const payload = camelize(await response.json()) as TimestampedAudio;
 
             return {
@@ -121,7 +128,15 @@ export class ElevenLabsTTS {
         };
     }
 
-    #post({ voice, path, input, value, operation, stream, context }: {
+    #post({
+        voice,
+        path,
+        input,
+        value,
+        operation,
+        stream,
+        context,
+    }: {
         voice: string;
         path: string;
         input: SpeakInput;

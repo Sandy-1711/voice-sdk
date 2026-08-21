@@ -79,8 +79,9 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
 
     // ink-2 detects turns for itself.
     it("hears a turn end in auto mode", async () => {
-        const heard = await listen({ turnDetection: { mode: "vad", silence: 1 } }, (event) =>
-            event.type === "transcript" && event.finality === "turn_end",
+        const heard = await listen(
+            { turnDetection: { mode: "vad", silence: 1 } },
+            (event) => event.type === "transcript" && event.finality === "turn_end",
         );
 
         expect(heard.toLowerCase()).toContain("book a table");

@@ -37,7 +37,7 @@ shift under you between releases.
 
 ## What is worth knowing
 
-**A voice *is* a model.** Deepgram has no separate voice or language parameter —
+**A voice _is_ a model.** Deepgram has no separate voice or language parameter —
 both are folded into the model name, as in `aura-2-thalia-en`. `voice` and
 `model` are two spellings of the same thing, and `model` wins if you pass both.
 
@@ -64,13 +64,13 @@ mu-law or A-law. Ask for a framed container there and you get a
 
 ## Formats
 
-| Container | Encoding                  | Sample rates                          |
-| --------- | ------------------------- | ------------------------------------- |
-| `raw`     | `pcm_s16le`, `mulaw`, `alaw` | 8000, 16000, 24000, 32000, 48000 |
-| `wav`     | `pcm_s16le`, `mulaw`, `alaw` | as above                          |
-| `mp3`     | —                         | as above, with `bitrate`               |
-| `ogg`     | opus                      | as above, with `bitrate`               |
-| `flac`, `aac` | —                     | as above                               |
+| Container     | Encoding                     | Sample rates                     |
+| ------------- | ---------------------------- | -------------------------------- |
+| `raw`         | `pcm_s16le`, `mulaw`, `alaw` | 8000, 16000, 24000, 32000, 48000 |
+| `wav`         | `pcm_s16le`, `mulaw`, `alaw` | as above                         |
+| `mp3`         | —                            | as above, with `bitrate`         |
+| `ogg`         | opus                         | as above, with `bitrate`         |
+| `flac`, `aac` | —                            | as above                         |
 
 Mono only. Anything else raises a `ValidationError` naming the field, before a
 request is sent.

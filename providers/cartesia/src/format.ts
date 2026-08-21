@@ -19,10 +19,7 @@ import { PROVIDER } from "./config";
  *   from<Thing> provider -> core    (reading a response)
  */
 
-type CartesiaOutputFormat =
-    | Cartesia.RawOutputFormat
-    | Cartesia.WAVOutputFormat
-    | Cartesia.MP3OutputFormat;
+type CartesiaOutputFormat = Cartesia.RawOutputFormat | Cartesia.WAVOutputFormat | Cartesia.MP3OutputFormat;
 
 type SampleRate = Cartesia.RawOutputFormat["sample_rate"];
 type BitRate = Cartesia.MP3OutputFormat["bit_rate"];
@@ -55,7 +52,10 @@ export interface OutputFormat {
  * Lowers a requested format onto Cartesia's vocabulary. Throws rather than
  * substituting, since the wrong encoding produces unplayable bytes.
  */
-export function toOutputFormat(requested: AudioFormat | undefined, fallback: ResolvedAudioFormat): OutputFormat {
+export function toOutputFormat(
+    requested: AudioFormat | undefined,
+    fallback: ResolvedAudioFormat,
+): OutputFormat {
     const container = requested?.container ?? fallback.container;
     const encoding = requested?.encoding ?? fallback.encoding;
     const sampleRate = requested?.sampleRate ?? fallback.sampleRate;
@@ -63,7 +63,11 @@ export function toOutputFormat(requested: AudioFormat | undefined, fallback: Res
     const bitrate = requested?.bitrate ?? fallback.bitrate;
 
     if (channels !== 1) {
-        throw new ValidationError(PROVIDER, "format.channels", `Cartesia only generates mono audio, got ${channels}.`);
+        throw new ValidationError(
+            PROVIDER,
+            "format.channels",
+            `Cartesia only generates mono audio, got ${channels}.`,
+        );
     }
     if (!isSampleRate(sampleRate)) {
         throw new ValidationError(
@@ -89,7 +93,11 @@ export function toOutputFormat(requested: AudioFormat | undefined, fallback: Res
     }
 
     if (container !== "raw" && container !== "wav") {
-        throw new ValidationError(PROVIDER, "format.container", `"${container}" is not supported. Supported: raw, wav, mp3.`);
+        throw new ValidationError(
+            PROVIDER,
+            "format.container",
+            `"${container}" is not supported. Supported: raw, wav, mp3.`,
+        );
     }
 
     const rawEncoding = RAW_ENCODING[encoding];
@@ -138,7 +146,9 @@ export function toSTTEncoding(format: AudioFormat | undefined): Cartesia.STTEnco
 }
 
 /** Only speed, volume and emotion have Cartesia equivalents; the rest are ignored. */
-export function toGenerationConfig(controls: VoiceControls | undefined): Cartesia.GenerationConfig | undefined {
+export function toGenerationConfig(
+    controls: VoiceControls | undefined,
+): Cartesia.GenerationConfig | undefined {
     if (!controls) return undefined;
 
     const config: Cartesia.GenerationConfig = {};
@@ -216,7 +226,11 @@ export function fromWords(words: unknown): TranscriptWord[] | undefined {
             const starts = Array.isArray(item.start) ? item.start : [];
             const ends = Array.isArray(item.end) ? item.end : [];
             item.words.forEach((text: unknown, index: number) => {
-                out.push({ text: String(text), start: Number(starts[index]) || 0, end: Number(ends[index]) || 0 });
+                out.push({
+                    text: String(text),
+                    start: Number(starts[index]) || 0,
+                    end: Number(ends[index]) || 0,
+                });
             });
         }
     }
@@ -233,7 +247,11 @@ function isBitRate(value: number): value is BitRate {
 
 function inRange(field: string, value: number, min: number, max: number): number {
     if (!(value >= min && value <= max)) {
-        throw new ValidationError(PROVIDER, field, `Expected a value between ${min} and ${max}, got ${value}.`);
+        throw new ValidationError(
+            PROVIDER,
+            field,
+            `Expected a value between ${min} and ${max}, got ${value}.`,
+        );
     }
     return value;
 }

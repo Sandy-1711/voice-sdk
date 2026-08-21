@@ -57,17 +57,25 @@ describe("transport wiring", () => {
         const provider = new DeepgramProvider({ apiKey: "k", baseUrl: server.baseUrl, logger: log });
         await provider.speak({ text: "hi" });
 
-        expect(log.debug.mock.calls.some(([line]) => String(line).includes("deepgram.speak ← 200"))).toBe(true);
+        expect(log.debug.mock.calls.some(([line]) => String(line).includes("deepgram.speak ← 200"))).toBe(
+            true,
+        );
     });
 
     it("keeps the api key out of the log, since it rides in a header", async () => {
         server = await fakeHttp({ "POST /v1/speak": { body: AUDIO } });
         const log = logger();
 
-        const provider = new DeepgramProvider({ apiKey: "super-secret", baseUrl: server.baseUrl, logger: log });
+        const provider = new DeepgramProvider({
+            apiKey: "super-secret",
+            baseUrl: server.baseUrl,
+            logger: log,
+        });
         await provider.speak({ text: "hi" });
 
-        const lines = [...log.debug.mock.calls, ...log.warn.mock.calls, ...log.error.mock.calls].flat().join("\n");
+        const lines = [...log.debug.mock.calls, ...log.warn.mock.calls, ...log.error.mock.calls]
+            .flat()
+            .join("\n");
         expect(lines).not.toContain("super-secret");
     });
 

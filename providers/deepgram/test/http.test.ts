@@ -120,7 +120,10 @@ describe("send", () => {
         // A second attempt cannot fix a bad parameter, so it is not worth the latency.
         it("does not retry a 4xx", async () => {
             server = await fakeHttp({
-                "POST /v1/speak": { status: 400, body: { err_code: "INVALID_MODEL", err_msg: "no such model" } },
+                "POST /v1/speak": {
+                    status: 400,
+                    body: { err_code: "INVALID_MODEL", err_msg: "no such model" },
+                },
             });
 
             await expect(
@@ -173,7 +176,10 @@ describe("send", () => {
         // A bare "400 Bad Request" hides which parameter Deepgram rejected.
         it("unwraps err_code and err_msg into the message", async () => {
             server = await fakeHttp({
-                "POST /v1/speak": { status: 400, body: { err_code: "INVALID_MODEL", err_msg: "no such model" } },
+                "POST /v1/speak": {
+                    status: 400,
+                    body: { err_code: "INVALID_MODEL", err_msg: "no such model" },
+                },
             });
 
             await expect(
@@ -255,7 +261,11 @@ describe("send", () => {
                     url: buildUrl(server.baseUrl, "/v1/speak", {}),
                     body: "{}",
                     contentType: "application/json",
-                    context: { signal: AbortSignal.abort(new Error("already gone")), timeout: 1000, retries: 0 },
+                    context: {
+                        signal: AbortSignal.abort(new Error("already gone")),
+                        timeout: 1000,
+                        retries: 0,
+                    },
                 }),
             ).rejects.toThrow("already gone");
         });

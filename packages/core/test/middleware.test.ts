@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { Voice } from "../src/index";
-import type { AudioStream, SpeakResult, TranscriptResult, VoiceMiddleware, VoiceProvider } from "../src/index";
+import type {
+    AudioStream,
+    SpeakResult,
+    TranscriptResult,
+    VoiceMiddleware,
+    VoiceProvider,
+} from "../src/index";
 import { collect } from "./helpers";
 
 const AUDIO = new Uint8Array([1, 2, 3]);
@@ -88,7 +94,11 @@ describe("operation middleware", () => {
             },
         };
 
-        const voice = new Voice({ provider: provider(), options: { timeout: 5000 }, middleware: [middleware] });
+        const voice = new Voice({
+            provider: provider(),
+            options: { timeout: 5000 },
+            middleware: [middleware],
+        });
         await voice.speak({ text: "hi" });
 
         expect(seen[0]).toMatchObject({

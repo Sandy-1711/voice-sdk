@@ -14,15 +14,18 @@ export class CartesiaSTT {
     }
 
     async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
-        const request = withProviderOptions({
-            file: await toFile(await collectAudio(input.audio), "audio"),
-            model: (input.model ?? this.#config.defaultSTTModel) as Cartesia.STTBatchModel,
-            language: input.language,
-            encoding: toSTTEncoding(input.format),
-            sample_rate: input.format?.sampleRate,
-            // Word is the only granularity Cartesia offers.
-            timestamp_granularities: input.timestamps ? ["word" as const] : undefined,
-        }, input.providerOptions);
+        const request = withProviderOptions(
+            {
+                file: await toFile(await collectAudio(input.audio), "audio"),
+                model: (input.model ?? this.#config.defaultSTTModel) as Cartesia.STTBatchModel,
+                language: input.language,
+                encoding: toSTTEncoding(input.format),
+                sample_rate: input.format?.sampleRate,
+                // Word is the only granularity Cartesia offers.
+                timestamp_granularities: input.timestamps ? ["word" as const] : undefined,
+            },
+            input.providerOptions,
+        );
 
         const response = await this.#client.stt.transcribe(request, toRequestOptions(context));
 

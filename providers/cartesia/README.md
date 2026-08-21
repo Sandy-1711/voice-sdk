@@ -42,10 +42,10 @@ call; otherwise you get a `ValidationError` naming both ways to supply one.
 
 **Realtime STT has two endpoints, and `turnDetection` picks between them.**
 
-| `turnDetection`     | Endpoint               | Default model  | Behaviour                                    |
-| ------------------- | ---------------------- | -------------- | -------------------------------------------- |
-| `{ mode: "vad" }` (default) | `/stt/turns/websocket` | `ink-2`     | Detects turns itself and emits turn events    |
-| `{ mode: "manual" }`| `/stt/websocket`       | `ink-whisper`  | No turn detection at all — `flush()` transcribes |
+| `turnDetection`             | Endpoint               | Default model | Behaviour                                        |
+| --------------------------- | ---------------------- | ------------- | ------------------------------------------------ |
+| `{ mode: "vad" }` (default) | `/stt/turns/websocket` | `ink-2`       | Detects turns itself and emits turn events       |
+| `{ mode: "manual" }`        | `/stt/websocket`       | `ink-whisper` | No turn detection at all — `flush()` transcribes |
 
 Both are normalised to the same event stream. Asking for automatic turns from
 `ink-whisper` raises a `ValidationError` at open time rather than leaving you
@@ -65,11 +65,11 @@ ignored.
 
 ## Formats
 
-| Container | Encoding                                        | Sample rates                                |
-| --------- | ----------------------------------------------- | ------------------------------------------- |
-| `raw`     | `pcm_s16le`, `pcm_f32le`, `mulaw`, `alaw`       | 8000, 16000, 22050, 24000, 44100, 48000     |
-| `wav`     | as above                                        | as above                                     |
-| `mp3`     | —                                               | as above, bitrate 32/64/96/128/192 kbps      |
+| Container | Encoding                                  | Sample rates                            |
+| --------- | ----------------------------------------- | --------------------------------------- |
+| `raw`     | `pcm_s16le`, `pcm_f32le`, `mulaw`, `alaw` | 8000, 16000, 22050, 24000, 44100, 48000 |
+| `wav`     | as above                                  | as above                                |
+| `mp3`     | —                                         | as above, bitrate 32/64/96/128/192 kbps |
 
 Mono only. Anything else raises a `ValidationError` naming the field, before a
 request is sent.

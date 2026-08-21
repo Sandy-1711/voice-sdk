@@ -83,13 +83,16 @@ export class DeepgramTTS {
         assertNoTimings(input.timings);
 
         const { params, resolved } = toOutputFormat(input.format ?? this.#config.defaultFormat, fallback);
-        const query = withProviderOptions({
-            ...params,
-            // Deepgram has neither a voice nor a language parameter — both are
-            // folded into the model name, as in `aura-2-thalia-en`.
-            model: input.model ?? input.voice ?? this.#config.defaultModel,
-            speed: toSpeed(input.controls),
-        }, input.providerOptions);
+        const query = withProviderOptions(
+            {
+                ...params,
+                // Deepgram has neither a voice nor a language parameter — both are
+                // folded into the model name, as in `aura-2-thalia-en`.
+                model: input.model ?? input.voice ?? this.#config.defaultModel,
+                speed: toSpeed(input.controls),
+            },
+            input.providerOptions,
+        );
 
         return { resolved, url: buildUrl(this.#config.baseUrl, "/v1/speak", query) };
     }

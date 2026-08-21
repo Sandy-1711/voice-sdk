@@ -9,14 +9,7 @@ export type AudioEncoding =
     | "aac"
     | "flac";
 
-export type AudioContainer =
-    | "raw"
-    | "wav"
-    | "mp3"
-    | "ogg"
-    | "webm"
-    | "flac"
-    | "aac";
+export type AudioContainer = "raw" | "wav" | "mp3" | "ogg" | "webm" | "flac" | "aac";
 
 /** A requested format. Unset fields fall back to the provider's default. */
 export interface AudioFormat {

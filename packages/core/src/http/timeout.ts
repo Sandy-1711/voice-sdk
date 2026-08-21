@@ -27,7 +27,10 @@ export function timeout(options: TimeoutOptions = {}): HttpMiddleware {
         const outer = request.signal;
         const controller = new AbortController();
         const timer = setTimeout(
-            () => controller.abort(new Error(`${request.meta.provider} ${request.meta.operation} timed out after ${ms}ms`)),
+            () =>
+                controller.abort(
+                    new Error(`${request.meta.provider} ${request.meta.operation} timed out after ${ms}ms`),
+                ),
             ms,
         );
         const forward = () => controller.abort(outer?.reason);

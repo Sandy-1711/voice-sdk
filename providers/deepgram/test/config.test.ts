@@ -56,14 +56,22 @@ describe("resolveConfig", () => {
     });
 
     it("lets defaultModel win when a caller sets both", () => {
-        const config = resolveConfig({ apiKey: "k", defaultVoice: "aura-2-andromeda-en", defaultModel: "aura-2-thalia-en" });
+        const config = resolveConfig({
+            apiKey: "k",
+            defaultVoice: "aura-2-andromeda-en",
+            defaultModel: "aura-2-thalia-en",
+        });
 
         expect(config.defaultModel).toBe("aura-2-thalia-en");
     });
 
     it("carries the rest through untouched", () => {
         const format = { container: "wav", sampleRate: 16000 } as const;
-        const config = resolveConfig({ apiKey: "k", baseUrl: "https://self-hosted.test", defaultFormat: format });
+        const config = resolveConfig({
+            apiKey: "k",
+            baseUrl: "https://self-hosted.test",
+            defaultFormat: format,
+        });
 
         expect(config.baseUrl).toBe("https://self-hosted.test");
         expect(config.defaultFormat).toBe(format);

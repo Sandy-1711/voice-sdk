@@ -1,13 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-    compose,
-    createTransport,
-    logging,
-    rateLimit,
-    redact,
-    retry,
-    timeout,
-} from "../src/index";
+import { compose, createTransport, logging, rateLimit, redact, retry, timeout } from "../src/index";
 import type { HttpHandler, HttpRequest, RequestMeta } from "../src/index";
 
 function request(overrides: Partial<HttpRequest> = {}): HttpRequest {
@@ -42,12 +34,15 @@ const fast = { baseDelay: 1, maxDelay: 2 };
 describe("compose", () => {
     it("puts the first middleware outermost", async () => {
         const order: string[] = [];
-        const tag = (name: string) => (next: HttpHandler): HttpHandler => async (incoming) => {
-            order.push(`${name} in`);
-            const response = await next(incoming);
-            order.push(`${name} out`);
-            return response;
-        };
+        const tag =
+            (name: string) =>
+            (next: HttpHandler): HttpHandler =>
+            async (incoming) => {
+                order.push(`${name} in`);
+                const response = await next(incoming);
+                order.push(`${name} out`);
+                return response;
+            };
 
         await compose([tag("a"), tag("b")])(async () => new Response())(request());
 
@@ -211,9 +206,9 @@ describe("timeout", () => {
         const controller = new AbortController();
         setTimeout(() => controller.abort(new Error("caller left")), 10);
 
-        await expect(
-            timeout({ ms: 10_000 })(hangs)(request({ signal: controller.signal })),
-        ).rejects.toThrow("caller left");
+        await expect(timeout({ ms: 10_000 })(hangs)(request({ signal: controller.signal }))).rejects.toThrow(
+            "caller left",
+        );
     });
 
     it("stops holding the deadline once the headers land", async () => {
@@ -235,7 +230,9 @@ describe("timeout", () => {
             return new Response("ok");
         };
 
-        await timeout({ ms: 10_000 })(handler)(request({ signal: controller.signal, meta: { stream: true } as RequestMeta }));
+        await timeout({ ms: 10_000 })(handler)(
+            request({ signal: controller.signal, meta: { stream: true } as RequestMeta }),
+        );
         controller.abort(new Error("barge-in"));
 
         expect(aborted).toBe(true);
@@ -370,6 +367,8 @@ describe("createTransport", () => {
     it("carries a per-call timeout into the chain", async () => {
         const transport = createTransport({ provider: "fake", fetch: hangs });
 
-        await expect(transport(request({ meta: { timeout: 20 } as RequestMeta }))).rejects.toThrow(/timed out/);
+        await expect(transport(request({ meta: { timeout: 20 } as RequestMeta }))).rejects.toThrow(
+            /timed out/,
+        );
     });
 });

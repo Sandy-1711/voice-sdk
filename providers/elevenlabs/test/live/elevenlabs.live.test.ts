@@ -37,7 +37,9 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
 
         expect(result.alignment?.unit).toBe("character");
         expect(result.alignment?.spans.length).toBeGreaterThan(0);
-        expect(result.alignment?.spans[0]?.end).toBeGreaterThanOrEqual(result.alignment?.spans[0]?.start ?? 0);
+        expect(result.alignment?.spans[0]?.end).toBeGreaterThanOrEqual(
+            result.alignment?.spans[0]?.start ?? 0,
+        );
     });
 
     it("streams synthesis in more than one chunk", async () => {
@@ -68,7 +70,9 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
     });
 
     it("runs a synthesis session and reports it finished", async () => {
-        const session = await voice().openTTSSession({ format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 } });
+        const session = await voice().openTTSSession({
+            format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+        });
         const events: TTSEvent[] = [];
 
         const reading = (async () => {

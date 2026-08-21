@@ -48,11 +48,19 @@ describe("speak", () => {
         expect(result.audio).toEqual(AUDIO);
         expect(result.requestId).toBe("req-5");
         // Batch audio is usually written to a file, so it carries a header.
-        expect(result.format).toEqual({ container: "wav", encoding: "pcm_s16le", sampleRate: 44100, channels: 1 });
+        expect(result.format).toEqual({
+            container: "wav",
+            encoding: "pcm_s16le",
+            sampleRate: 44100,
+            channels: 1,
+        });
     });
 
     it("sends the output format Cartesia spells out as an object", async () => {
-        const result = await provider().speak({ text: "hi", format: { container: "raw", sampleRate: 24000 } });
+        const result = await provider().speak({
+            text: "hi",
+            format: { container: "raw", sampleRate: 24000 },
+        });
 
         expect(server.last().json()).toMatchObject({
             output_format: { container: "raw", encoding: "pcm_s16le", sample_rate: 24000 },
@@ -102,7 +110,10 @@ describe("speak", () => {
     it("refuses to guess a voice, naming both ways to supply one", async () => {
         const bare = new CartesiaProvider({ apiKey: "k", baseUrl: server.baseUrl });
 
-        await expect(bare.speak({ text: "hi" })).rejects.toMatchObject({ name: "ValidationError", field: "voice" });
+        await expect(bare.speak({ text: "hi" })).rejects.toMatchObject({
+            name: "ValidationError",
+            field: "voice",
+        });
         expect(server.requests).toHaveLength(0);
     });
 

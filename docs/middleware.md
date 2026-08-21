@@ -34,12 +34,12 @@ exponentially with jitter. That is the bar this layer has to clear, and it does
 
 They are not the same thing, and conflating them is how you ship a bug.
 
-| | **Transport** | **Operation** |
-| --- | --- | --- |
-| Sees | one HTTP request → one `Response` | `speak(input)` → `SpeakResult` |
-| Lives in | `core/src/http/` | `core/src/middleware.ts` |
-| Applied by | the provider, in its constructor | the `Voice` wrapper |
-| Belongs here | retry, timeout, rate limit, auth | logging, metrics, tracing, caching |
+|              | **Transport**                     | **Operation**                      |
+| ------------ | --------------------------------- | ---------------------------------- |
+| Sees         | one HTTP request → one `Response` | `speak(input)` → `SpeakResult`     |
+| Lives in     | `core/src/http/`                  | `core/src/middleware.ts`           |
+| Applied by   | the provider, in its constructor  | the `Voice` wrapper                |
+| Belongs here | retry, timeout, rate limit, auth  | logging, metrics, tracing, caching |
 
 **Retry only works at the transport layer.** By the time an operation-level
 middleware could decide to retry `speakStream`, the caller may already have
@@ -98,7 +98,7 @@ Every position in that order is load-bearing:
 - **`rateLimit` outside `timeout`** so each attempt independently acquires a
   slot. A retry storm is exactly what you want the limiter to gate.
 - **`timeout` innermost** so every attempt gets a fresh deadline. A 30 s
-  timeout means 30 s *per attempt*, not 30 s shared across three of them.
+  timeout means 30 s _per attempt_, not 30 s shared across three of them.
 
 ### What `timeout` actually bounds
 

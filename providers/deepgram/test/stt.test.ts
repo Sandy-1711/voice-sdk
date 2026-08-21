@@ -15,16 +15,28 @@ const RESPONSE = {
                         confidence: 0.99,
                         languages: ["en"],
                         words: [
-                            { word: "hello", start: 0.1, end: 0.4, confidence: 0.98, punctuated_word: "Hello", speaker: 0 },
-                            { word: "there", start: 0.4, end: 0.8, confidence: 0.97, punctuated_word: "there.", speaker: 0 },
+                            {
+                                word: "hello",
+                                start: 0.1,
+                                end: 0.4,
+                                confidence: 0.98,
+                                punctuated_word: "Hello",
+                                speaker: 0,
+                            },
+                            {
+                                word: "there",
+                                start: 0.4,
+                                end: 0.8,
+                                confidence: 0.97,
+                                punctuated_word: "there.",
+                                speaker: 0,
+                            },
                         ],
                     },
                 ],
             },
         ],
-        utterances: [
-            { transcript: "hello there", start: 0.1, end: 0.8, confidence: 0.98, speaker: 0 },
-        ],
+        utterances: [{ transcript: "hello there", start: 0.1, end: 0.8, confidence: 0.98, speaker: 0 }],
     },
 };
 
@@ -76,7 +88,10 @@ describe("transcribe", () => {
             yield audio.subarray(8);
         }
 
-        await provider().transcribe({ audio: chunks(), format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 } });
+        await provider().transcribe({
+            audio: chunks(),
+            format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+        });
 
         expect(server.last().body).toEqual(audio);
     });
@@ -123,7 +138,10 @@ describe("transcribe", () => {
         });
 
         it("lets providerOptions through for settings core does not model", async () => {
-            await provider().transcribe({ audio: new Uint8Array([1]), providerOptions: { smart_format: true } });
+            await provider().transcribe({
+                audio: new Uint8Array([1]),
+                providerOptions: { smart_format: true },
+            });
 
             expect(server.last().query.smart_format).toBe("true");
         });
@@ -159,16 +177,24 @@ describe("transcribe", () => {
             await server.close();
             server = await fakeHttp({
                 "POST /v1/listen": {
-                    body: { results: { channels: [{ alternatives: [{ transcript: "hola", languages: ["es"] }] }] } },
+                    body: {
+                        results: {
+                            channels: [{ alternatives: [{ transcript: "hola", languages: ["es"] }] }],
+                        },
+                    },
                 },
             });
             expect((await provider().transcribe({ audio: new Uint8Array([1]) })).language).toBe("es");
 
             await server.close();
             server = await fakeHttp({
-                "POST /v1/listen": { body: { results: { channels: [{ alternatives: [{ transcript: "hola" }] }] } } },
+                "POST /v1/listen": {
+                    body: { results: { channels: [{ alternatives: [{ transcript: "hola" }] }] } },
+                },
             });
-            expect((await provider().transcribe({ audio: new Uint8Array([1]), language: "fr" })).language).toBe("fr");
+            expect(
+                (await provider().transcribe({ audio: new Uint8Array([1]), language: "fr" })).language,
+            ).toBe("fr");
         });
 
         it("survives a response with no results at all", async () => {

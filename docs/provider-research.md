@@ -29,10 +29,10 @@ The type surface this research produced lives in [type-design.md](./type-design.
 The most important definitional decision, because "realtime TTS" is ambiguous
 and providers split along the seam:
 
-- **`tts`** — one-shot synthesis *and* HTTP output-streaming. Full text goes in,
+- **`tts`** — one-shot synthesis _and_ HTTP output-streaming. Full text goes in,
   audio comes back (either buffered or as a chunked/SSE response). Every
   provider with TTS supports both.
-- **`realtimeTTS`** — a **duplex WebSocket session**: push text *incrementally*
+- **`realtimeTTS`** — a **duplex WebSocket session**: push text _incrementally_
   (LLM tokens) while audio streams back. This is a genuinely different
   capability, and it is where OpenAI and Groq drop out.
 - **`stt`** — batch transcription of a complete audio file.
@@ -40,7 +40,7 @@ and providers split along the seam:
   incremental transcripts.
 
 > ⚠️ **OpenAI can stream TTS audio out** (chunked transfer / `stream_format=sse`)
-> but cannot accept streamed text *in*. Under this definition it is
+> but cannot accept streamed text _in_. Under this definition it is
 > `tts: true, realtimeTTS: false`, and `speakStream()` still works. This
 > distinction must be documented loudly or users will file bugs.
 
@@ -54,13 +54,13 @@ and providers split along the seam:
 `token` query param.
 **Base:** `https://api.elevenlabs.io` (regional variants: `api.us.`, `api.eu.residency.`, `api.in.residency.`, `api.sg.residency.`)
 
-| Capability      | Endpoint                                              |
-| --------------- | ----------------------------------------------------- |
-| `tts`           | `POST /v1/text-to-speech/{voice_id}` (+ `/stream`)     |
-| `stt`           | `POST /v1/speech-to-text` — **multipart/form-data**    |
-| `realtimeTTS`   | `WSS /v1/text-to-speech/{voice_id}/stream-input`       |
-| `realtimeTTS`   | `WSS /v1/text-to-speech/{voice_id}/multi-stream-input` (multi-context) |
-| `realtimeSTT`   | `WSS /v1/speech-to-text/realtime` (Scribe v2 Realtime) |
+| Capability    | Endpoint                                                               |
+| ------------- | ---------------------------------------------------------------------- |
+| `tts`         | `POST /v1/text-to-speech/{voice_id}` (+ `/stream`)                     |
+| `stt`         | `POST /v1/speech-to-text` — **multipart/form-data**                    |
+| `realtimeTTS` | `WSS /v1/text-to-speech/{voice_id}/stream-input`                       |
+| `realtimeTTS` | `WSS /v1/text-to-speech/{voice_id}/multi-stream-input` (multi-context) |
+| `realtimeSTT` | `WSS /v1/speech-to-text/realtime` (Scribe v2 Realtime)                 |
 
 **TTS body:** `text`, `model_id` (default `eleven_multilingual_v2`),
 `voice_settings{stability, similarity_boost, style, speed, use_speaker_boost}`,
@@ -78,6 +78,7 @@ and providers split along the seam:
 Response: `{ language_code, language_probability, text, words[{text, start, end, type, speaker_id, logprob, characters}] }`.
 
 **Realtime TTS protocol** (text in → audio out):
+
 ```jsonc
 // 1. handshake — note the single-space text
 { "text": " ", "voice_settings": {...}, "generation_config": { "chunk_length_schedule": [120,160,250,290] } }
@@ -89,10 +90,12 @@ Response: `{ language_code, language_probability, text, words[{text, start, end,
 { "audio": "<base64>", "alignment": { "chars": [...], "charStartTimesMs": [...], "charDurationsMs": [...] } }
 { "isFinal": true }
 ```
+
 Query params: `model_id`, `language_code`, `output_format`, `auto_mode`,
 `sync_alignment`, `inactivity_timeout`, `enable_ssml_parsing`, `seed`.
 
 **Realtime STT protocol** (audio in → text out):
+
 ```jsonc
 // client →
 { "message_type": "input_audio_chunk", "audio_base_64": "...", "commit": true, "sample_rate": 16000 }
@@ -101,6 +104,7 @@ Query params: `model_id`, `language_code`, `output_format`, `auto_mode`,
 //   final_transcript_with_timestamps | committed_transcript |
 //   committed_transcript_with_timestamps | committed_transcript_entities
 ```
+
 Query params: `model_id`, `audio_format` (`pcm_{8000..48000}` | `ulaw_8000`,
 default `pcm_16000`), `language_code`, `commit_strategy` (`manual` | `vad`),
 `vad_threshold`, `vad_silence_threshold_secs`, `min_speech_duration_ms`,
@@ -125,11 +129,11 @@ Three-level finality: partial → final → committed.
 **Auth:** `Authorization: Token <key>` header, or `access_token` query param.
 **Base:** `https://api.deepgram.com` / `wss://api.deepgram.com`
 
-| Capability    | Endpoint             |
-| ------------- | -------------------- |
-| `tts`         | `POST /v1/speak`     |
-| `stt`         | `POST /v1/listen`    |
-| `realtimeTTS` | `WSS /v1/speak`      |
+| Capability    | Endpoint                                             |
+| ------------- | ---------------------------------------------------- |
+| `tts`         | `POST /v1/speak`                                     |
+| `stt`         | `POST /v1/listen`                                    |
+| `realtimeTTS` | `WSS /v1/speak`                                      |
 | `realtimeSTT` | `WSS /v1/listen` (nova-3) or `WSS /v2/listen` (Flux) |
 
 Deepgram is the cleanest fit: same path for batch and realtime, config entirely
@@ -141,6 +145,7 @@ via query params, no per-request JSON schema differences.
 `utterance_end_ms`, `vad_events`, `smart_format`, `punctuate`, `diarize`.
 
 **Realtime STT messages:**
+
 ```jsonc
 // client → binary audio frames, plus JSON control:
 { "type": "KeepAlive" }    // REQUIRED every ~10s or the socket closes
@@ -156,6 +161,7 @@ via query params, no per-request JSON schema differences.
 ```
 
 **Realtime TTS messages:**
+
 ```jsonc
 { "type": "Speak", "text": "Your text here" }
 { "type": "Flush" }   // → server sends { "type": "Flushed", "sequence_id": n }
@@ -163,6 +169,7 @@ via query params, no per-request JSON schema differences.
 { "type": "Close" }
 // server → binary audio frames + Metadata / Warning
 ```
+
 TTS params: `model` (default `aura-asteria-en`, 100+ voices), `encoding`
 (`linear16` | `mulaw` | `alaw`, default `linear16`), `sample_rate` (8000, 16000,
 24000 default, 32000, 48000), `speed`.
@@ -170,6 +177,7 @@ TTS params: `model` (default `aura-asteria-en`, 100+ voices), `encoding`
 **Flux — a second, turn-shaped realtime STT** (`WSS /v2/listen`, models
 `flux-general-en` / `flux-general-multi`). Instead of interim/final transcripts
 it emits turn lifecycle events:
+
 ```jsonc
 { "type": "Connected", "request_id": "...", "sequence_id": 0 }
 { "type": "TurnInfo", "event": "StartOfTurn" | "Update" | "EagerEndOfTurn"
@@ -178,6 +186,7 @@ it emits turn lifecycle events:
   "transcript": "...", "words": [{ "word", "confidence", "start", "end" }],
   "end_of_turn_confidence": 0.91 }
 ```
+
 Params: `eot_threshold` (default 0.7), `eager_eot_threshold`, `eot_timeout_ms`
 (default 5000), plus the usual `encoding` / `sample_rate`. `EagerEndOfTurn` is a
 speculative boundary that `TurnResumed` can revoke — useful for starting an LLM
@@ -199,12 +208,12 @@ app-triggered finalization from a natural one.
 Browser path: JWT `access_token`.
 **Base:** `https://api.cartesia.ai` / `wss://api.cartesia.ai`
 
-| Capability    | Endpoint                                     |
-| ------------- | -------------------------------------------- |
+| Capability    | Endpoint                                       |
+| ------------- | ---------------------------------------------- |
 | `tts`         | `POST /tts/bytes` (+ `/tts/sse` for streaming) |
-| `stt`         | batch HTTP                                    |
-| `realtimeTTS` | `WSS /tts/websocket`                          |
-| `realtimeSTT` | `WSS /stt/websocket`                          |
+| `stt`         | batch HTTP                                     |
+| `realtimeTTS` | `WSS /tts/websocket`                           |
+| `realtimeSTT` | `WSS /stt/websocket`                           |
 
 **TTS body:** `model_id` (`sonic-3.5`, `sonic-3`, `sonic-latest`), `transcript`
 (**not** `text`), `voice: { mode: "id", id }`, `output_format: { container, encoding, sample_rate }`,
@@ -225,15 +234,16 @@ Server: `{"type":"chunk","data":"<base64>","context_id","step_time"}`,
 (`pcm_s16le` | `pcm_s32le` | `pcm_f16le` | `pcm_f32le` | `pcm_mulaw` | `pcm_alaw`),
 `sample_rate`, `cartesia_version`, `language`, `min_volume`,
 `max_silence_duration_secs` (ink-whisper only), `keyterm` (ink-2 only, ≤100).
-Client sends **binary audio frames** plus the *text* commands `finalize` and
+Client sends **binary audio frames** plus the _text_ commands `finalize` and
 `close`. Server:
+
 ```jsonc
 { "type": "transcript", "is_final": false, "request_id": "...", "text": "delta", "duration": 1.2, "words": [...] }
 { "type": "flush_done", "request_id": "..." }
 { "type": "done", "request_id": "..." }
 ```
 
-**Quirks:** the `context_id` continuation model maps *very* cleanly onto
+**Quirks:** the `context_id` continuation model maps _very_ cleanly onto
 `push`/`flush`. But **`ink-whisper` has no automatic turn detection** — you must
 send `finalize` explicitly. Control messages are bare strings, not JSON.
 Field is `transcript`, not `text`, on the TTS side.
@@ -246,12 +256,12 @@ Field is `transcript`, not `text`, on the TTS side.
 **Base:** `https://api.openai.com` / `wss://api.openai.com`
 Docs moved to `developers.openai.com/api/docs/...`.
 
-| Capability    | Endpoint                                                     |
-| ------------- | ------------------------------------------------------------ |
-| `tts`         | `POST /v1/audio/speech`                                       |
-| `stt`         | `POST /v1/audio/transcriptions`                               |
-| `realtimeTTS` | ❌ — no text-in streaming session                              |
-| `realtimeSTT` | `WSS /v1/realtime` with `session.type = "transcription"`       |
+| Capability    | Endpoint                                                 |
+| ------------- | -------------------------------------------------------- |
+| `tts`         | `POST /v1/audio/speech`                                  |
+| `stt`         | `POST /v1/audio/transcriptions`                          |
+| `realtimeTTS` | ❌ — no text-in streaming session                        |
+| `realtimeSTT` | `WSS /v1/realtime` with `session.type = "transcription"` |
 
 **TTS:** models `gpt-4o-mini-tts` (current), `tts-1`, `tts-1-hd`. Body: `model`,
 `input`, `voice`, `instructions` (natural-language style control — no other
@@ -269,6 +279,7 @@ Output streaming via chunked transfer encoding.
 (not supported on `whisper-1`).
 
 **Realtime STT:**
+
 ```jsonc
 { "type": "session.update", "session": {
     "type": "transcription",
@@ -297,8 +308,8 @@ temporary token.
 **Base:** `https://api.assemblyai.com` (EU: `api.eu.assemblyai.com`) /
 `wss://streaming.assemblyai.com`
 
-| Capability    | Endpoint                             |
-| ------------- | ------------------------------------ |
+| Capability    | Endpoint                              |
+| ------------- | ------------------------------------- |
 | `tts`         | ❌ not offered                        |
 | `stt`         | `POST /v2/transcript` — **async job** |
 | `realtimeTTS` | ❌                                    |
@@ -306,6 +317,7 @@ temporary token.
 
 **Batch STT is the outlier:** it does not accept raw bytes and does not return a
 transcript synchronously.
+
 1. `POST /v2/upload` with the bytes → get a URL (or supply your own `audio_url`)
 2. `POST /v2/transcript` with `audio_url`, `speech_models`
    (default `["universal-3-5-pro","universal-2"]`), `language_code`,
@@ -317,6 +329,7 @@ Response `words[]`: `{ text, start, end, confidence, speaker }` — **timings in
 milliseconds**, unlike everyone else's seconds.
 
 **Realtime STT:**
+
 ```jsonc
 // client → binary audio frames
 // server →
@@ -326,12 +339,13 @@ milliseconds**, unlike everyone else's seconds.
   "words": [{ "text", "start", "end", "confidence", "word_is_final" }] }
 { "type": "Termination", "audio_duration_seconds": 10, "session_duration_seconds": 12 }
 ```
+
 Query params: `speech_model` (`universal-3-5-pro`), `encoding` (`aac` |
 `ogg_opus` | `opus`; default 16-bit PCM mono), `sample_rate`, `format_turns`,
 `end_of_turn_confidence_threshold`.
 
 **Quirks:** the **turn model is fundamentally different** — `transcript` is the
-*cumulative text of the current turn*, re-sent and revised on every event, not a
+_cumulative text of the current turn_, re-sent and revised on every event, not a
 delta. Timings in ms. Batch requires a two-step upload the provider must hide.
 
 ---
@@ -341,12 +355,12 @@ delta. Timings in ms. Batch requires a two-step upload the provider must hide.
 **Auth:** `Authorization: Bearer <key>`. OpenAI-compatible surface.
 **Base:** `https://api.groq.com/openai/v1`
 
-| Capability    | Endpoint                       |
-| ------------- | ------------------------------ |
-| `tts`         | `POST /audio/speech`           |
-| `stt`         | `POST /audio/transcriptions`   |
-| `realtimeTTS` | ❌                             |
-| `realtimeSTT` | ❌                             |
+| Capability    | Endpoint                     |
+| ------------- | ---------------------------- |
+| `tts`         | `POST /audio/speech`         |
+| `stt`         | `POST /audio/transcriptions` |
+| `realtimeTTS` | ❌                           |
+| `realtimeSTT` | ❌                           |
 
 **STT:** `whisper-large-v3-turbo`, `whisper-large-v3`. Fields: `file` or `url`,
 `model`, `language`, `response_format` (`json` | `verbose_json` | `text`),
@@ -371,14 +385,14 @@ abstraction leaks.
 
 ### 3.1 Realtime STT finality is not a boolean
 
-| Provider   | Finality model                                                      |
-| ---------- | ------------------------------------------------------------------- |
-| Deepgram   | `is_final` (segment stable) + `speech_final` (endpoint) — 2 levels    |
+| Provider   | Finality model                                                            |
+| ---------- | ------------------------------------------------------------------------- |
+| Deepgram   | `is_final` (segment stable) + `speech_final` (endpoint) — 2 levels        |
 | DG Flux    | `StartOfTurn` → `Update` → `EagerEndOfTurn` ⇄ `TurnResumed` → `EndOfTurn` |
-| ElevenLabs | `partial` → `final` → `committed` — 3 levels                          |
-| AssemblyAI | `end_of_turn` + `turn_is_formatted` — turn-scoped                     |
-| Cartesia   | `is_final`, but **only after an explicit `finalize`** on ink-whisper   |
-| OpenAI     | `delta` → `completed`                                                 |
+| ElevenLabs | `partial` → `final` → `committed` — 3 levels                              |
+| AssemblyAI | `end_of_turn` + `turn_is_formatted` — turn-scoped                         |
+| Cartesia   | `is_final`, but **only after an explicit `finalize`** on ink-whisper      |
+| OpenAI     | `delta` → `completed`                                                     |
 
 The current core's `isFinal: boolean` is lossy. **Proposal:** a three-state
 discriminator that every provider can map onto without inventing information:
@@ -401,7 +415,7 @@ OpenAI emits **incremental deltas** (`"Hello,"` then `" how"`). AssemblyAI
 emits the **cumulative turn transcript** every time. Deepgram emits **per-segment**
 text. Cartesia emits deltas.
 
-**Proposal:** normalize to *both*, computed by the core so providers stay dumb —
+**Proposal:** normalize to _both_, computed by the core so providers stay dumb —
 `text` is always the cumulative text of the current turn; `delta` is always just
 the new part. Providers that give one get the other derived.
 
@@ -422,7 +436,7 @@ an unrepresentable combination** rather than silently substituting.
 ### 3.4 Realtime input format is required, not optional
 
 Deepgram, Cartesia, and ElevenLabs all need encoding + sample rate as
-*connection-time* query params. There is no negotiation and no sniffing. So
+_connection-time_ query params. There is no negotiation and no sniffing. So
 `RealtimeSTTInput.inputFormat` should be effectively required (or defaulted to
 PCM s16le 16 kHz, the common denominator) — it cannot be an afterthought.
 
@@ -453,14 +467,14 @@ typed error, not a raw 413.
 
 ### 3.8 Auth header shapes
 
-| Provider   | Header                              |
-| ---------- | ----------------------------------- |
-| ElevenLabs | `xi-api-key: <key>`                 |
-| Deepgram   | `Authorization: Token <key>`        |
-| OpenAI     | `Authorization: Bearer <key>`       |
-| Groq       | `Authorization: Bearer <key>`       |
+| Provider   | Header                                             |
+| ---------- | -------------------------------------------------- |
+| ElevenLabs | `xi-api-key: <key>`                                |
+| Deepgram   | `Authorization: Token <key>`                       |
+| OpenAI     | `Authorization: Bearer <key>`                      |
+| Groq       | `Authorization: Bearer <key>`                      |
 | Cartesia   | `Authorization: Bearer <key>` + `Cartesia-Version` |
-| AssemblyAI | `Authorization: <key>` (no prefix)  |
+| AssemblyAI | `Authorization: <key>` (no prefix)                 |
 
 All six additionally offer an ephemeral/temporary token flow for browser use —
 worth a shared `getEphemeralToken()` shape later, but out of scope for v0.

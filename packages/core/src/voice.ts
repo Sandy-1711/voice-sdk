@@ -2,7 +2,13 @@ import type { VoiceProvider, VoiceInfo } from "./provider";
 import { CapabilityError } from "./errors";
 import type { AudioStream } from "./audio";
 import type { Logger } from "./logger";
-import { chain, chainListVoices, logOperations, type OperationCall, type VoiceMiddleware } from "./middleware";
+import {
+    chain,
+    chainListVoices,
+    logOperations,
+    type OperationCall,
+    type VoiceMiddleware,
+} from "./middleware";
 import type { RealtimeSTTInput, RealtimeTTSInput, STTSession, TTSSession } from "./realtime";
 import type { RequestContext, SpeakInput, SpeakResult, TranscribeInput, TranscriptResult } from "./types";
 
@@ -59,8 +65,11 @@ export class Voice<TProvider extends VoiceProvider> {
         if (!speak) throw new CapabilityError(this.#provider.name, "speak");
 
         const resolved = this.#context(context);
-        return chain(this.#middleware, (entry) => entry.speak, this.#call("speak", resolved), (next) =>
-            speak.call(this.#provider, next, resolved),
+        return chain(
+            this.#middleware,
+            (entry) => entry.speak,
+            this.#call("speak", resolved),
+            (next) => speak.call(this.#provider, next, resolved),
         )(input);
     }
 
@@ -69,8 +78,11 @@ export class Voice<TProvider extends VoiceProvider> {
         if (!speakStream) throw new CapabilityError(this.#provider.name, "speakStream");
 
         const resolved = this.#context(context);
-        return chain(this.#middleware, (entry) => entry.speakStream, this.#call("speakStream", resolved), (next) =>
-            speakStream.call(this.#provider, next, resolved),
+        return chain(
+            this.#middleware,
+            (entry) => entry.speakStream,
+            this.#call("speakStream", resolved),
+            (next) => speakStream.call(this.#provider, next, resolved),
         )(input);
     }
 
@@ -79,8 +91,11 @@ export class Voice<TProvider extends VoiceProvider> {
         if (!transcribe) throw new CapabilityError(this.#provider.name, "transcribe");
 
         const resolved = this.#context(context);
-        return chain(this.#middleware, (entry) => entry.transcribe, this.#call("transcribe", resolved), (next) =>
-            transcribe.call(this.#provider, next, resolved),
+        return chain(
+            this.#middleware,
+            (entry) => entry.transcribe,
+            this.#call("transcribe", resolved),
+            (next) => transcribe.call(this.#provider, next, resolved),
         )(input);
     }
 
@@ -89,8 +104,11 @@ export class Voice<TProvider extends VoiceProvider> {
         const open = this.#provider.openTTSSession;
         if (!open) throw new CapabilityError(this.#provider.name, "openTTSSession");
 
-        return chain(this.#middleware, (entry) => entry.openTTSSession, this.#call("openTTSSession"), (next) =>
-            open.call(this.#provider, next),
+        return chain(
+            this.#middleware,
+            (entry) => entry.openTTSSession,
+            this.#call("openTTSSession"),
+            (next) => open.call(this.#provider, next),
         )(input);
     }
 
@@ -99,8 +117,11 @@ export class Voice<TProvider extends VoiceProvider> {
         const open = this.#provider.openSTTSession;
         if (!open) throw new CapabilityError(this.#provider.name, "openSTTSession");
 
-        return chain(this.#middleware, (entry) => entry.openSTTSession, this.#call("openSTTSession"), (next) =>
-            open.call(this.#provider, next),
+        return chain(
+            this.#middleware,
+            (entry) => entry.openSTTSession,
+            this.#call("openSTTSession"),
+            (next) => open.call(this.#provider, next),
         )(input);
     }
 
@@ -108,7 +129,9 @@ export class Voice<TProvider extends VoiceProvider> {
         const listVoices = this.#provider.listVoices;
         if (!listVoices) throw new CapabilityError(this.#provider.name, "listVoices");
 
-        return chainListVoices(this.#middleware, this.#call("listVoices"), () => listVoices.call(this.#provider))();
+        return chainListVoices(this.#middleware, this.#call("listVoices"), () =>
+            listVoices.call(this.#provider),
+        )();
     }
 
     async close(): Promise<void> {

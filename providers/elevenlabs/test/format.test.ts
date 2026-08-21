@@ -39,13 +39,22 @@ describe("toOutputFormat", () => {
             value: "opus_48000_64",
             resolved: { container: "ogg", encoding: "opus", sampleRate: 48000, bitrate: 64, channels: 1 },
         });
-        expect(toOutputFormat({ container: "webm", sampleRate: 48000 }, DEFAULT_FORMAT).resolved.container).toBe("ogg");
+        expect(
+            toOutputFormat({ container: "webm", sampleRate: 48000 }, DEFAULT_FORMAT).resolved.container,
+        ).toBe("ogg");
     });
 
     it("names headerless output by its codec, spelling mu-law ulaw", () => {
-        expect(toOutputFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }, DEFAULT_FORMAT).value).toBe("pcm_16000");
-        expect(toOutputFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }, DEFAULT_FORMAT).value).toBe("ulaw_8000");
-        expect(toOutputFormat({ container: "raw", encoding: "alaw", sampleRate: 8000 }, DEFAULT_FORMAT).value).toBe("alaw_8000");
+        expect(
+            toOutputFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }, DEFAULT_FORMAT)
+                .value,
+        ).toBe("pcm_16000");
+        expect(
+            toOutputFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }, DEFAULT_FORMAT).value,
+        ).toBe("ulaw_8000");
+        expect(
+            toOutputFormat({ container: "raw", encoding: "alaw", sampleRate: 8000 }, DEFAULT_FORMAT).value,
+        ).toBe("alaw_8000");
     });
 
     describe("rejects what the API will not accept", () => {
@@ -60,7 +69,9 @@ describe("toOutputFormat", () => {
         // Built, then checked against the values the API actually takes - and
         // the message lists the neighbours in the same family.
         it("names the whole format for a combination that does not exist", () => {
-            const thrown = catchError(() => toOutputFormat({ container: "mp3", sampleRate: 48000 }, DEFAULT_FORMAT));
+            const thrown = catchError(() =>
+                toOutputFormat({ container: "mp3", sampleRate: 48000 }, DEFAULT_FORMAT),
+            );
 
             expect(thrown).toMatchObject({ field: "format" });
             expect((thrown as Error).message).toContain("mp3_44100_128");
@@ -74,7 +85,9 @@ describe("toOutputFormat", () => {
         });
 
         it("names format.encoding for a codec that cannot be headerless", () => {
-            expect(catchError(() => toOutputFormat({ container: "raw", encoding: "pcm_f32le" }, DEFAULT_FORMAT))).toMatchObject({
+            expect(
+                catchError(() => toOutputFormat({ container: "raw", encoding: "pcm_f32le" }, DEFAULT_FORMAT)),
+            ).toMatchObject({
                 field: "format.encoding",
             });
         });
@@ -84,12 +97,19 @@ describe("toOutputFormat", () => {
 describe("toStreamOutputFormat", () => {
     it("passes through anything the streaming endpoints accept", () => {
         expect(toStreamOutputFormat(undefined, DEFAULT_FORMAT).value).toBe("mp3_44100_128");
-        expect(toStreamOutputFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 24000 }, DEFAULT_FORMAT).value).toBe("pcm_24000");
+        expect(
+            toStreamOutputFormat(
+                { container: "raw", encoding: "pcm_s16le", sampleRate: 24000 },
+                DEFAULT_FORMAT,
+            ).value,
+        ).toBe("pcm_24000");
     });
 
     // A wav header declares a length that is not known until generation ends.
     it("refuses wav and points the caller at speak()", () => {
-        const thrown = catchError(() => toStreamOutputFormat({ container: "wav", sampleRate: 16000 }, DEFAULT_FORMAT));
+        const thrown = catchError(() =>
+            toStreamOutputFormat({ container: "wav", sampleRate: 16000 }, DEFAULT_FORMAT),
+        );
 
         expect(thrown).toMatchObject({ field: "format.container" });
         expect((thrown as Error).message).toContain("speak()");
@@ -145,19 +165,29 @@ describe("toFileFormat", () => {
 
     // The raw path is lower latency, but it exists for exactly one shape.
     it("takes the low-latency path for 16 kHz mono pcm", () => {
-        expect(toFileFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 16000 })).toBe("pcm_s16le_16");
+        expect(toFileFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 16000 })).toBe(
+            "pcm_s16le_16",
+        );
         expect(toFileFormat({ container: "raw", encoding: "pcm_s16le" })).toBe("pcm_s16le_16");
         expect(toFileFormat({ encoding: "pcm_s16le", sampleRate: 16000 })).toBe("pcm_s16le_16");
     });
 
     it("refuses any other headerless shape rather than letting it be sniffed and fail", () => {
-        expect(catchError(() => toFileFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 8000 }))).toMatchObject({
+        expect(
+            catchError(() => toFileFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 8000 })),
+        ).toMatchObject({
             field: "format",
         });
-        expect(catchError(() => toFileFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 }))).toMatchObject({
+        expect(
+            catchError(() => toFileFormat({ container: "raw", encoding: "mulaw", sampleRate: 8000 })),
+        ).toMatchObject({
             field: "format",
         });
-        expect(catchError(() => toFileFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 16000, channels: 2 }))).toMatchObject({
+        expect(
+            catchError(() =>
+                toFileFormat({ container: "raw", encoding: "pcm_s16le", sampleRate: 16000, channels: 2 }),
+            ),
+        ).toMatchObject({
             field: "format",
         });
     });
@@ -175,7 +205,10 @@ describe("toGranularity", () => {
     });
 
     it("refuses a granularity ElevenLabs does not report", () => {
-        expect(catchError(() => toGranularity("segment"))).toMatchObject({ name: "ValidationError", field: "timestamps" });
+        expect(catchError(() => toGranularity("segment"))).toMatchObject({
+            name: "ValidationError",
+            field: "timestamps",
+        });
     });
 });
 
@@ -194,10 +227,23 @@ describe("assertCharacterTimings", () => {
 describe("fromWord", () => {
     // logprob is a log probability in [-inf, 0], not a 0-1 confidence.
     it("turns a log probability into a confidence", () => {
-        const word = fromWord({ text: "hello", start: 0.1, end: 0.5, type: "word", logprob: 0, speakerId: "speaker_0" });
+        const word = fromWord({
+            text: "hello",
+            start: 0.1,
+            end: 0.5,
+            type: "word",
+            logprob: 0,
+            speakerId: "speaker_0",
+        });
 
         expect(word.confidence).toBe(1);
-        expect(word).toMatchObject({ text: "hello", start: 0.1, end: 0.5, kind: "word", speaker: "speaker_0" });
+        expect(word).toMatchObject({
+            text: "hello",
+            start: 0.1,
+            end: 0.5,
+            kind: "word",
+            speaker: "speaker_0",
+        });
     });
 
     it("keeps a low confidence low", () => {
@@ -232,7 +278,8 @@ describe("fromAlignment", () => {
 
     it("defaults a time the arrays did not cover", () => {
         expect(
-            fromAlignment({ characters: ["h"], characterStartTimesSeconds: [], characterEndTimesSeconds: [] })?.spans,
+            fromAlignment({ characters: ["h"], characterStartTimesSeconds: [], characterEndTimesSeconds: [] })
+                ?.spans,
         ).toEqual([{ text: "h", start: 0, end: 0 }]);
     });
 });

@@ -13,9 +13,8 @@ export function withProviderOptions<T extends object>(body: T, options?: Provide
     const merged = { ...body } as Record<string, unknown>;
     for (const [key, override] of Object.entries(options)) {
         const current = merged[key];
-        merged[key] = isPlainObject(current) && isPlainObject(override)
-            ? { ...current, ...override }
-            : override;
+        merged[key] =
+            isPlainObject(current) && isPlainObject(override) ? { ...current, ...override } : override;
     }
     return merged as T;
 }

@@ -22,16 +22,19 @@ export class ElevenLabsSTT {
     }
 
     async transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult> {
-        const fields = withProviderOptions({
-            ...(await toSource(input.audio)),
-            modelId: input.model ?? this.#config.defaultSTTModel,
-            languageCode: input.language,
-            fileFormat: toFileFormat(input.format),
-            timestampsGranularity: toGranularity(input.timestamps),
-            diarize: input.diarize,
-            numSpeakers: input.speakerCount,
-            keyterms: input.keyterms,
-        }, input.providerOptions);
+        const fields = withProviderOptions(
+            {
+                ...(await toSource(input.audio)),
+                modelId: input.model ?? this.#config.defaultSTTModel,
+                languageCode: input.language,
+                fileFormat: toFileFormat(input.format),
+                timestampsGranularity: toGranularity(input.timestamps),
+                diarize: input.diarize,
+                numSpeakers: input.speakerCount,
+                keyterms: input.keyterms,
+            },
+            input.providerOptions,
+        );
 
         const url = new URL("/v1/speech-to-text", this.#config.baseUrl ?? DEFAULT_BASE_URL);
         const response = await send({

@@ -118,7 +118,9 @@ export function logOperations(logger: Logger): VoiceMiddleware {
         logger.debug(`${call.provider}.${call.operation} ok in ${Date.now() - started}ms${detail}`);
 
     const failed = (call: OperationCall, started: number, error: unknown) => {
-        logger.error(`${call.provider}.${call.operation} failed after ${Date.now() - started}ms: ${String(error)}`);
+        logger.error(
+            `${call.provider}.${call.operation} failed after ${Date.now() - started}ms: ${String(error)}`,
+        );
         return error;
     };
 
@@ -127,7 +129,9 @@ export function logOperations(logger: Logger): VoiceMiddleware {
 
         async speak(input, call, next) {
             const started = Date.now();
-            logger.debug(`${call.provider}.speak ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`);
+            logger.debug(
+                `${call.provider}.speak ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`,
+            );
             try {
                 const result = await next(input);
                 done(call, started, `, ${result.audio.length} bytes ${result.format.container}`);
@@ -138,13 +142,17 @@ export function logOperations(logger: Logger): VoiceMiddleware {
         },
 
         speakStream(input, call, next) {
-            logger.debug(`${call.provider}.speakStream ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`);
+            logger.debug(
+                `${call.provider}.speakStream ${input.text.length} chars, model=${input.model ?? "default"}, voice=${input.voice ?? "default"}`,
+            );
             return next(input);
         },
 
         async transcribe(input, call, next) {
             const started = Date.now();
-            logger.debug(`${call.provider}.transcribe model=${input.model ?? "default"}, language=${input.language ?? "auto"}`);
+            logger.debug(
+                `${call.provider}.transcribe model=${input.model ?? "default"}, language=${input.language ?? "auto"}`,
+            );
             try {
                 const result = await next(input);
                 done(call, started, `, ${result.text.length} chars`);

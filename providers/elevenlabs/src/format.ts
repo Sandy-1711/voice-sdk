@@ -23,6 +23,9 @@ import { PROVIDER } from "./config";
  * The API's own vocabulary, which used to arrive as generated enums. Kept as
  * plain arrays so the whole 22 MB client is not a dependency of four constants.
  */
+// Grouped one codec family per line, which reads better than the 28-line
+// column Prettier would otherwise produce.
+// prettier-ignore
 export const OUTPUT_FORMATS = [
     "alaw_8000",
     "mp3_22050_32", "mp3_24000_48", "mp3_44100_32", "mp3_44100_64",
@@ -141,14 +144,23 @@ export function toStreamOutputFormat(
     return { value, resolved };
 }
 
-function build(format: Required<Pick<ResolvedAudioFormat, "container" | "encoding" | "sampleRate">> & { bitrate?: number }) {
+function build(
+    format: Required<Pick<ResolvedAudioFormat, "container" | "encoding" | "sampleRate">> & {
+        bitrate?: number;
+    },
+) {
     const { container, encoding, sampleRate, bitrate } = format;
 
     switch (container) {
         case "mp3":
             return {
                 value: `mp3_${sampleRate}_${bitrate ?? 128}`,
-                resolved: { container, encoding: "mp3", sampleRate, bitrate: bitrate ?? 128 } as ResolvedAudioFormat,
+                resolved: {
+                    container,
+                    encoding: "mp3",
+                    sampleRate,
+                    bitrate: bitrate ?? 128,
+                } as ResolvedAudioFormat,
             };
         case "wav":
             // ElevenLabs' wav is always signed 16-bit PCM.
@@ -160,10 +172,18 @@ function build(format: Required<Pick<ResolvedAudioFormat, "container" | "encodin
         case "webm":
             return {
                 value: `opus_${sampleRate}_${bitrate ?? 64}`,
-                resolved: { container: "ogg", encoding: "opus", sampleRate, bitrate: bitrate ?? 64 } as ResolvedAudioFormat,
+                resolved: {
+                    container: "ogg",
+                    encoding: "opus",
+                    sampleRate,
+                    bitrate: bitrate ?? 64,
+                } as ResolvedAudioFormat,
             };
         case "raw":
-            return { value: `${rawPrefix(encoding)}_${sampleRate}`, resolved: { container, encoding, sampleRate } as ResolvedAudioFormat };
+            return {
+                value: `${rawPrefix(encoding)}_${sampleRate}`,
+                resolved: { container, encoding, sampleRate } as ResolvedAudioFormat,
+            };
         default:
             throw new ValidationError(
                 PROVIDER,
@@ -215,15 +235,17 @@ export async function toSource(audio: AudioSource) {
  * waveform it can sniff", and the raw path is lower latency. Any other
  * headerless format would be sniffed and fail, so it is rejected here.
  */
-export function toFileFormat(
-    format: AudioFormat | undefined,
-): FileFormat | undefined {
+export function toFileFormat(format: AudioFormat | undefined): FileFormat | undefined {
     if (!format) return undefined;
 
     const headerless = format.container === "raw" || (!format.container && isRawEncoding(format.encoding));
     if (!headerless) return "other";
 
-    if (format.encoding === "pcm_s16le" && (format.sampleRate ?? 16000) === 16000 && (format.channels ?? 1) === 1) {
+    if (
+        format.encoding === "pcm_s16le" &&
+        (format.sampleRate ?? 16000) === 16000 &&
+        (format.channels ?? 1) === 1
+    ) {
         return "pcm_s16le_16";
     }
     throw new ValidationError(
@@ -238,9 +260,7 @@ const GRANULARITY = {
     character: "character",
 } as const;
 
-export function toGranularity(
-    timestamps: TranscribeInput["timestamps"],
-): TimestampsGranularity {
+export function toGranularity(timestamps: TranscribeInput["timestamps"]): TimestampsGranularity {
     if (!timestamps) return "none";
 
     const granularity = GRANULARITY[timestamps as keyof typeof GRANULARITY];
@@ -277,9 +297,7 @@ export function fromWord(word: WordResponse): TranscriptWord {
     };
 }
 
-export function fromAlignment(
-    alignment: CharacterAlignment | undefined,
-): Alignment | undefined {
+export function fromAlignment(alignment: CharacterAlignment | undefined): Alignment | undefined {
     if (!alignment) return undefined;
 
     return {
@@ -330,6 +348,11 @@ export interface WsAlignment {
 }
 
 function isRawEncoding(encoding: AudioFormat["encoding"]): boolean {
-    return encoding === "pcm_s16le" || encoding === "pcm_s32le" || encoding === "pcm_f32le"
-        || encoding === "mulaw" || encoding === "alaw";
+    return (
+        encoding === "pcm_s16le" ||
+        encoding === "pcm_s32le" ||
+        encoding === "pcm_f32le" ||
+        encoding === "mulaw" ||
+        encoding === "alaw"
+    );
 }

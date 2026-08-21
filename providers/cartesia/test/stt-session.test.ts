@@ -118,10 +118,7 @@ describe("openSTTSession in auto mode", () => {
             connection.send({ type: "turn.start", request_id: "req-1" });
         });
 
-        expect(events).toEqual([
-            { type: "metadata", requestId: "req-1" },
-            { type: "speech_started" },
-        ]);
+        expect(events).toEqual([{ type: "metadata", requestId: "req-1" }, { type: "speech_started" }]);
     });
 
     // turn.eager_end is a predicted boundary turn.resume can revoke, so it is
@@ -148,7 +145,10 @@ describe("openSTTSession in auto mode", () => {
             connection.send({ type: "turn.update", transcript: "book a table" });
         });
 
-        expect(events.map((event) => event.type === "transcript" && event.delta)).toEqual(["book a", " table"]);
+        expect(events.map((event) => event.type === "transcript" && event.delta)).toEqual([
+            "book a",
+            " table",
+        ]);
     });
 
     it("starts a new turn after a turn.end", async () => {
@@ -165,7 +165,12 @@ describe("openSTTSession in auto mode", () => {
         const session = await provider().openSTTSession();
         const connection = await server.connection();
 
-        connection.send({ type: "error", title: "Bad audio", message: "unsupported encoding", status_code: 400 });
+        connection.send({
+            type: "error",
+            title: "Bad audio",
+            message: "unsupported encoding",
+            status_code: 400,
+        });
 
         await expect(collect(session.output)).rejects.toThrow(/Bad audio: unsupported encoding/);
     });
@@ -213,7 +218,10 @@ describe("openSTTSession in manual mode", () => {
             "hello there",
             "hello there how are you",
         ]);
-        expect(events.map((event) => event.type === "transcript" && event.finality)).toEqual(["final", "partial"]);
+        expect(events.map((event) => event.type === "transcript" && event.finality)).toEqual([
+            "final",
+            "partial",
+        ]);
     });
 
     // The caller declared the turn over and the server has now drained it,
@@ -268,7 +276,12 @@ describe("openSTTSession in manual mode", () => {
         const session = await provider().openSTTSession(MANUAL);
         const connection = await server.connection();
 
-        connection.send({ type: "error", title: "Bad audio", message: "unsupported encoding", status_code: 400 });
+        connection.send({
+            type: "error",
+            title: "Bad audio",
+            message: "unsupported encoding",
+            status_code: 400,
+        });
 
         await expect(collect(session.output)).rejects.toThrow(/Bad audio: unsupported encoding/);
     });

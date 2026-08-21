@@ -39,7 +39,10 @@ describe("speak", () => {
 
         expect(server.last().path).toBe(`/v1/text-to-speech/${VOICE}`);
         expect(server.last().headers["xi-api-key"]).toBe("k");
-        expect(server.last().json()).toMatchObject({ text: "hello there", model_id: "eleven_multilingual_v2" });
+        expect(server.last().json()).toMatchObject({
+            text: "hello there",
+            model_id: "eleven_multilingual_v2",
+        });
         expect(result.audio).toEqual(AUDIO);
     });
 
@@ -105,12 +108,17 @@ describe("speak", () => {
     it("refuses a voice it does not have, naming both ways to supply one", async () => {
         const bare = new ElevenLabsProvider({ apiKey: "k", baseUrl: server.baseUrl });
 
-        await expect(bare.speak({ text: "hi" })).rejects.toMatchObject({ name: "ValidationError", field: "voice" });
+        await expect(bare.speak({ text: "hi" })).rejects.toMatchObject({
+            name: "ValidationError",
+            field: "voice",
+        });
         expect(server.requests).toHaveLength(0);
     });
 
     it("refuses word timings before spending a round trip", async () => {
-        await expect(provider().speak({ text: "hi", timings: "word" })).rejects.toMatchObject({ field: "timings" });
+        await expect(provider().speak({ text: "hi", timings: "word" })).rejects.toMatchObject({
+            field: "timings",
+        });
 
         expect(server.requests).toHaveLength(0);
     });
@@ -118,7 +126,10 @@ describe("speak", () => {
 
 describe("speakStream", () => {
     it("knows the format before the first chunk arrives", () => {
-        expect(provider().speakStream({ text: "hi" }).format).toMatchObject({ container: "mp3", sampleRate: 44100 });
+        expect(provider().speakStream({ text: "hi" }).format).toMatchObject({
+            container: "mp3",
+            sampleRate: 44100,
+        });
     });
 
     it("sends nothing until the caller starts iterating", async () => {
@@ -137,9 +148,9 @@ describe("speakStream", () => {
 
     // A wav header declares a length that is not known until generation ends.
     it("refuses wav, which cannot be streamed", () => {
-        expect(() => provider().speakStream({ text: "hi", format: { container: "wav", sampleRate: 16000 } })).toThrowError(
-            expect.objectContaining({ field: "format.container" }),
-        );
+        expect(() =>
+            provider().speakStream({ text: "hi", format: { container: "wav", sampleRate: 16000 } }),
+        ).toThrowError(expect.objectContaining({ field: "format.container" }));
     });
 
     it("stamps each chunk with its offset when timings are asked for", async () => {

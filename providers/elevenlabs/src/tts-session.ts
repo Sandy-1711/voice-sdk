@@ -50,7 +50,10 @@ export class ElevenLabsTTSSession implements TTSSession {
         }
         if (input.timings) assertCharacterTimings(input.timings);
 
-        const { value, resolved } = toStreamOutputFormat(input.format ?? config.defaultFormat, DEFAULT_FORMAT);
+        const { value, resolved } = toStreamOutputFormat(
+            input.format ?? config.defaultFormat,
+            DEFAULT_FORMAT,
+        );
 
         const url = new URL(
             `/v1/text-to-speech/${encodeURIComponent(voice)}/stream-input`,
@@ -136,7 +139,9 @@ export class ElevenLabsTTSSession implements TTSSession {
         this.#ws = ws;
 
         ws.on("message", (raw: WebSocket.RawData) => this.#receive(raw));
-        ws.on("error", (error) => this.#queue.fail(new VoiceError(`ElevenLabs TTS socket: ${String(error)}`)));
+        ws.on("error", (error) =>
+            this.#queue.fail(new VoiceError(`ElevenLabs TTS socket: ${String(error)}`)),
+        );
         ws.on("close", () => {
             this.#queue.close();
             this.#onClosed();
