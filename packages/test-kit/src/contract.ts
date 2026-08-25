@@ -52,10 +52,14 @@ export async function assertClosesOnAbort(
     hangUp?: () => void,
     timeout = 2000,
 ): Promise<void> {
-    const spent = await open(AbortSignal.abort()).then(
-        () => "opened",
-        () => "refused",
-    );
+    // Through Promise.resolve because a refusal can arrive either way: a
+    // provider whose open() is synchronous throws before a promise exists.
+    const spent = await Promise.resolve()
+        .then(() => open(AbortSignal.abort()))
+        .then(
+            () => "opened",
+            () => "refused",
+        );
     check(spent === "refused", "a session opened with an already-aborted signal must be refused");
 
     const controller = new AbortController();
