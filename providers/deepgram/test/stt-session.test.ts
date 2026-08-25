@@ -314,6 +314,23 @@ describe("openSTTSession on nova-3", () => {
         expect(events.map((event) => event.type === "transcript" && event.turn)).toEqual([0, 1]);
         expect(events[1]).toMatchObject({ text: "starting over", delta: "starting over" });
     });
+
+    it("closes the session when the caller's signal aborts", async () => {
+        const controller = new AbortController();
+        const session = await provider().openSTTSession({ signal: controller.signal });
+        const connection = await server.connection();
+
+        controller.abort();
+
+        expect(await connection.nextJson()).toEqual({ type: "CloseStream" });
+        connection.close();
+        await expect(session.closed).resolves.toBeUndefined();
+    });
+
+    it("refuses to open on an already-aborted signal, without touching the network", async () => {
+        await expect(provider().openSTTSession({ signal: AbortSignal.abort() })).rejects.toThrow(/aborted/i);
+        expect(server.connections).toHaveLength(0);
+    });
 });
 
 describe("openSTTSession on flux", () => {

@@ -227,6 +227,11 @@ describe("openTTSSession", () => {
         await expect(session.closed).resolves.toBeUndefined();
     });
 
+    it("refuses to open on an already-aborted signal, without touching the network", async () => {
+        await expect(provider().openTTSSession({ signal: AbortSignal.abort() })).rejects.toThrow(/aborted/i);
+        expect(server.connections).toHaveLength(0);
+    });
+
     it("ends the output stream when the far side hangs up", async () => {
         const session = await provider().openTTSSession();
         const connection = await server.connection();

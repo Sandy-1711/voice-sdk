@@ -32,6 +32,7 @@ export class DeepgramTTSSession implements TTSSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeTTSInput = {}): Promise<DeepgramTTSSession> {
+        input.signal?.throwIfAborted();
         assertNoTimings(input.timings);
 
         const { params, resolved } = toRealtimeOutputFormat(

@@ -74,6 +74,8 @@ export class DeepgramSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeSTTInput = {}): Promise<DeepgramSTTSession> {
+        input.signal?.throwIfAborted();
+
         const model = input.model ?? config.defaultRealtimeSTTModel;
         const mode = model.startsWith("flux") ? "flux" : "listen";
 
