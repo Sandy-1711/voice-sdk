@@ -5,7 +5,7 @@ import { DEFAULT_STREAM_FORMAT, type ResolvedConfig } from "./config";
 import { assertNoTimings, toRealtimeOutputFormat, toSpeed } from "./format";
 import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
 
 /** Wire shape. Audio arrives as binary frames; everything else is JSON. */
 interface ServerMessage {
@@ -100,7 +100,7 @@ export class DeepgramTTSSession implements TTSSession {
 
     async close(): Promise<void> {
         sendWhenOpen(this.#ws, JSON.stringify({ type: "Close" }));
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #receive(raw: WebSocket.RawData, isBinary: boolean): void {

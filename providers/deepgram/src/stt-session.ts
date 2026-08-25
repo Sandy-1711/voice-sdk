@@ -11,7 +11,7 @@ import { PROVIDER, type ResolvedConfig } from "./config";
 import { fromWords, toRealtimeSTTFormat, type WireWord } from "./format";
 import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendWhenOpen, toText } from "./internal/socket";
 
 /** Wire shapes for both endpoints, narrowed to the fields core models. */
 interface ListenMessage {
@@ -215,7 +215,7 @@ export class DeepgramSTTSession implements STTSession {
     async close(): Promise<void> {
         this.#stopKeepAlive();
         sendWhenOpen(this.#ws, JSON.stringify({ type: "CloseStream" }));
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #stopKeepAlive(): void {
