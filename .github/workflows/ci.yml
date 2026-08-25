@@ -108,3 +108,23 @@ jobs:
       # version-specific break can surface before release.
       - name: Exercise the built package on Node 18
         run: node providers/cartesia/test/node18/smoke.mjs
+
+  # `pnpm test` runs against src and `check-types` typechecks the workspace, so
+  # neither sees dist or the manifest a consumer resolves. The publishConfig
+  # override that swaps the entry points at publish time is only applied by
+  # pnpm, and shipping without it would mean packages with no types at all.
+  dist-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build --filter=@swungstudent/voice --filter=./providers/*
+
+      - name: Compile a consumer against the packed tarballs
+        run: node scripts/consumer-check.mjs
