@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type WebSocket from "ws";
 import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@swungstudent/voice";
 import { decodeBase64, VoiceError, withProviderOptions } from "@swungstudent/voice";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
@@ -69,6 +69,8 @@ export class CartesiaTTSSession implements TTSSession {
         const ws = open(buildUrl(config.baseUrl, "/tts/websocket"), config.apiKey);
         const ready = handshake(ws, "TTS");
         const session = new CartesiaTTSSession(ws, options, resolved, toGenerationConfig(input.controls));
+
+        closeOnAbort(session, input.signal);
 
         await ready;
         return session;

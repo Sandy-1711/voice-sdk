@@ -7,7 +7,7 @@ import {
     VoiceError,
     withProviderOptions,
 } from "@swungstudent/voice";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import type { ResolvedConfig } from "./config";
 import { DEFAULTS, PROVIDER } from "./config";
 import { fromWords, toRealtimeSTTFormat } from "./format";
@@ -68,6 +68,7 @@ export class CartesiaSTTSession implements STTSession {
                 buildUrl(config.baseUrl, "/stt/websocket", query),
                 config.apiKey,
                 mode,
+                input.signal,
             );
         }
 
@@ -99,6 +100,7 @@ export class CartesiaSTTSession implements STTSession {
             buildUrl(config.baseUrl, "/stt/turns/websocket", query),
             config.apiKey,
             mode,
+            input.signal,
         );
     }
 
@@ -107,10 +109,17 @@ export class CartesiaSTTSession implements STTSession {
      * the auto endpoint sends `connected` the instant the socket opens, and
      * awaiting the handshake first would drop it on the floor.
      */
-    static async #connect(url: URL, apiKey: string, mode: "auto" | "manual"): Promise<CartesiaSTTSession> {
+    static async #connect(
+        url: URL,
+        apiKey: string,
+        mode: "auto" | "manual",
+        signal: AbortSignal | undefined,
+    ): Promise<CartesiaSTTSession> {
         const ws = open(url, apiKey);
         const ready = handshake(ws, "STT");
         const session = new CartesiaSTTSession(ws, mode);
+
+        closeOnAbort(session, signal);
 
         await ready;
         return session;
