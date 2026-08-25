@@ -1,6 +1,6 @@
 {
   "name": "@swungstudent/elevenlabs",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "ElevenLabs provider for the voice SDK: speech synthesis and transcription, batch and realtime.",
   "keywords": [
     "voice",
