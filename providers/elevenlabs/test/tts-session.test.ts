@@ -162,6 +162,38 @@ describe("openTTSSession", () => {
         it("closes cleanly even if nothing was ever pushed", async () => {
             await expect((await provider().openTTSSession()).close()).resolves.toBeUndefined();
         });
+
+        it("closes the session when the caller's signal aborts", async () => {
+            const controller = new AbortController();
+            const session = await provider().openTTSSession({ signal: controller.signal });
+            session.push("hi");
+            const connection = await server.connection();
+
+            controller.abort();
+
+            expect(await connection.nextMatching<{ text: string }>((m) => m.text === "")).toEqual({
+                text: "",
+            });
+            connection.close();
+            await expect(session.closed).resolves.toBeUndefined();
+        });
+
+        // The socket is lazy, so an abort before the first push has none to close.
+        it("settles a session aborted before it ever connected", async () => {
+            const controller = new AbortController();
+            const session = await provider().openTTSSession({ signal: controller.signal });
+
+            controller.abort();
+
+            await expect(session.closed).resolves.toBeUndefined();
+            expect(server.connections).toHaveLength(0);
+        });
+
+        it("refuses to open on an already-aborted signal", async () => {
+            await expect(provider().openTTSSession({ signal: AbortSignal.abort() })).rejects.toThrow(
+                /aborted/i,
+            );
+        });
     });
 
     describe("receiving", () => {

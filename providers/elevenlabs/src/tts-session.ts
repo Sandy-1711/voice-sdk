@@ -41,6 +41,8 @@ export class ElevenLabsTTSSession implements TTSSession {
     #onClosed!: () => void;
 
     static open(config: ResolvedConfig, input: RealtimeTTSInput = {}): ElevenLabsTTSSession {
+        input.signal?.throwIfAborted();
+
         const voice = input.voice ?? config.defaultVoice;
         if (!voice) {
             throw new ValidationError(

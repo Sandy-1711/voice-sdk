@@ -39,6 +39,8 @@ export class ElevenLabsSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static open(config: ResolvedConfig, input: RealtimeSTTInput = {}): ElevenLabsSTTSession {
+        input.signal?.throwIfAborted();
+
         const url = new URL("/v1/speech-to-text/realtime", config.baseUrl ?? DEFAULT_BASE_URL);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
         url.searchParams.set("model_id", input.model ?? config.defaultRealtimeSTTModel);
