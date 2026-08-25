@@ -1,7 +1,13 @@
 // Renders each package's coverage as one markdown table, for $GITHUB_STEP_SUMMARY.
 import { readFileSync } from "node:fs";
 
-const packages = ["packages/core", "providers/cartesia", "providers/deepgram", "providers/elevenlabs"];
+const packages = [
+    "packages/core",
+    "packages/test-kit",
+    "providers/cartesia",
+    "providers/deepgram",
+    "providers/elevenlabs",
+];
 
 const rows = packages.flatMap((dir) => {
     let total;
