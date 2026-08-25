@@ -3,8 +3,8 @@ import { encodeBase64, TurnTextTracker, VoiceError } from "@swungstudent/voice";
 import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
-import { AsyncQueue } from "@voice-sdk/internal";
-import { toText } from "./internal/socket";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
+import { awaitClose, toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -39,6 +39,8 @@ export class ElevenLabsSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static open(config: ResolvedConfig, input: RealtimeSTTInput = {}): ElevenLabsSTTSession {
+        input.signal?.throwIfAborted();
+
         const url = new URL("/v1/speech-to-text/realtime", config.baseUrl ?? DEFAULT_BASE_URL);
         url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
         url.searchParams.set("model_id", input.model ?? config.defaultRealtimeSTTModel);
@@ -63,7 +65,11 @@ export class ElevenLabsSTTSession implements STTSession {
             url.searchParams.set(key, String(value));
         }
 
-        return new ElevenLabsSTTSession(url.toString(), config.apiKey, Boolean(input.timestamps));
+        const session = new ElevenLabsSTTSession(url.toString(), config.apiKey, Boolean(input.timestamps));
+
+        closeOnAbort(session, input.signal);
+
+        return session;
     }
 
     private constructor(url: string, apiKey: string, withTimestamps: boolean) {
@@ -117,7 +123,7 @@ export class ElevenLabsSTTSession implements STTSession {
             });
         }
         if (this.#ws.readyState === WebSocket.OPEN) this.#ws.close();
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #send(message: Record<string, unknown>): void {

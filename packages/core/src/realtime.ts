@@ -16,6 +16,11 @@ export interface RealtimeSession<TIn, TEvent> {
     /** Barge-in. Best-effort: not every provider can drop queued work. */
     cancel(): void;
 
+    /**
+     * A session owns its own lifecycle — there is no client-level close,
+     * because a provider holds no connections. To end several at once, pass one
+     * `AbortController`'s signal to each and abort it.
+     */
     close(): Promise<void>;
 
     readonly closed: Promise<void>;

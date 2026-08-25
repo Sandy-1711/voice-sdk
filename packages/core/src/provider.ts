@@ -44,5 +44,4 @@ export interface VoiceProvider {
     openSTTSession?(input?: RealtimeSTTInput): Promise<STTSession>;
 
     listVoices?(): Promise<VoiceInfo[]>;
-    close?(): Promise<void>;
 }

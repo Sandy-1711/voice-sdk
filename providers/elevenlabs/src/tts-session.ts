@@ -10,8 +10,8 @@ import {
     toVoiceSettings,
     type WsAlignment,
 } from "./format";
-import { AsyncQueue } from "@voice-sdk/internal";
-import { toText } from "./internal/socket";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
+import { awaitClose, toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -41,6 +41,8 @@ export class ElevenLabsTTSSession implements TTSSession {
     #onClosed!: () => void;
 
     static open(config: ResolvedConfig, input: RealtimeTTSInput = {}): ElevenLabsTTSSession {
+        input.signal?.throwIfAborted();
+
         const voice = input.voice ?? config.defaultVoice;
         if (!voice) {
             throw new ValidationError(
@@ -66,12 +68,16 @@ export class ElevenLabsTTSSession implements TTSSession {
         if (input.language) url.searchParams.set("language_code", input.language);
         if (input.timings) url.searchParams.set("sync_alignment", "true");
 
-        return new ElevenLabsTTSSession(url.toString(), config.apiKey, resolved, {
+        const session = new ElevenLabsTTSSession(url.toString(), config.apiKey, resolved, {
             // A single space is ElevenLabs' begin-of-stream marker.
             text: " ",
             voice_settings: toVoiceSettings(input.controls),
             ...(input.providerOptions ?? {}),
         });
+
+        closeOnAbort(session, input.signal);
+
+        return session;
     }
 
     private constructor(
@@ -117,7 +123,8 @@ export class ElevenLabsTTSSession implements TTSSession {
     async close(): Promise<void> {
         if (this.#ws || this.#opening) {
             this.#send({ text: "" });
-            await this.#closed;
+            if (this.#ws) await awaitClose(this.#ws, this.#closed);
+            else await this.#closed;
         }
         this.#teardown();
         this.#onClosed();

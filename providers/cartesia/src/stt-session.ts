@@ -7,12 +7,12 @@ import {
     VoiceError,
     withProviderOptions,
 } from "@swungstudent/voice";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import type { ResolvedConfig } from "./config";
 import { DEFAULTS, PROVIDER } from "./config";
 import { fromWords, toRealtimeSTTFormat } from "./format";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendIfOpen, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendIfOpen, toText } from "./internal/socket";
 
 /** Wire shapes for both endpoints, narrowed to the fields core models. */
 interface STTMessage {
@@ -49,6 +49,8 @@ export class CartesiaSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeSTTInput = {}): Promise<CartesiaSTTSession> {
+        input.signal?.throwIfAborted();
+
         const format = toRealtimeSTTFormat(input.inputFormat, DEFAULT_REALTIME_INPUT_FORMAT);
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
         const model = input.model ?? config.defaultRealtimeSTTModel;
@@ -68,6 +70,7 @@ export class CartesiaSTTSession implements STTSession {
                 buildUrl(config.baseUrl, "/stt/websocket", query),
                 config.apiKey,
                 mode,
+                input.signal,
             );
         }
 
@@ -99,6 +102,7 @@ export class CartesiaSTTSession implements STTSession {
             buildUrl(config.baseUrl, "/stt/turns/websocket", query),
             config.apiKey,
             mode,
+            input.signal,
         );
     }
 
@@ -107,10 +111,17 @@ export class CartesiaSTTSession implements STTSession {
      * the auto endpoint sends `connected` the instant the socket opens, and
      * awaiting the handshake first would drop it on the floor.
      */
-    static async #connect(url: URL, apiKey: string, mode: "auto" | "manual"): Promise<CartesiaSTTSession> {
+    static async #connect(
+        url: URL,
+        apiKey: string,
+        mode: "auto" | "manual",
+        signal: AbortSignal | undefined,
+    ): Promise<CartesiaSTTSession> {
         const ws = open(url, apiKey);
         const ready = handshake(ws, "STT");
         const session = new CartesiaSTTSession(ws, mode);
+
+        closeOnAbort(session, signal);
 
         await ready;
         return session;
@@ -158,7 +169,7 @@ export class CartesiaSTTSession implements STTSession {
         // frame, auto takes a JSON message.
         if (this.#mode === "manual") sendIfOpen(this.#ws, "close");
         else sendIfOpen(this.#ws, JSON.stringify({ type: "close" }));
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #receive(raw: WebSocket.RawData): void {

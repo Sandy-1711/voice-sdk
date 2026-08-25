@@ -11,7 +11,8 @@
   "sideEffects": false,
   "scripts": {
     "check-types": "tsc --noEmit",
-    "lint": "eslint . --max-warnings 0"
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "ws": "^8.21.1"

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+    assertClosesOnAbort,
     assertSTTEvent,
     assertTurnSequence,
     collect,
@@ -313,6 +314,47 @@ describe("openSTTSession on nova-3", () => {
 
         expect(events.map((event) => event.type === "transcript" && event.turn)).toEqual([0, 1]);
         expect(events[1]).toMatchObject({ text: "starting over", delta: "starting over" });
+    });
+
+    it("closes the session when the caller's signal aborts", async () => {
+        const controller = new AbortController();
+        const session = await provider().openSTTSession({ signal: controller.signal });
+        const connection = await server.connection();
+
+        controller.abort();
+
+        expect(await connection.nextJson()).toEqual({ type: "CloseStream" });
+        connection.close();
+        await expect(session.closed).resolves.toBeUndefined();
+    });
+
+    // The goodbye is an application message, so close() waits on the server to
+    // hang up. One that never does used to leave it pending forever.
+    it("gives up and drops the socket when the far side never closes", async () => {
+        vi.useFakeTimers();
+        try {
+            const session = await provider().openSTTSession();
+            await server.connection();
+
+            const closing = session.close();
+            await vi.advanceTimersByTimeAsync(5000);
+
+            await expect(closing).resolves.toBeUndefined();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("meets the shared cancellation contract", async () => {
+        await assertClosesOnAbort(
+            (signal) => provider().openSTTSession({ signal }),
+            () => void server.connections.at(-1)?.close(),
+        );
+    });
+
+    it("refuses to open on an already-aborted signal, without touching the network", async () => {
+        await expect(provider().openSTTSession({ signal: AbortSignal.abort() })).rejects.toThrow(/aborted/i);
+        expect(server.connections).toHaveLength(0);
     });
 });
 

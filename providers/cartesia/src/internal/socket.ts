@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 import { VoiceError } from "@swungstudent/voice";
+import { settledWithin } from "@voice-sdk/internal";
 import { authHeaders } from "./http";
 
 /**
@@ -59,4 +60,18 @@ export function toBytes(raw: WebSocket.RawData): Uint8Array {
 /** Via toBytes, since `ArrayBuffer.toString()` yields "[object ArrayBuffer]". */
 export function toText(raw: WebSocket.RawData): string {
     return new TextDecoder().decode(toBytes(raw));
+}
+
+/** Long enough for a real goodbye round-trip, short enough not to strand a shutdown. */
+const CLOSE_TIMEOUT_MS = 5000;
+
+/**
+ * Waits for the far side to close the socket, then stops waiting and drops it.
+ *
+ * A server that takes the goodbye and never closes would otherwise leave
+ * close() pending forever, and with it every caller awaiting the session.
+ */
+export async function awaitClose(ws: WebSocket, closed: Promise<void>): Promise<void> {
+    if (!(await settledWithin(closed, CLOSE_TIMEOUT_MS))) ws.terminate();
+    await closed;
 }

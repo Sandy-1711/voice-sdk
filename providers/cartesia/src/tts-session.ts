@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import type WebSocket from "ws";
 import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from "@swungstudent/voice";
 import { decodeBase64, VoiceError, withProviderOptions } from "@swungstudent/voice";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import type { ResolvedConfig } from "./config";
 import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
 import type { GenerationConfig } from "./format";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendIfOpen, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendIfOpen, toText } from "./internal/socket";
 
 /** Wire shape of what `/tts/websocket` sends back. */
 interface ServerMessage {
@@ -41,6 +41,8 @@ export class CartesiaTTSSession implements TTSSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeTTSInput = {}): Promise<CartesiaTTSSession> {
+        input.signal?.throwIfAborted();
+
         const { payload, resolved } = toRawOutputFormat(
             input.format ?? config.defaultFormat,
             DEFAULT_STREAM_FORMAT,
@@ -69,6 +71,8 @@ export class CartesiaTTSSession implements TTSSession {
         const ws = open(buildUrl(config.baseUrl, "/tts/websocket"), config.apiKey);
         const ready = handshake(ws, "TTS");
         const session = new CartesiaTTSSession(ws, options, resolved, toGenerationConfig(input.controls));
+
+        closeOnAbort(session, input.signal);
 
         await ready;
         return session;
@@ -128,7 +132,7 @@ export class CartesiaTTSSession implements TTSSession {
     async close(): Promise<void> {
         this.#send({ transcript: "", continue: false });
         this.#ws.close();
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     /** Every request repeats the context configuration; only the verb differs. */

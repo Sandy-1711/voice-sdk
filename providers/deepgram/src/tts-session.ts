@@ -3,9 +3,9 @@ import type { RealtimeTTSInput, ResolvedAudioFormat, TTSEvent, TTSSession } from
 import { VoiceError, withProviderOptions } from "@swungstudent/voice";
 import { DEFAULT_STREAM_FORMAT, type ResolvedConfig } from "./config";
 import { assertNoTimings, toRealtimeOutputFormat, toSpeed } from "./format";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendWhenOpen, toBytes, toText } from "./internal/socket";
 
 /** Wire shape. Audio arrives as binary frames; everything else is JSON. */
 interface ServerMessage {
@@ -32,6 +32,7 @@ export class DeepgramTTSSession implements TTSSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeTTSInput = {}): Promise<DeepgramTTSSession> {
+        input.signal?.throwIfAborted();
         assertNoTimings(input.timings);
 
         const { params, resolved } = toRealtimeOutputFormat(
@@ -53,13 +54,15 @@ export class DeepgramTTSSession implements TTSSession {
         // processed: Deepgram sends Metadata the instant the socket opens, and
         // awaiting the handshake first would drop it on the floor.
         const ready = handshake(ws, "TTS");
-        const session = new DeepgramTTSSession(ws, resolved, input.signal);
+        const session = new DeepgramTTSSession(ws, resolved);
+
+        closeOnAbort(session, input.signal);
 
         await ready;
         return session;
     }
 
-    private constructor(ws: WebSocket, format: ResolvedAudioFormat, signal?: AbortSignal) {
+    private constructor(ws: WebSocket, format: ResolvedAudioFormat) {
         this.#ws = ws;
         this.format = format;
 
@@ -72,8 +75,6 @@ export class DeepgramTTSSession implements TTSSession {
                 resolve();
             });
         });
-
-        signal?.addEventListener("abort", () => void this.close(), { once: true });
     }
 
     get output(): AsyncIterable<TTSEvent> {
@@ -99,7 +100,7 @@ export class DeepgramTTSSession implements TTSSession {
 
     async close(): Promise<void> {
         sendWhenOpen(this.#ws, JSON.stringify({ type: "Close" }));
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #receive(raw: WebSocket.RawData, isBinary: boolean): void {

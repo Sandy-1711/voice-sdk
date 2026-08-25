@@ -100,6 +100,30 @@ for await (const turn of turns(session.output)) {
 Use `turnDetection: { mode: "manual" }` to decide turn boundaries yourself with
 `flush()`.
 
+## Ending a session
+
+A session owns its own lifecycle. Close it when the call it belongs to ends —
+an open socket keeps the process alive and the provider billing.
+
+There is no client-level close: a provider holds no connections, only config, so
+there would be nothing for it to shut. To end several sessions at once, give
+them one `AbortController` and abort it:
+
+```ts
+const call = new AbortController();
+
+const listening = await voice.openSTTSession({ signal: call.signal });
+const speaking = await voice.openTTSSession({ signal: call.signal });
+
+// Hang-up, timeout, SIGTERM — one line ends both, and cancels any
+// in-flight speak() or transcribe() given the same signal.
+call.abort();
+```
+
+`close()` waits for the provider to acknowledge, and gives up after five seconds
+if it never does, so a shutdown cannot hang on an unresponsive server. Opening a
+session with a signal that has already aborted is refused rather than connected.
+
 ## Escape hatch
 
 `providerOptions` reaches the underlying API for anything core does not model.

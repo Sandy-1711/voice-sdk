@@ -9,9 +9,9 @@ import {
 } from "@swungstudent/voice";
 import { PROVIDER, type ResolvedConfig } from "./config";
 import { fromWords, toRealtimeSTTFormat, type WireWord } from "./format";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendWhenOpen, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendWhenOpen, toText } from "./internal/socket";
 
 /** Wire shapes for both endpoints, narrowed to the fields core models. */
 interface ListenMessage {
@@ -74,6 +74,8 @@ export class DeepgramSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeSTTInput = {}): Promise<DeepgramSTTSession> {
+        input.signal?.throwIfAborted();
+
         const model = input.model ?? config.defaultRealtimeSTTModel;
         const mode = model.startsWith("flux") ? "flux" : "listen";
 
@@ -157,6 +159,8 @@ export class DeepgramSTTSession implements STTSession {
         const ready = handshake(ws, "STT");
         const session = new DeepgramSTTSession(ws, mode, input);
 
+        closeOnAbort(session, input.signal);
+
         await ready;
         return session;
     }
@@ -184,8 +188,6 @@ export class DeepgramSTTSession implements STTSession {
             // A heartbeat should not be the reason a process refuses to exit.
             this.#keepAlive.unref?.();
         }
-
-        input.signal?.addEventListener("abort", () => void this.close(), { once: true });
     }
 
     get output(): AsyncIterable<STTEvent> {
@@ -213,7 +215,7 @@ export class DeepgramSTTSession implements STTSession {
     async close(): Promise<void> {
         this.#stopKeepAlive();
         sendWhenOpen(this.#ws, JSON.stringify({ type: "CloseStream" }));
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #stopKeepAlive(): void {

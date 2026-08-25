@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { decodeBase64 } from "@swungstudent/voice";
 import {
+    assertClosesOnAbort,
     assertSTTEvent,
     assertTurnSequence,
     collect,
@@ -298,5 +299,24 @@ describe("openSTTSession", () => {
 
         expect(events.map((event) => event.type === "transcript" && event.turn)).toEqual([0, 1]);
         expect(events[1]).toMatchObject({ text: "starting over", delta: "starting over" });
+    });
+
+    it("closes the session when the caller's signal aborts", async () => {
+        const controller = new AbortController();
+        const session = await provider().openSTTSession({ signal: controller.signal });
+        await server.connection();
+
+        controller.abort();
+
+        await expect(session.closed).resolves.toBeUndefined();
+    });
+
+    it("meets the shared cancellation contract", async () => {
+        await assertClosesOnAbort((signal) => provider().openSTTSession({ signal }));
+    });
+
+    it("refuses to open on an already-aborted signal, without touching the network", async () => {
+        await expect(provider().openSTTSession({ signal: AbortSignal.abort() })).rejects.toThrow(/aborted/i);
+        expect(server.connections).toHaveLength(0);
     });
 });

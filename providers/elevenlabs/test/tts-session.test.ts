@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeBase64 } from "@swungstudent/voice";
 import { assertTTSEvent, collect, fakeSocket, pcmRamp, type FakeSocket } from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../src/index";
@@ -161,6 +161,56 @@ describe("openTTSSession", () => {
 
         it("closes cleanly even if nothing was ever pushed", async () => {
             await expect((await provider().openTTSSession()).close()).resolves.toBeUndefined();
+        });
+
+        it("closes the session when the caller's signal aborts", async () => {
+            const controller = new AbortController();
+            const session = await provider().openTTSSession({ signal: controller.signal });
+            session.push("hi");
+            const connection = await server.connection();
+
+            controller.abort();
+
+            expect(await connection.nextMatching<{ text: string }>((m) => m.text === "")).toEqual({
+                text: "",
+            });
+            connection.close();
+            await expect(session.closed).resolves.toBeUndefined();
+        });
+
+        // The socket is lazy, so an abort before the first push has none to close.
+        it("settles a session aborted before it ever connected", async () => {
+            const controller = new AbortController();
+            const session = await provider().openTTSSession({ signal: controller.signal });
+
+            controller.abort();
+
+            await expect(session.closed).resolves.toBeUndefined();
+            expect(server.connections).toHaveLength(0);
+        });
+
+        // The goodbye is an application message, so close() waits on the server
+        // to hang up. One that never does used to leave it pending forever.
+        it("gives up and drops the socket when the far side never closes", async () => {
+            vi.useFakeTimers();
+            try {
+                const session = await provider().openTTSSession();
+                session.push("hi");
+                await server.connection();
+
+                const closing = session.close();
+                await vi.advanceTimersByTimeAsync(5000);
+
+                await expect(closing).resolves.toBeUndefined();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it("refuses to open on an already-aborted signal", async () => {
+            await expect(provider().openTTSSession({ signal: AbortSignal.abort() })).rejects.toThrow(
+                /aborted/i,
+            );
         });
     });
 
