@@ -132,10 +132,6 @@ export class Voice<TProvider extends VoiceProvider> {
         return chainListVoices(this.#middleware, this.#call("listVoices"), () => listVoices())();
     }
 
-    async close(): Promise<void> {
-        await this.#provider.close?.();
-    }
-
     #call(operation: OperationCall["operation"], context?: RequestContext): OperationCall {
         return { provider: this.#provider.name, operation, context };
     }

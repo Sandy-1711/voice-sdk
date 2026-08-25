@@ -39,7 +39,6 @@ function fullProvider() {
         openTTSSession: vi.fn(async () => ({}) as never),
         openSTTSession: vi.fn(async () => ({}) as never),
         listVoices: vi.fn(async () => [{ id: "voice-1" }]),
-        close: vi.fn(async () => {}),
     } satisfies VoiceProvider;
 
     return { provider, seen };
@@ -146,18 +145,6 @@ describe("Voice", () => {
             await voice.openTTSSession({ voice: "v" });
 
             expect(provider.openTTSSession).toHaveBeenCalledWith({ voice: "v" });
-        });
-    });
-
-    describe("close", () => {
-        it("closes the provider when it can be closed", async () => {
-            const { provider } = fullProvider();
-            await new Voice({ provider }).close();
-            expect(provider.close).toHaveBeenCalledOnce();
-        });
-
-        it("is a no-op for a provider that holds nothing open", async () => {
-            await expect(new Voice({ provider: bareProvider }).close()).resolves.toBeUndefined();
         });
     });
 });
