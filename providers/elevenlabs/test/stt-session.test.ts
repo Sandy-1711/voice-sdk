@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { decodeBase64 } from "@swungstudent/voice";
 import {
+    assertClosesOnAbort,
     assertSTTEvent,
     assertTurnSequence,
     collect,
@@ -308,6 +309,10 @@ describe("openSTTSession", () => {
         controller.abort();
 
         await expect(session.closed).resolves.toBeUndefined();
+    });
+
+    it("meets the shared cancellation contract", async () => {
+        await assertClosesOnAbort((signal) => provider().openSTTSession({ signal }));
     });
 
     it("refuses to open on an already-aborted signal, without touching the network", async () => {

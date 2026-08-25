@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+    assertClosesOnAbort,
     assertSTTEvent,
     assertTurnSequence,
     collect,
@@ -190,6 +191,13 @@ describe("openSTTSession in auto mode", () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    it("meets the shared cancellation contract", async () => {
+        await assertClosesOnAbort(
+            (signal) => provider().openSTTSession({ signal }),
+            () => void server.connections.at(-1)?.close(),
+        );
     });
 
     it("refuses to open on an already-aborted signal, without touching the network", async () => {

@@ -34,6 +34,42 @@ export function assertCapabilityInvariants(provider: VoiceProvider): void {
     }
 }
 
+interface AbortableSession {
+    readonly closed: Promise<void>;
+}
+
+/**
+ * The cancellation contract every session owes: a signal already spent when the
+ * session is opened is refused rather than connected, and aborting a live one
+ * closes it.
+ *
+ * `hangUp` is for providers whose goodbye is an application message — their
+ * close() waits on the server, so the fake has to play its part or the check
+ * would only be measuring the close timeout.
+ */
+export async function assertClosesOnAbort(
+    open: (signal: AbortSignal) => Promise<AbortableSession>,
+    hangUp?: () => void,
+    timeout = 2000,
+): Promise<void> {
+    const spent = await open(AbortSignal.abort()).then(
+        () => "opened",
+        () => "refused",
+    );
+    check(spent === "refused", "a session opened with an already-aborted signal must be refused");
+
+    const controller = new AbortController();
+    const session = await open(controller.signal);
+    controller.abort();
+    hangUp?.();
+
+    const closed = await Promise.race([
+        session.closed.then(() => true),
+        new Promise<false>((resolve) => setTimeout(() => resolve(false), timeout)),
+    ]);
+    check(closed, `aborting the signal did not close the session within ${timeout}ms`);
+}
+
 /** Every event a TTS session emits has to be a legal member of core's union. */
 export function assertTTSEvent(event: TTSEvent): void {
     switch (event.type) {
