@@ -41,6 +41,8 @@ export class CartesiaTTSSession implements TTSSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeTTSInput = {}): Promise<CartesiaTTSSession> {
+        input.signal?.throwIfAborted();
+
         const { payload, resolved } = toRawOutputFormat(
             input.format ?? config.defaultFormat,
             DEFAULT_STREAM_FORMAT,

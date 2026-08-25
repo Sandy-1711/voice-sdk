@@ -234,6 +234,23 @@ describe("sending", () => {
     });
 });
 
+describe("cancellation", () => {
+    it("closes the session when the caller aborts", async () => {
+        const controller = new AbortController();
+        const session = await provider().openTTSSession({ signal: controller.signal });
+        await server.connection();
+
+        controller.abort();
+
+        await expect(session.closed).resolves.toBeUndefined();
+    });
+
+    it("refuses to open on an already-aborted signal, without touching the network", async () => {
+        await expect(provider().openTTSSession({ signal: AbortSignal.abort() })).rejects.toThrow(/aborted/i);
+        expect(server.connections).toHaveLength(0);
+    });
+});
+
 describe("receiving", () => {
     async function eventsFrom(script: (connection: FakeConnection) => void) {
         const session = await provider().openTTSSession();

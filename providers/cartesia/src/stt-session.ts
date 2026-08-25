@@ -49,6 +49,8 @@ export class CartesiaSTTSession implements STTSession {
     #closed: Promise<void>;
 
     static async open(config: ResolvedConfig, input: RealtimeSTTInput = {}): Promise<CartesiaSTTSession> {
+        input.signal?.throwIfAborted();
+
         const format = toRealtimeSTTFormat(input.inputFormat, DEFAULT_REALTIME_INPUT_FORMAT);
         const mode = input.turnDetection?.mode === "manual" ? "manual" : "auto";
         const model = input.model ?? config.defaultRealtimeSTTModel;

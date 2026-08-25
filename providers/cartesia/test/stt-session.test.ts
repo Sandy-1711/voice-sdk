@@ -163,6 +163,23 @@ describe("openSTTSession in auto mode", () => {
         await expect(closing).resolves.toBeUndefined();
     });
 
+    it("says goodbye when the caller aborts", async () => {
+        const controller = new AbortController();
+        const session = await provider().openSTTSession({ signal: controller.signal });
+        const connection = await server.connection();
+
+        controller.abort();
+
+        expect(await connection.nextJson()).toMatchObject({ type: "close" });
+        connection.close();
+        await expect(session.closed).resolves.toBeUndefined();
+    });
+
+    it("refuses to open on an already-aborted signal, without touching the network", async () => {
+        await expect(provider().openSTTSession({ signal: AbortSignal.abort() })).rejects.toThrow(/aborted/i);
+        expect(server.connections).toHaveLength(0);
+    });
+
     it("reports the connection as metadata and the turn start as speech", async () => {
         const events = await eventsFrom({}, (connection) => {
             connection.send({ type: "connected", request_id: "req-1" });
