@@ -10,7 +10,7 @@ import {
     toVoiceSettings,
     type WsAlignment,
 } from "./format";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
@@ -66,12 +66,16 @@ export class ElevenLabsTTSSession implements TTSSession {
         if (input.language) url.searchParams.set("language_code", input.language);
         if (input.timings) url.searchParams.set("sync_alignment", "true");
 
-        return new ElevenLabsTTSSession(url.toString(), config.apiKey, resolved, {
+        const session = new ElevenLabsTTSSession(url.toString(), config.apiKey, resolved, {
             // A single space is ElevenLabs' begin-of-stream marker.
             text: " ",
             voice_settings: toVoiceSettings(input.controls),
             ...(input.providerOptions ?? {}),
         });
+
+        closeOnAbort(session, input.signal);
+
+        return session;
     }
 
     private constructor(

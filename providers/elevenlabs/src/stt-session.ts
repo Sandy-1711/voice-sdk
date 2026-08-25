@@ -3,7 +3,7 @@ import { encodeBase64, TurnTextTracker, VoiceError } from "@swungstudent/voice";
 import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord } from "@swungstudent/voice";
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
-import { AsyncQueue } from "@voice-sdk/internal";
+import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
 import { toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
@@ -63,7 +63,11 @@ export class ElevenLabsSTTSession implements STTSession {
             url.searchParams.set(key, String(value));
         }
 
-        return new ElevenLabsSTTSession(url.toString(), config.apiKey, Boolean(input.timestamps));
+        const session = new ElevenLabsSTTSession(url.toString(), config.apiKey, Boolean(input.timestamps));
+
+        closeOnAbort(session, input.signal);
+
+        return session;
     }
 
     private constructor(url: string, apiKey: string, withTimestamps: boolean) {
