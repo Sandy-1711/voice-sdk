@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeBase64 } from "@swungstudent/voice";
 import { assertTTSEvent, collect, fakeSocket, pcmRamp, type FakeSocket } from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../src/index";
@@ -187,6 +187,24 @@ describe("openTTSSession", () => {
 
             await expect(session.closed).resolves.toBeUndefined();
             expect(server.connections).toHaveLength(0);
+        });
+
+        // The goodbye is an application message, so close() waits on the server
+        // to hang up. One that never does used to leave it pending forever.
+        it("gives up and drops the socket when the far side never closes", async () => {
+            vi.useFakeTimers();
+            try {
+                const session = await provider().openTTSSession();
+                session.push("hi");
+                await server.connection();
+
+                const closing = session.close();
+                await vi.advanceTimersByTimeAsync(5000);
+
+                await expect(closing).resolves.toBeUndefined();
+            } finally {
+                vi.useRealTimers();
+            }
         });
 
         it("refuses to open on an already-aborted signal", async () => {

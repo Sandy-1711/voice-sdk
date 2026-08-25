@@ -4,7 +4,7 @@ import type { Finality, RealtimeSTTInput, STTEvent, STTSession, TranscriptWord }
 import { DEFAULT_BASE_URL, type ResolvedConfig } from "./config";
 import { toRealtimeAudioFormat } from "./format";
 import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
-import { toText } from "./internal/socket";
+import { awaitClose, toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -123,7 +123,7 @@ export class ElevenLabsSTTSession implements STTSession {
             });
         }
         if (this.#ws.readyState === WebSocket.OPEN) this.#ws.close();
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #send(message: Record<string, unknown>): void {

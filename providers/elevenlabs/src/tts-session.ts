@@ -11,7 +11,7 @@ import {
     type WsAlignment,
 } from "./format";
 import { AsyncQueue, closeOnAbort } from "@voice-sdk/internal";
-import { toText } from "./internal/socket";
+import { awaitClose, toText } from "./internal/socket";
 
 /** Wire shape. The SDK ships camelCase types; the socket speaks this. */
 interface ServerMessage {
@@ -123,7 +123,8 @@ export class ElevenLabsTTSSession implements TTSSession {
     async close(): Promise<void> {
         if (this.#ws || this.#opening) {
             this.#send({ text: "" });
-            await this.#closed;
+            if (this.#ws) await awaitClose(this.#ws, this.#closed);
+            else await this.#closed;
         }
         this.#teardown();
         this.#onClosed();
