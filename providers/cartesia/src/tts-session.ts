@@ -8,7 +8,7 @@ import { DEFAULT_STREAM_FORMAT } from "./config";
 import { fromTimestamps, toGenerationConfig, toRawOutputFormat, toVoice } from "./format";
 import type { GenerationConfig } from "./format";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendIfOpen, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendIfOpen, toText } from "./internal/socket";
 
 /** Wire shape of what `/tts/websocket` sends back. */
 interface ServerMessage {
@@ -132,7 +132,7 @@ export class CartesiaTTSSession implements TTSSession {
     async close(): Promise<void> {
         this.#send({ transcript: "", continue: false });
         this.#ws.close();
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     /** Every request repeats the context configuration; only the verb differs. */

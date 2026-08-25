@@ -12,7 +12,7 @@ import type { ResolvedConfig } from "./config";
 import { DEFAULTS, PROVIDER } from "./config";
 import { fromWords, toRealtimeSTTFormat } from "./format";
 import { buildUrl } from "./internal/http";
-import { handshake, open, sendIfOpen, toText } from "./internal/socket";
+import { awaitClose, handshake, open, sendIfOpen, toText } from "./internal/socket";
 
 /** Wire shapes for both endpoints, narrowed to the fields core models. */
 interface STTMessage {
@@ -169,7 +169,7 @@ export class CartesiaSTTSession implements STTSession {
         // frame, auto takes a JSON message.
         if (this.#mode === "manual") sendIfOpen(this.#ws, "close");
         else sendIfOpen(this.#ws, JSON.stringify({ type: "close" }));
-        await this.#closed;
+        await awaitClose(this.#ws, this.#closed);
     }
 
     #receive(raw: WebSocket.RawData): void {
