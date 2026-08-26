@@ -1,0 +1,24 @@
+{
+  "name": "@voice-sdk/examples-basics",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@swungstudent/cartesia": "workspace:^",
+    "@swungstudent/deepgram": "workspace:^",
+    "@swungstudent/elevenlabs": "workspace:^",
+    "@swungstudent/voice": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@voice-sdk/eslint-config": "workspace:^",
+    "@voice-sdk/typescript-config": "workspace:^",
+    "eslint": "^9.39.1",
+    "tsx": "^4.23.12",
+    "typescript": "5.9.2"
+  }
+}
