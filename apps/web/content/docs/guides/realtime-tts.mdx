@@ -1,0 +1,81 @@
+---
+title: Realtime synthesis
+description: A duplex session you push text into as it is generated — the shape a spoken LLM response has.
+---
+
+`openTTSSession` opens a long-lived connection that takes text incrementally and
+streams audio back. It exists because a spoken LLM response cannot wait for the
+last token before it starts speaking.
+
+```ts
+const session = await voice.openTTSSession({
+  format: { container: "raw", encoding: "pcm_s16le", sampleRate: 24000 },
+});
+
+const playing = (async () => {
+  for await (const event of session.output) {
+    if (event.type === "audio") speaker.write(event.data);
+    if (event.type === "done") break;
+  }
+})();
+
+for await (const token of llm) session.push(token);
+await session.flush();
+
+await playing;
+await session.close();
+```
+
+## The session
+
+```ts
+interface RealtimeSession<TIn, TEvent> {
+  readonly output: AsyncIterable<TEvent>;
+  push(input: TIn): void;
+  flush(): Promise<void>;
+  cancel(): void;
+  close(): Promise<void>;
+  readonly closed: Promise<void>;
+}
+```
+
+**`push` returns nothing.** It is fire-and-forget so a token loop never awaits
+per token — a per-token round trip would defeat the point. Failures surface on
+`output` and on `closed` instead.
+
+**`flush` means "synthesize what is buffered".** Providers trigger generation on
+sentence boundaries or whitespace, so the last fragment can sit there
+indefinitely without one.
+
+**`cancel` is barge-in.** Best-effort: not every provider can drop work it has
+already queued. ElevenLabs has no cancel command at all, so that provider drops
+the connection and transparently opens a new one on the next `push`.
+
+**`format` is on the session, not the event.** `session.format` is resolved
+before the first byte, so a speaker can be opened up front.
+
+## Events
+
+```ts
+type TTSEvent =
+  | { type: "audio"; data: Uint8Array; offset?: number }
+  | { type: "timing"; alignment: Alignment }
+  | { type: "flushed"; id?: string | number }
+  | { type: "cleared"; id?: string | number }
+  | { type: "done" }
+  | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
+  | { type: "warning"; message: string; code?: string };
+```
+
+`done` means _the current generation_ finished, not that the session is over —
+push more text and more audio follows. `warning` is for things the provider
+reports that are not fatal; ignoring them is safe.
+
+`audioOnly(session.output)` drops everything but the bytes, for callers that
+only want to play audio.
+
+## Headerless only
+
+Realtime synthesis emits raw PCM, mu-law or A-law. Ask for a framed container
+and you get a `ValidationError` pointing at `speak()` — a `wav` header has to
+declare a length that is not known until generation ends.

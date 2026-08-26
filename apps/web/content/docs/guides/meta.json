@@ -1,0 +1,13 @@
+{
+  "title": "Guides",
+  "pages": [
+    "synthesis",
+    "transcription",
+    "realtime-tts",
+    "realtime-stt",
+    "audio-formats",
+    "lifecycle",
+    "errors",
+    "provider-options"
+  ]
+}

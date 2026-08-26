@@ -1,0 +1,99 @@
+---
+title: Synthesis
+description: speak() and speakStream() — text in, audio out, buffered or streamed.
+---
+
+## speak
+
+One request, one buffer. Use it when the audio is going to a file, a queue, or
+anywhere the whole clip is wanted before anything happens.
+
+```ts
+const result = await voice.speak({
+  text: "The quick brown fox.",
+  voice: "aura-2-thalia-en",
+  format: { container: "wav", sampleRate: 24000 },
+  controls: { speed: 1.1 },
+});
+```
+
+| Field      | What it does                                                             |
+| ---------- | ------------------------------------------------------------------------ |
+| `text`     | The only required field                                                  |
+| `model`    | Provider model id. Unset, the provider's pinned default                  |
+| `voice`    | Voice id. On Deepgram a voice _is_ a model, so the two are one knob      |
+| `language` | Only where the provider separates it from the model                      |
+| `format`   | See [Audio formats](/docs/guides/audio-formats)                          |
+| `controls` | Prosody: `speed`, `volume`, `stability`, `similarity`, `style`, and more |
+| `timings`  | `true`, or a granularity: `"word"`, `"character"`, `"phoneme"`           |
+
+`controls` is best-effort by design: a provider with no equivalent for a knob
+ignores it rather than throwing, because the result is still usable audio. A
+provider that _does_ have the knob but with limits — Cartesia's `speed` accepts
+0.6 to 1.5 — validates it before the request goes out.
+
+### The result
+
+```ts
+interface SpeakResult {
+  audio: Uint8Array;
+  format: ResolvedAudioFormat;
+  alignment?: Alignment;
+  requestId?: string;
+  raw?: unknown;
+}
+```
+
+`format` is always fully resolved — container, encoding, sample rate and
+channels — so nothing downstream has to guess how to play the bytes. `raw` is
+the provider's untouched response, for the times the mapping loses something you
+need.
+
+### Timings
+
+Ask for `timings` and the result carries an `Alignment`: a unit, and a span per
+word or character with its start and end in seconds.
+
+```ts
+const { alignment } = await voice.speak({ text: "Hello there.", timings: "word" });
+
+for (const span of alignment?.spans ?? []) {
+  console.log(`${span.start.toFixed(2)}s  ${span.text}`);
+}
+```
+
+Not every provider has them at every granularity, and asking for one that does
+not exist raises a `ValidationError` rather than returning audio with nothing
+attached. Deepgram reports no alignment at all; ElevenLabs is character-level
+only.
+
+## speakStream
+
+Same input, but the first bytes arrive long before the last word is synthesized.
+
+```ts
+const stream = voice.speakStream({
+  text: "The quick brown fox.",
+  format: { container: "raw", encoding: "pcm_s16le", sampleRate: 24000 },
+});
+
+console.log(stream.format);          // known before the first chunk
+
+for await (const chunk of stream) {
+  speaker.write(chunk.data);         // chunk.offset is seconds, where reported
+}
+```
+
+`speakStream` returns an `AudioStream` **synchronously** rather than a promise,
+which is what lets it expose `format` up front.
+
+Streaming endpoints are usually headerless: providers accept the `raw` container
+there and reject framed ones with a `ValidationError` pointing at `speak()`. A
+`wav` header declares a length nothing knows until generation ends.
+
+<Callout title="This is not the realtime capability">
+Streaming audio *out* of a one-shot call is `speakStream`, and every provider
+with `tts` has it. Pushing text **in** incrementally is
+[`openTTSSession`](/docs/guides/realtime-tts), and that is what a spoken LLM
+response needs.
+</Callout>

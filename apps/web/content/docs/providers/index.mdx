@@ -1,0 +1,49 @@
+---
+title: Overview
+description: What each provider can do, and where they differ.
+---
+
+Three providers today, all four capabilities on each.
+
+|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` | Timings   |
+| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: | --------- |
+| **Cartesia**   |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      | word      |
+| **Deepgram**   |  ✅   |  ✅   |      ✅       |      ✅       |      —       | none      |
+| **ElevenLabs** |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      | character |
+
+A provider declares its capabilities, and calling one it lacks raises a
+`CapabilityError` naming the provider. Deepgram has no voice-listing endpoint
+because a voice _is_ a model there, so the method is absent rather than faked.
+
+## Choosing between them
+
+The capability matrix is not the interesting part — they are all four-for-four.
+What actually differs:
+
+- **A voice id.** Cartesia and ElevenLabs need one for synthesis and have no
+  sensible default; Deepgram folds voice and language into the model name.
+- **Timings.** Deepgram reports no alignment at all. ElevenLabs is
+  character-level only. Ask for one that does not exist and you get a
+  `ValidationError` rather than audio with nothing attached.
+- **Formats.** Sample rates and containers vary; every provider page carries its
+  own table. All three are mono-only.
+- **Realtime STT endpoints.** Cartesia and Deepgram each have two, selected by
+  `turnDetection` and by model respectively. Both are normalised to the same
+  event stream, so consumers cannot tell which one they are talking to.
+
+## Swapping
+
+The point of the contract is that this is the whole diff:
+
+```ts
+- const voice = new Voice({ provider: new DeepgramProvider() });
++ const voice = new Voice({ provider: new CartesiaProvider({ defaultVoice }) });
+```
+
+Anything reached through [`providerOptions`](/docs/guides/provider-options) is
+the exception — it is provider-specific by definition.
+
+## Adding one
+
+The four capabilities are an interface, not a closed set of vendors. See
+[Writing a provider](/docs/contributing/writing-a-provider).

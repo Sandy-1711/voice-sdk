@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "index",
+    "installation",
+    "quickstart",
+    "guides",
+    "concepts",
+    "providers",
+    "reference",
+    "contributing"
+  ]
+}

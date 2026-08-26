@@ -1,0 +1,47 @@
+---
+title: Installation
+description: Core plus whichever providers you need, and where the keys come from.
+---
+
+Install the core package plus one or more providers:
+
+```sh
+pnpm add @swungstudent/voice @swungstudent/deepgram
+```
+
+Core talks to nothing on its own — it is the contract and the shared helpers.
+Each provider declares core as a **peer dependency**, so an application never
+ends up with two copies of the types.
+
+| Package                    | What it is                                           |
+| -------------------------- | ---------------------------------------------------- |
+| `@swungstudent/voice`      | The contract: `Voice`, the types, the shared helpers |
+| `@swungstudent/cartesia`   | Cartesia — sonic, ink-whisper, ink-2                 |
+| `@swungstudent/deepgram`   | Deepgram — aura-2, nova-3, flux                      |
+| `@swungstudent/elevenlabs` | ElevenLabs — eleven_multilingual_v2, scribe          |
+
+The four packages are versioned together, so matching versions mean packages
+that were built and tested against each other.
+
+## Requirements
+
+Node 18 or newer. The published packages ship both ESM and CommonJS, and every
+release is verified by importing the built output on Node 18 before it goes out.
+
+## Keys
+
+Every provider reads its key from the environment unless you pass one:
+
+| Provider   | Environment variable |
+| ---------- | -------------------- |
+| Cartesia   | `CARTESIA_API_KEY`   |
+| Deepgram   | `DEEPGRAM_API_KEY`   |
+| ElevenLabs | `ELEVENLABS_API_KEY` |
+
+```ts
+new DeepgramProvider();                    // reads DEEPGRAM_API_KEY
+new DeepgramProvider({ apiKey: "..." });   // or pass it
+```
+
+A provider constructed without a key it needs throws a `ConfigError` naming the
+field and the environment variable — at construction, not on the first call.

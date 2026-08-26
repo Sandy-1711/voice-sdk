@@ -1,0 +1,44 @@
+---
+title: Releasing
+description: Changesets in, a release pull request out, npm on merge.
+---
+
+Changes users would notice get a changeset:
+
+```sh
+pnpm changeset
+```
+
+On merge to `main`, CI opens a release pull request that applies the pending
+changesets and bumps the versions. Merging **that** publishes to npm.
+
+The four packages are versioned together, so matching versions mean packages
+that were built and tested against each other.
+
+## The one thing not to "fix"
+
+Each published package ships `types` and `exports` pointing at **source**, with
+a `publishConfig` block overriding both to `dist` for the real release:
+
+```json
+{
+  "types": "./src/index.ts",
+  "publishConfig": {
+    "types": "./dist/index.d.ts"
+  }
+}
+```
+
+The source-pointing fields are deliberate — they are what makes in-repo
+development work with no build step. The `publishConfig` override is what makes
+the published artifact correct.
+
+That override only works because **changesets shells out to `pnpm publish`**,
+which it picks from the workspace's package manager. Plain `npm publish` ignores
+`publishConfig` overrides for `types` and `exports` and would ship tarballs whose
+type entry points at a file `files: ["dist"]` excluded — packages with no types
+at all.
+
+If the package manager ever changes, this breaks silently. The
+`dist-types` CI job exists to catch exactly that: it packs with pnpm, installs
+the tarballs the way a user would, and compiles a consumer against them.

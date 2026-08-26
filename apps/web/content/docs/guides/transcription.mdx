@@ -1,0 +1,72 @@
+---
+title: Transcription
+description: transcribe() — a complete recording in, a transcript out.
+---
+
+```ts
+const result = await voice.transcribe({
+  audio: { url: "https://example.com/clip.wav" },
+  timestamps: "segment",
+  diarize: true,
+});
+```
+
+## The audio
+
+`AudioSource` is deliberately wide, because callers already have their audio in
+whichever shape their runtime handed them:
+
+```ts
+type AudioSource =
+  | Uint8Array
+  | ArrayBuffer
+  | Blob
+  | ReadableStream<Uint8Array>
+  | AsyncIterable<Uint8Array>
+  | { url: string };
+```
+
+Pass `{ url }` and providers that can fetch it themselves will, rather than
+pulling the bytes through your process first.
+
+`collectAudio(source)` reads any of these into one buffer if you need that.
+
+## Options
+
+| Field          | What it does                                                     |
+| -------------- | ---------------------------------------------------------------- |
+| `format`       | **Required for headerless PCM** — nothing sniffs it              |
+| `timestamps`   | `false`, `"word"`, `"segment"` or `"character"`                  |
+| `diarize`      | Attribute each word or segment to a speaker                      |
+| `speakerCount` | A hint, where the provider takes one                             |
+| `keyterms`     | Words to bias recognition towards — names, jargon, product terms |
+| `prompt`       | Free-text context, where the provider supports it                |
+
+## The result
+
+```ts
+interface TranscriptResult {
+  text: string;
+  language?: string;
+  duration?: number;      // seconds
+  confidence?: number;
+  words?: TranscriptWord[];
+  segments?: TranscriptSegment[];
+  requestId?: string;
+  raw?: unknown;
+}
+```
+
+`text` is always there. `words` and `segments` appear when `timestamps` asked
+for them, each carrying `start` and `end` in seconds, plus `speaker` when
+`diarize` was on.
+
+```ts
+for (const segment of result.segments ?? []) {
+  console.log(`[${segment.start.toFixed(2)}] ${segment.speaker}: ${segment.text}`);
+}
+```
+
+Both arrays stay optional rather than defaulting to empty: an empty array and
+"the provider did not report any" are different facts, and flattening them hides
+a misconfiguration.

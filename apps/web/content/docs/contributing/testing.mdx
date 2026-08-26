@@ -1,0 +1,53 @@
+---
+title: Testing
+description: Two tiers — offline fakes that CI runs, and a live tier that costs money.
+---
+
+## The offline tier
+
+```sh
+pnpm test
+```
+
+This is what CI runs. It stands real HTTP and WebSocket servers up on ephemeral
+ports and drives each provider against them, so URL building, headers, protocol
+frames and streaming stay covered without touching a real API. No keys, no cost,
+no network.
+
+`@voice-sdk/test-kit` carries the fakes and the shared assertions:
+
+| Export                       | What it holds you to                                              |
+| ---------------------------- | ----------------------------------------------------------------- |
+| `assertCapabilityInvariants` | A declared capability has its methods; an undeclared one does not |
+| `assertClosesOnAbort`        | Every session closes when its signal fires                        |
+| `assertTTSEvent`             | Emitted events match the union core declares                      |
+| `assertSTTEvent`             | The same, going the other way                                     |
+| `assertTurnSequence`         | Finality progresses legally: no `final` after `turn_end`          |
+
+A new provider is held to the same assertions as the existing three. That is
+what makes "swap the constructor" a claim rather than a hope.
+
+## The live tier
+
+```sh
+DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
+```
+
+Opt-in, because it touches the real APIs and costs real money. Anything without
+a key is skipped.
+
+Run it before a release. The offline fakes only encode what we _believe_ each
+wire format is, and this tier is what catches one changing. Its assertions are
+about shape and plausibility rather than exact bytes — the same text does not
+synthesize to identical audio twice.
+
+## What else CI checks
+
+- **Formatting, lint and typecheck** across the workspace, including the
+  examples — an example that stops compiling fails the build.
+- **The offline tier on Node 20, 22 and 24**, and on Windows.
+- **Importing the built output on Node 18**, because the packages claim
+  `engines.node >= 18` and vitest cannot run there to verify it.
+- **Compiling a consumer against the packed tarballs**, under both module
+  resolutions. `pnpm test` runs against `src` and `check-types` typechecks the
+  workspace; neither sees `dist` or the manifest a consumer actually resolves.

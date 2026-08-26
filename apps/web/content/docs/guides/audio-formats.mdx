@@ -1,0 +1,69 @@
+---
+title: Audio formats
+description: One format type, requested and resolved, and how each provider spells it.
+---
+
+Every provider spells formats differently. ElevenLabs fuses container, rate and
+bitrate into one token (`mp3_44100_128`). Cartesia prefixes codecs (`pcm_mulaw`).
+Deepgram splits them across query parameters. Core models the thing itself:
+
+```ts
+interface AudioFormat {
+  container?: AudioContainer;   // "raw" | "wav" | "mp3" | "ogg" | "webm" | "flac" | "aac"
+  encoding?: AudioEncoding;     // "pcm_s16le" | "mulaw" | "mp3" | "opus" | ...
+  sampleRate?: number;
+  channels?: number;
+  bitrate?: number;             // kbps; only meaningful for mp3, opus, aac
+}
+```
+
+## Requested versus resolved
+
+Every field on `AudioFormat` is optional — unset ones fall back to the
+provider's default. What comes back is not:
+
+```ts
+interface ResolvedAudioFormat extends AudioFormat {
+  container: AudioContainer;
+  encoding: AudioEncoding;
+  sampleRate: number;
+  channels: number;
+}
+```
+
+`SpeakResult.format`, `AudioStream.format` and `TTSSession.format` are all
+resolved. The caller asked for part of a format and is told the whole of one, so
+nothing downstream has to guess how to play the bytes.
+
+## Unsupported combinations fail early
+
+Format mapping is where providers differ most, so it is checked before a request
+goes out. An unsupported combination raises a `ValidationError` naming the field
+— often listing the neighbouring values that would have worked — rather than
+returning a bare 400 from the API.
+
+All three providers are mono-only. See each provider's page for its exact table:
+[Cartesia](/docs/providers/cartesia), [Deepgram](/docs/providers/deepgram),
+[ElevenLabs](/docs/providers/elevenlabs).
+
+## Streaming is headerless
+
+`speakStream` and `openTTSSession` accept the `raw` container only. A framed
+container's header declares a length that is not known until generation ends, so
+providers do not offer one on a streaming endpoint and this SDK does not pretend
+otherwise — you get a `ValidationError` pointing at `speak()`.
+
+Playing raw PCM means telling the player what it is:
+
+```sh
+ffplay -f s16le -ar 24000 -ch_layout mono out.raw
+```
+
+## Headerless input needs declaring
+
+Going the other way, `transcribe` needs `format` when the audio is headerless
+PCM — there is no header to read it from and nothing sniffs it. Container
+formats carry their own answer, so `format` is unnecessary there.
+
+For realtime, `inputFormat` is connection-scoped: declared once at open time,
+and every frame pushed afterwards must match.

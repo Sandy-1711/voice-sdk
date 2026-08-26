@@ -1,0 +1,58 @@
+---
+title: Errors
+description: Four of them, all extending VoiceError, and which are thrown before the request goes out.
+---
+
+Everything this SDK throws extends `VoiceError`, so one `catch` covers it.
+
+```ts
+import { VoiceError, ValidationError } from "@swungstudent/voice";
+
+try {
+  await voice.speak({ text, format });
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`${error.provider} rejected ${error.field}`);
+  } else if (error instanceof VoiceError) {
+    // anything else from the SDK
+  } else {
+    throw error;
+  }
+}
+```
+
+| Error             | Thrown when                                                      | When                       |
+| ----------------- | ---------------------------------------------------------------- | -------------------------- |
+| `CapabilityError` | The provider does not implement what you called                  | Immediately                |
+| `ConfigError`     | A provider was built without something it needs, like an API key | At construction            |
+| `ValidationError` | A request field this provider cannot represent                   | Before the request is sent |
+| `VoiceError`      | The base class — everything above is one                         |                            |
+
+Each carries the provider name, and the two that concern a field carry the field
+name, so a log line says which provider rejected what.
+
+## Thrown before the wire
+
+`ValidationError` is deliberately raised _before_ the request goes out. Format
+mapping is where providers differ most, and a bare `400 Bad Request` gives you
+nothing to act on. Being told `"sampleRate"` — often with the values that would
+have worked — is the difference between a fix and an investigation.
+
+`CapabilityError` is the same idea one level up. A provider that lacks a
+capability simply does not have the method, so `Voice` refuses the call by name
+rather than letting it fail somewhere deeper in:
+
+```
+Provider "deepgram" does not support "listVoices".
+```
+
+That is the honest answer: Deepgram has no voice-listing endpoint, because a
+voice _is_ a model there. The method is absent rather than faked.
+
+## Provider failures
+
+An HTTP failure that is not retryable stays the provider's to interpret —
+Deepgram's `err_code` / `err_msg` envelope and ElevenLabs' `detail` do not look
+alike, so mapping lives where the knowledge is. Retryable failures never reach
+you at all: `408`, `429`, `5xx` and network errors are retried by the transport
+layer with backoff. See [Middleware](/docs/concepts/middleware).

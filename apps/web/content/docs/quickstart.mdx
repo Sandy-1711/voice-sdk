@@ -1,0 +1,104 @@
+---
+title: Quickstart
+description: A first call, a first stream, and a first realtime session.
+---
+
+Everything on this page is a runnable file in
+[`examples/`](https://github.com/Sandy-1711/voice-sdk/tree/main/examples).
+
+## Speak
+
+```ts
+import { writeFile } from "node:fs/promises";
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
+
+const voice = new Voice({ provider: new DeepgramProvider() });
+
+const { audio, format } = await voice.speak({
+  text: "Hello there.",
+  format: { container: "wav", sampleRate: 24000 },
+});
+
+await writeFile("hello.wav", audio);
+```
+
+`audio` is a `Uint8Array`. `format` is the format **actually in effect** — not
+the one you asked for — so the caller always knows how to play the bytes.
+
+## Transcribe
+
+```ts
+const { text, words } = await voice.transcribe({
+  audio: await readFile("hello.wav"),
+  timestamps: "word",
+});
+```
+
+`audio` also takes a `Blob`, a `ReadableStream`, an async iterable, or
+`{ url: "https://..." }`.
+
+## Stream audio out
+
+`speakStream` returns as soon as the headers arrive, and the stream knows its
+format before the first chunk — so a speaker or a socket can be set up ahead of
+time.
+
+```ts
+const stream = voice.speakStream({ text: "Hello there." });
+console.log(stream.format.sampleRate);
+
+for await (const chunk of stream) {
+  speaker.write(chunk.data);
+}
+```
+
+## Push text in as it is generated
+
+Streaming audio _out_ of a one-shot call is not the same as a realtime session.
+A session is duplex: you push text **in** incrementally, a token at a time,
+which is what a spoken LLM response needs.
+
+```ts
+const session = await voice.openTTSSession({
+  format: { container: "raw", sampleRate: 24000 },
+});
+
+for await (const token of llm) session.push(token);
+await session.flush();
+
+for await (const event of session.output) {
+  if (event.type === "audio") speaker.write(event.data);
+  if (event.type === "done") break;
+}
+
+await session.close();
+```
+
+`push` is fire-and-forget, so a token loop never awaits per token. Failures
+surface on `output` and on `closed`.
+
+## Listen
+
+Going the other way, transcripts arrive with three levels of finality.
+`turns()` keeps only the events that close a turn:
+
+```ts
+import { turns } from "@swungstudent/voice";
+
+const session = await voice.openSTTSession({
+  turnDetection: { mode: "vad", silence: 1 },
+});
+
+microphone.on("data", (frame) => session.push(frame));
+
+for await (const turn of turns(session.output)) {
+  console.log(turn.text);
+}
+```
+
+## Next
+
+- [Synthesis](/docs/guides/synthesis) and [Transcription](/docs/guides/transcription) in full
+- [Realtime STT](/docs/guides/realtime-stt) — finality, turn detection, and what `flush()` is for
+- [Errors](/docs/guides/errors) — the four of them, and which are thrown before the request goes out

@@ -1,0 +1,96 @@
+---
+title: Realtime transcription
+description: Pushed audio frames in, transcripts out — finality, turn detection, and what flush is for.
+---
+
+```ts
+import { turns } from "@swungstudent/voice";
+
+const session = await voice.openSTTSession({
+  inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+  turnDetection: { mode: "vad", silence: 1 },
+  interimResults: true,
+});
+
+microphone.on("data", (frame) => session.push(frame));
+
+for await (const turn of turns(session.output)) {
+  console.log(turn.text);
+}
+```
+
+## Finality
+
+Transcripts arrive at three levels, and the difference matters:
+
+| Finality   | Means                                                      |
+| ---------- | ---------------------------------------------------------- |
+| `partial`  | Still being revised. Render it, do not act on it           |
+| `final`    | A stable segment **within** a turn that may still continue |
+| `turn_end` | The speaker finished                                       |
+
+Every transcript event carries both forms of the text — `text` is cumulative for
+the current turn, `delta` is what is new since the previous event. Providers
+send one or the other; `TurnTextTracker` derives whichever is missing, so
+consumers never have to care which kind they are talking to.
+
+```ts
+for await (const event of session.output) {
+  if (event.type !== "transcript") continue;
+  if (event.finality === "partial") ui.draft(event.text);
+  if (event.finality === "turn_end") ui.commit(event.text);
+}
+```
+
+Set `interimResults: false` to suppress `partial` entirely.
+
+## Turn detection
+
+```ts
+type TurnDetection =
+  | { mode: "manual" }
+  | { mode: "vad"; silence?: number; threshold?: number; minSpeech?: number };
+```
+
+`vad` lets the provider decide where turns end — `silence` in seconds,
+`threshold` as sensitivity from 0 to 1, `minSpeech` as the speech needed before
+a turn opens.
+
+`manual` puts the boundary under your control: nothing closes a turn until you
+call `flush()`. Use it when the application already knows when the user stopped
+talking — a push-to-talk button, or an explicit end-of-utterance signal.
+
+Not every provider supports both, and the ones that do sometimes route them to
+different endpoints with different models. That is checked at open time: asking
+for a combination a provider cannot serve raises a `ValidationError` there,
+rather than leaving you waiting for turns that will never arrive.
+
+## Input format
+
+```ts
+inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }
+```
+
+**Connection-scoped, and nothing negotiates or sniffs it.** It is declared once
+at open time and every frame pushed afterwards must match. The one format every
+provider accepts is exported for you:
+
+```ts
+import { DEFAULT_REALTIME_INPUT_FORMAT } from "@swungstudent/voice";
+// { container: "raw", encoding: "pcm_s16le", sampleRate: 16000, channels: 1 }
+```
+
+## Events
+
+```ts
+type STTEvent =
+  | STTTranscriptEvent
+  | { type: "speech_started"; at?: number }
+  | { type: "speech_ended"; at?: number }
+  | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
+  | { type: "warning"; message: string; code?: string };
+```
+
+`speech_started` and `speech_ended` are what a barge-in implementation listens
+for: the moment the user starts talking is the moment to `cancel()` the TTS
+session that is talking over them.

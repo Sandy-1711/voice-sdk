@@ -1,0 +1,68 @@
+---
+title: Cancellation and lifecycle
+description: Why there is no client close, and how one AbortController ends everything.
+---
+
+## Sessions own their lifecycle
+
+Close a session when the call it belongs to ends. An open socket keeps the
+process alive and the provider billing.
+
+```ts
+const session = await voice.openSTTSession();
+try {
+  // ...
+} finally {
+  await session.close();
+}
+```
+
+`close()` waits for the provider to acknowledge and gives up after five seconds
+if it never does, so a shutdown cannot hang on an unresponsive server.
+
+## There is no client-level close
+
+`Voice` and the providers have no `close()`, deliberately. A provider holds
+configuration, not connections — there would be nothing for it to shut. Every
+connection in this SDK belongs to a session that already knows how to end
+itself.
+
+## One signal ends everything
+
+To end several things at once, give them one `AbortController` and abort it:
+
+```ts
+const call = new AbortController();
+
+const listening = await voice.openSTTSession({ signal: call.signal });
+const speaking = await voice.openTTSSession({ signal: call.signal });
+
+// Hang-up, timeout, SIGTERM — one line ends both, and cancels any in-flight
+// speak() or transcribe() given the same signal.
+call.abort();
+```
+
+The same signal works on one-shot calls through the request context:
+
+```ts
+await voice.speak({ text: "..." }, { signal: call.signal });
+```
+
+Two rules the SDK holds every provider to:
+
+- **Every session closes on abort**, whichever provider is behind it.
+- **A signal that has already fired is refused at open time**, the way `fetch`
+  refuses one, rather than connecting and immediately tearing down.
+
+## Timeouts are not deadlines
+
+A `timeout` bounds **time to response headers**, not time to the last byte. Once
+the headers arrive the timer is disarmed and the body streams without one.
+
+That is deliberate: a `speakStream` response stays open for as long as the audio
+takes to generate, and a deadline outliving the headers would abort it mid-body.
+A slow download is not a failed request.
+
+If you want a budget over the whole operation, body included, that is what
+`signal` is for. See [Middleware](/docs/concepts/middleware) for the layer this
+happens in.
