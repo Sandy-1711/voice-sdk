@@ -1,0 +1,71 @@
+---
+title: Errors
+description: The error classes the SDK throws and when each one is raised.
+---
+
+Every error the SDK throws extends `VoiceError`, so one `catch` clause can
+handle all of them.
+
+```ts
+import { VoiceError, ValidationError } from "@swungstudent/voice";
+
+try {
+  await voice.speak({ text, format });
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`${error.provider} rejected ${error.field}`);
+  } else if (error instanceof VoiceError) {
+    console.error(error.message);
+  } else {
+    throw error;
+  }
+}
+```
+
+## Error classes
+
+| Class             | Extends      | Thrown when                                           |
+| ----------------- | ------------ | ----------------------------------------------------- |
+| `VoiceError`      | `Error`      | Base class for the errors below                       |
+| `CapabilityError` | `VoiceError` | The provider does not implement the method you called |
+| `ConfigError`     | `VoiceError` | A provider is constructed without a required option   |
+| `ValidationError` | `VoiceError` | A request field is not supported by the provider      |
+
+`CapabilityError` carries `provider` and `capability`. `ConfigError` and
+`ValidationError` carry `provider` and `field`.
+
+## Validation happens before the request
+
+`ValidationError` is thrown before any network call. Format support differs the
+most between providers, and a `400 Bad Request` from the API does not identify
+which field caused it.
+
+```ts
+await voice.speak({
+  text: "Hello there.",
+  format: { container: "wav", channels: 2 },
+});
+// ValidationError: Provider "deepgram" rejected "channels": only mono is supported.
+```
+
+## Missing capabilities
+
+A provider that does not support a capability does not define the corresponding
+method. `Voice` checks for it and throws:
+
+```
+Provider "deepgram" does not support "listVoices".
+```
+
+Deepgram has no voice listing endpoint, because voices are selected through the
+model name. See [Deepgram](/docs/providers/deepgram).
+
+## Provider errors
+
+HTTP failures that are not retryable are mapped by the provider package, which
+knows the shape of that API's error body. Deepgram returns `err_code` and
+`err_msg`; ElevenLabs returns `detail`.
+
+Retryable failures do not reach your code. Status codes `408`, `429`, and `5xx`,
+along with network errors, are retried with backoff by the transport layer. See
+[Middleware](/docs/concepts/middleware).

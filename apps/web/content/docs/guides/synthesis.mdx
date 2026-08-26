@@ -1,0 +1,108 @@
+---
+title: Synthesis
+description: Convert text to audio with speak() and speakStream().
+---
+
+## speak
+
+`speak()` sends one request and resolves with the complete audio buffer.
+
+```ts
+const result = await voice.speak({
+  text: "The quick brown fox.",
+  voice: "aura-2-thalia-en",
+  format: { container: "wav", sampleRate: 24000 },
+  controls: { speed: 1.1 },
+});
+```
+
+### Input
+
+| Field      | Type                        | Description                                                     |
+| ---------- | --------------------------- | --------------------------------------------------------------- |
+| `text`     | `string`                    | Required. The text to synthesize                                |
+| `model`    | `string`                    | Provider model id. Defaults to the provider's configured model  |
+| `voice`    | `string`                    | Voice id. On Deepgram, the voice is part of the model name      |
+| `language` | `string`                    | Only used by providers that accept it separately from the model |
+| `format`   | `AudioFormat`               | See [Audio formats](/docs/guides/audio-formats)                 |
+| `controls` | `VoiceControls`             | Prosody settings such as `speed` and `volume`                   |
+| `timings`  | `boolean \| Alignment.unit` | Request word, character, or phoneme timings                     |
+
+`controls` is applied on a best-effort basis. A provider that has no equivalent
+for a setting ignores it. A provider that supports the setting but restricts its
+range validates it locally: Cartesia accepts `speed` between 0.6 and 1.5, and
+throws a `ValidationError` outside that range.
+
+### Result
+
+```ts
+interface SpeakResult {
+  audio: Uint8Array;
+  format: ResolvedAudioFormat;
+  alignment?: Alignment;
+  requestId?: string;
+  raw?: unknown;
+}
+```
+
+`format` describes the audio that was returned, with `container`, `encoding`,
+`sampleRate`, and `channels` all set. `raw` contains the provider's unmodified
+response body, for fields the SDK does not map.
+
+### Timings
+
+Set `timings` to receive an `Alignment` alongside the audio. Each span carries
+its text and its start and end offsets in seconds.
+
+```ts
+const { alignment } = await voice.speak({
+  text: "Hello there.",
+  timings: "word",
+});
+
+for (const span of alignment?.spans ?? []) {
+  console.log(`${span.start.toFixed(2)}s ${span.text}`);
+}
+```
+
+Support varies by provider. Cartesia reports word-level timings, ElevenLabs
+reports character-level timings, and Deepgram does not report timings at all.
+Requesting an unsupported granularity throws a `ValidationError`.
+
+## speakStream
+
+`speakStream()` returns an `AudioStream` synchronously. Audio is delivered in
+chunks as the provider generates it.
+
+```ts
+const stream = voice.speakStream({
+  text: "The quick brown fox.",
+  format: { container: "raw", encoding: "pcm_s16le", sampleRate: 24000 },
+});
+
+console.log(stream.format);
+
+for await (const chunk of stream) {
+  speaker.write(chunk.data);
+}
+```
+
+Because the method is synchronous, `stream.format` is available before the first
+chunk arrives. Each chunk carries `data` and, where the provider reports it, an
+`offset` in seconds.
+
+<Callout title="Streaming requires a headerless container">
+  Streaming endpoints accept the `raw` container only. A container such as `wav`
+  needs a length in its header that is not known until generation finishes.
+  Requesting one throws a `ValidationError`.
+</Callout>
+
+## Choosing between them
+
+Use `speak()` when you need the complete file, for example to store it or to
+send it as an attachment. Use `speakStream()` to reduce time to first audio when
+playing the result.
+
+Neither method is the same as a realtime session. `speakStream()` streams the
+output of a single request. To stream text _into_ the provider as it is
+generated, use [`openTTSSession`](/docs/guides/realtime-tts).

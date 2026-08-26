@@ -1,0 +1,87 @@
+---
+title: Deepgram
+description: Configuration, behaviour, and format support for the Deepgram provider.
+---
+
+```sh
+pnpm add @swungstudent/voice @swungstudent/deepgram
+```
+
+```ts
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
+
+const voice = new Voice({ provider: new DeepgramProvider() });
+
+const { audio } = await voice.speak({ text: "Hello there." });
+```
+
+## Configuration
+
+```ts
+new DeepgramProvider({
+  apiKey: "...", // defaults to DEEPGRAM_API_KEY
+  baseUrl: "https://...", // self-hosted or regional host
+  defaultVoice: "aura-2-thalia-en",
+  defaultModel: "aura-2-thalia-en",
+  defaultSTTModel: "nova-3",
+  defaultRealtimeSTTModel: "nova-3",
+  defaultFormat: { container: "wav", sampleRate: 24000 },
+
+  retries: 2,
+  timeout: 30_000,
+  logger: console,
+  rateLimit: { concurrency: 4 },
+  middleware: [],
+});
+```
+
+Model defaults are pinned to specific versions instead of `-latest`, so output
+does not change between releases of this package. A per-call request context
+overrides `retries` and `timeout`.
+
+## Voice selection
+
+Deepgram does not have a separate voice or language parameter. Both are encoded
+in the model name, as in `aura-2-thalia-en`. The `voice` and `model` fields
+therefore set the same thing, and `model` takes precedence if you pass both.
+
+For the same reason, the provider does not implement `listVoices()`. Calling it
+through `Voice` throws a `CapabilityError`.
+
+## Timings
+
+Deepgram synthesis does not return alignment data at any granularity. Passing
+`timings` throws a `ValidationError`. Use Cartesia or ElevenLabs if you need
+timings.
+
+## Realtime transcription
+
+Two endpoints are available, selected by the model:
+
+| Model                | Endpoint     | Turn handling                                  |
+| -------------------- | ------------ | ---------------------------------------------- |
+| `nova-3` and similar | `/v1/listen` | Two finality levels; heartbeat sent by the SDK |
+| `flux-*`             | `/v2/listen` | Provider-managed turn lifecycle                |
+
+Both are normalised to the same event stream. Flux manages turns itself and has
+no manual finalize, so `turnDetection: { mode: "manual" }` throws a
+`ValidationError` when the session opens.
+
+## Realtime synthesis
+
+`openTTSSession` returns headerless audio: raw PCM, mu-law, or A-law. Requesting
+a container format throws a `ValidationError`. Use `speak()` for container
+formats.
+
+## Audio formats
+
+| Container     | Encoding                     | Sample rates                     |
+| ------------- | ---------------------------- | -------------------------------- |
+| `raw`         | `pcm_s16le`, `mulaw`, `alaw` | 8000, 16000, 24000, 32000, 48000 |
+| `wav`         | `pcm_s16le`, `mulaw`, `alaw` | As above                         |
+| `mp3`         | —                            | As above, with `bitrate`         |
+| `ogg`         | `opus`                       | As above, with `bitrate`         |
+| `flac`, `aac` | —                            | As above                         |
+
+Mono only. Other combinations throw a `ValidationError` naming the field.

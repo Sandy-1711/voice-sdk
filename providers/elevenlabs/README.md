@@ -3,6 +3,8 @@
 ElevenLabs provider for [`@swungstudent/voice`](https://www.npmjs.com/package/@swungstudent/voice).
 All four capabilities: synthesis and transcription, batch and realtime.
 
+Documentation: [voice-sdk docs](https://github.com/Sandy-1711/voice-sdk/tree/main/apps/web/content/docs).
+
 ```sh
 pnpm add @swungstudent/voice @swungstudent/elevenlabs
 ```

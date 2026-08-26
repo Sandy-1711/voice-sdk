@@ -1,0 +1,571 @@
+---
+title: Writing a provider
+description: Implement the VoiceProvider interface for a new API, one file per concern.
+---
+
+A provider package translates between one vendor's API and the shared interface.
+This guide follows the order the existing providers were built in. Use
+[`providers/cartesia`](https://github.com/Sandy-1711/voice-sdk/tree/main/providers/cartesia)
+as the reference implementation.
+
+Read [Core types](/docs/reference/core-types) first. This guide assumes you know
+what `SpeakInput`, `TTSEvent`, and `Finality` are.
+
+## Package structure
+
+```
+providers/<name>/src/
+├── config.ts          API key, defaults, and the HTTP transport
+├── format.ts          AudioFormat translation
+├── tts.ts             speak() and speakStream()
+├── tts-session.ts     openTTSSession()
+├── stt.ts             transcribe()
+├── stt-session.ts     openSTTSession()
+├── provider.ts        the VoiceProvider implementation
+├── index.ts           public exports
+└── internal/          http, sse, and socket helpers
+```
+
+`provider.ts` should be close to pure delegation. If it grows logic, that logic
+belongs in one of the other modules.
+
+## Before writing code
+
+Answer four questions and write the answers down:
+
+1. **Which capabilities does the API actually support today**, with an endpoint
+   you can call?
+2. **What are the exact field names in both directions?** Build the mapping
+   table before the mapper.
+3. **What is the finality model for realtime transcription?** This is where
+   providers differ most, and a naive mapping loses information.
+4. **Does the API have quirks in its error envelope, auth, or versioning?**
+
+The existing research is in
+[`docs/provider-research.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/provider-research.md)
+and
+[`docs/type-design.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/type-design.md).
+
+<Callout title="Do not depend on a vendor SDK">
+  Every provider in this repository talks to the API directly and shares the
+  HTTP transport in `@swungstudent/voice`. Vendor SDKs bring their whole product
+  surface for the sake of a handful of endpoints, and they duplicate the retry
+  and timeout logic the transport already provides.
+</Callout>
+
+## 1. Config
+
+Define two types: the options a user passes, and the resolved options the rest
+of the package sees.
+
+```ts
+export interface CartesiaConfig {
+  apiKey?: string; // falls back to CARTESIA_API_KEY
+  baseUrl?: string;
+  defaultVoice?: string;
+  defaultModel?: string;
+  defaultFormat?: AudioFormat;
+  retries?: number;
+  timeout?: number;
+  logger?: Logger;
+  rateLimit?: RateLimitOptions;
+  middleware?: HttpMiddleware[];
+  fetch?: HttpHandler;
+}
+
+export function resolveConfig(config: CartesiaConfig): ResolvedConfig {
+  const apiKey = config.apiKey ?? process.env.CARTESIA_API_KEY;
+
+  if (!apiKey) {
+    throw new ConfigError(
+      PROVIDER,
+      "apiKey",
+      "Pass `apiKey` or set the CARTESIA_API_KEY environment variable.",
+    );
+  }
+
+  return {
+    apiKey,
+    defaultModel: config.defaultModel ?? DEFAULTS.ttsModel,
+    // ...
+    transport: createTransport({
+      provider: PROVIDER,
+      retries: config.retries,
+      timeout: config.timeout,
+      logger: config.logger,
+      rateLimit: config.rateLimit,
+      middleware: config.middleware,
+      fetch: config.fetch,
+    }),
+  };
+}
+```
+
+`createTransport` builds the shared middleware chain, so retry, timeout, rate
+limiting, and logging behave the same across providers. See
+[Middleware](/docs/concepts/middleware).
+
+Throw `ConfigError` at construction rather than on the first call, so the stack
+trace points at the setup code.
+
+### Default formats
+
+Declare a default per context:
+
+```ts
+DEFAULT_FORMAT; // wav, pcm_s16le, 44100 — speak()
+DEFAULT_STREAM_FORMAT; // raw, pcm_s16le, 44100 — speakStream() and sessions
+DEFAULT_INPUT_FORMAT; // raw, pcm_s16le, 16000 — audio going in
+```
+
+Batch audio is usually written to a file, so it carries a header. Streamed audio
+goes to a speaker or a socket, where a mid-stream header is noise. Input
+defaults to 16 kHz mono PCM, the one format every provider accepts. Callers
+always learn which they got from `ResolvedAudioFormat`.
+
+Pin model defaults to specific versions rather than `-latest`, so output does
+not change between releases of the package.
+
+## 2. Format translation
+
+`format.ts` is what keeps the shared interface from leaking. Four vocabularies
+describe one concept:
+
+| Core                                                             | Cartesia                                        | Deepgram                              | ElevenLabs      |
+| ---------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------- | --------------- |
+| `{ container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }` | `{ encoding: "pcm_s16le", sample_rate: 16000 }` | `encoding=linear16&sample_rate=16000` | `pcm_16000`     |
+| `{ container: "raw", encoding: "mulaw", sampleRate: 8000 }`      | `{ encoding: "pcm_mulaw" }`                     | `encoding=mulaw`                      | `ulaw_8000`     |
+| `{ container: "mp3", bitrate: 128 }`                             | `{ container: "mp3", bit_rate: 128000 }`        | not supported                         | `mp3_44100_128` |
+
+Declare the mapping as a partial record, so an encoding with no equivalent is a
+lookup miss instead of a compile error:
+
+```ts
+const RAW_ENCODING: Partial<Record<AudioEncoding, RawEncoding>> = {
+  pcm_s16le: "pcm_s16le",
+  pcm_f32le: "pcm_f32le",
+  mulaw: "pcm_mulaw", // Cartesia prefixes telephony codecs
+  alaw: "pcm_alaw",
+};
+```
+
+Return the payload and the resolved format together, so it is not possible to
+send one and report the other:
+
+```ts
+export function toOutputFormat(
+  requested: AudioFormat | undefined,
+  fallback: ResolvedAudioFormat,
+): { payload: OutputFormat; resolved: ResolvedAudioFormat };
+```
+
+### Throw instead of substituting
+
+```ts
+if (!isSampleRate(sampleRate)) {
+  throw new ValidationError(
+    PROVIDER,
+    "format.sampleRate",
+    `${sampleRate} is not supported. Supported: ${SAMPLE_RATES.join(", ")}.`,
+  );
+}
+```
+
+Rounding 12 kHz up to 16 kHz produces audio that plays at the wrong speed. Name
+the field and list the accepted values.
+
+Add a stricter variant for streaming endpoints that accept the `raw` container
+only, and say what to use instead:
+
+```ts
+throw new ValidationError(
+  PROVIDER,
+  "format.container",
+  `Streaming synthesis supports the "raw" container only, got "${container}". Use speak() for ${container}.`,
+);
+```
+
+### Controls
+
+Ignore controls the API has no equivalent for. Validate the ones it does:
+
+```ts
+export function toGenerationConfig(controls?: VoiceControls) {
+  if (!controls) return undefined;
+
+  const config: GenerationConfig = {};
+  if (controls.speed !== undefined) {
+    config.speed = inRange("controls.speed", controls.speed, 0.6, 1.5);
+  }
+  if (controls.volume !== undefined) {
+    config.volume = inRange("controls.volume", controls.volume, 0.5, 2);
+  }
+  return Object.keys(config).length > 0 ? config : undefined;
+}
+```
+
+`stability`, `similarity`, and `instructions` have no Cartesia equivalent, so
+they are dropped. `speed: 5` throws, because the field is supported and the
+value is not.
+
+## 3. Batch synthesis
+
+```ts
+async speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult> {
+  const { payload, resolved } = toOutputFormat(
+    input.format ?? this.#config.defaultFormat,
+    DEFAULT_FORMAT,
+  );
+
+  const response = await this.#post(
+    "/tts/bytes",
+    { ...this.#body(input), output_format: payload },
+    "speak",
+    false,
+    context,
+  );
+
+  return {
+    audio: new Uint8Array(await response.arrayBuffer()),
+    format: resolved,
+    requestId: response.headers.get("x-request-id") ?? undefined,
+  };
+}
+```
+
+Three points to follow:
+
+1. Resolve the format before sending, so an unsupported format throws without
+   consuming an API call.
+2. Return `resolved` on the result.
+3. Map `RequestContext` onto whatever the transport calls each field.
+
+Build the request body once and share it:
+
+```ts
+#body(input: SpeakInput) {
+  return withProviderOptions(
+    {
+      model_id: input.model ?? this.#config.defaultModel,
+      transcript: input.text, // Cartesia calls it `transcript`, not `text`
+      voice: toVoice(input.voice ?? this.#config.defaultVoice),
+      language: input.language,
+      generation_config: toGenerationConfig(input.controls),
+    },
+    input.providerOptions,
+  );
+}
+```
+
+`withProviderOptions` merges nested objects one level deep. Apply mapped fields
+that the SDK reports back, such as `output_format`, _after_ the merge so
+`providerOptions` cannot change the wire value while the reported value stays
+the same.
+
+### speakStream returns an object
+
+`AudioStream` carries a `format` property, and an async generator cannot have
+properties. Return an iterable object literal:
+
+```ts
+speakStream(input: SpeakInput, context?: RequestContext): AudioStream {
+  const { payload, resolved } = toRawOutputFormat(/* ... */);
+  const body = { ...this.#body(input), output_format: payload };
+
+  return {
+    format: resolved,
+    [Symbol.asyncIterator]: async function* () {
+      const response = await post("/tts/sse", body, context);
+      for await (const event of sseEvents(response)) {
+        if (event.type === "chunk" && event.data) {
+          yield { data: decodeBase64(event.data) };
+        }
+      }
+    },
+  };
+}
+```
+
+The method is not `async`. The format is known synchronously, so the caller can
+configure playback before any network work starts. Format resolution also runs
+immediately, so a bad format throws from the call rather than from the first
+`for await`.
+
+## 4. Batch transcription
+
+```ts
+const audio = await collectAudio(input.audio);
+
+return {
+  text: response.text,
+  duration: response.duration,
+  language: response.language,
+  requestId: response.request_id,
+  words: response.words?.map((word) => ({
+    text: word.word, // the API says `word`, core says `text`
+    start: word.start,
+    end: word.end,
+  })),
+  raw: response,
+};
+```
+
+`collectAudio` handles every `AudioSource` variant, so the provider only deals
+in bytes.
+
+Leave `words` as `undefined` when the provider returned nothing, rather than
+substituting `[]`. Set `raw` on every result.
+
+## 5. Realtime synthesis session
+
+Use a static `open()` with a private constructor, because connecting is
+asynchronous and a constructor cannot be:
+
+```ts
+static async open(config: ResolvedConfig, input: RealtimeTTSInput = {}) {
+  const { payload, resolved } = toRawOutputFormat(
+    input.format ?? config.defaultFormat,
+    DEFAULT_STREAM_FORMAT,
+  );
+
+  const socket = await openSocket(config, input);
+  return new CartesiaTTSSession(socket, resolved);
+}
+```
+
+`format` is a readonly field set during `open()`, so `session.format` is
+available before the first chunk.
+
+### Method contracts
+
+```ts
+push(text: string): void {
+  void this.#send({ transcript: text }).catch(() => {
+    // Surfaced on `output`; push never throws.
+  });
+}
+
+async flush(): Promise<void> {
+  await this.#send({ flush: true });
+}
+
+cancel(): void {
+  void this.#send({ cancel: true }).catch(() => {
+    // Best-effort: not every API can drop queued work.
+  });
+}
+
+async close(): Promise<void> {
+  await awaitClose(this.#socket);
+}
+```
+
+`push()` swallows its rejection deliberately. The interface says `push` does not
+throw, so failures must reach the caller through `output`. If `push` returned a
+promise, every token loop would need an `await`.
+
+`close()` uses `awaitClose` from `internal/socket.ts`, which waits for the
+server to acknowledge and gives up after five seconds.
+
+### Mapping events
+
+```ts
+async *#events(): AsyncIterable<TTSEvent> {
+  for await (const message of this.#messages()) {
+    switch (message.type) {
+      case "chunk":
+        yield { type: "audio", data: decodeBase64(message.data) };
+        break;
+      case "timestamps":
+        yield { type: "timing", alignment: toAlignment(message, "word") };
+        break;
+      case "flush_done":
+        yield { type: "flushed", id: message.flush_id };
+        break;
+      case "done":
+        yield { type: "done" };
+        break;
+    }
+  }
+}
+```
+
+Decode base64 in the provider. Core sees bytes.
+
+## 6. Realtime transcription session
+
+This is the most involved file, because providers disagree about how a
+transcript is revised.
+
+Some APIs split realtime transcription across two endpoints. Validate the
+combination when the session opens rather than letting it hang:
+
+```ts
+if (model.startsWith("ink-whisper") && input.turnDetection?.mode !== "manual") {
+  throw new ValidationError(
+    PROVIDER,
+    "model",
+    `"${model}" has no turn detection. Use turnDetection: { mode: "manual" }, or the ink-2 model.`,
+  );
+}
+```
+
+### Mapping finality
+
+In Cartesia's automatic mode the whole turn is resent on every event:
+
+| Provider event   | Core event               | Reason                                       |
+| ---------------- | ------------------------ | -------------------------------------------- |
+| `connected`      | `metadata`               | Carries `request_id`                         |
+| `turn.start`     | `speech_started`         | Voice activity signal                        |
+| `turn.update`    | `transcript`, `partial`  | Still being revised                          |
+| `turn.eager_end` | `transcript`, `final`    | A predicted end that can still be revoked    |
+| `turn.resume`    | `transcript`, `partial`  | The prediction was wrong; the turn continues |
+| `turn.end`       | `transcript`, `turn_end` | The speaker has stopped                      |
+
+`turn.eager_end` is why `Finality` has three values rather than two. It is a
+stable segment that the model can still take back, which is neither "will be
+revised" nor "the speaker is done".
+
+In manual mode the provider sends deltas relative to the last final result:
+
+| Provider event                  | Core event                           |
+| ------------------------------- | ------------------------------------ |
+| `transcript`, `is_final: false` | `transcript`, `partial`              |
+| `transcript`, `is_final: true`  | `transcript`, `final`                |
+| `flush_done`                    | Synthesized `transcript`, `turn_end` |
+| `done`                          | End of stream                        |
+
+Manual mode has no concept of a turn, but a push-to-talk application still needs
+a boundary, so the acknowledgement for "your audio has been drained" becomes
+`turn_end`. `turns(session.output)` then works in both modes, and the consumer
+cannot tell which endpoint it is connected to.
+
+### Use TurnTextTracker
+
+The two modes disagree about what `text` means, so each uses the matching
+tracker method. Both produce cumulative text and a delta:
+
+```ts
+// Manual: the message carries a delta relative to the last final.
+const { text, delta, turn } = this.#tracker.fromSegment(message.text);
+if (message.is_final) this.#tracker.commitSegment();
+
+// Automatic: the message carries the whole turn, resent each time.
+const { text, delta, turn } = this.#tracker.fromCumulative(message.transcript);
+```
+
+Emit both `text` and `delta`. Do not normalise by choosing one.
+
+## 7. Wire it up
+
+```ts
+export class CartesiaProvider implements VoiceProvider {
+  readonly name = "cartesia";
+  readonly capabilities: Readonly<Capabilities> = {
+    tts: true,
+    stt: true,
+    realtimeTTS: true,
+    realtimeSTT: true,
+  };
+
+  #config: ResolvedConfig;
+  #tts: CartesiaTTS;
+  #stt: CartesiaSTT;
+
+  constructor(config: CartesiaConfig = {}) {
+    this.#config = resolveConfig(config);
+    this.#tts = new CartesiaTTS(this.#config);
+    this.#stt = new CartesiaSTT(this.#config);
+  }
+
+  speak(input, context) {
+    return this.#tts.speak(input, context);
+  }
+  // ...
+}
+```
+
+Capability flags describe your implementation, not the vendor's feature list. If
+`speak()` is not written yet, `tts` is `false`.
+
+`index.ts` exports the provider class and its config type only. Sessions and
+engines stay internal so they can change without a breaking release.
+
+## Verify
+
+Typecheck as you go, one capability at a time:
+
+```sh
+pnpm --filter @swungstudent/<name> check-types
+```
+
+Run the shared contract assertions from `@voice-sdk/test-kit`. They are what
+hold a new provider to the same behaviour as the existing ones:
+
+```ts
+import { assertCapabilityInvariants, assertClosesOnAbort } from "@voice-sdk/test-kit";
+```
+
+Then check that the whole surface composes through `Voice`:
+
+```ts
+const voice = new Voice({ provider: new CartesiaProvider({ apiKey: "x", defaultVoice: "v" }) });
+
+const result = await voice.speak({ text: "hello", format: { container: "mp3", bitrate: 128 } });
+const stream = voice.speakStream({ text: "hello" });
+for await (const chunk of stream) chunk.data.byteLength;
+
+const tts = await voice.openTTSSession({ timings: true });
+tts.push("hello ");
+await tts.flush();
+
+const stt = await voice.openSTTSession({ turnDetection: { mode: "vad", silence: 1.2 } });
+for await (const turn of turns(stt.output)) turn.text.trim();
+```
+
+Finally, build to confirm declarations emit cleanly, and run the live tier
+against a real key:
+
+```sh
+pnpm build
+CARTESIA_API_KEY=… pnpm test:live
+```
+
+Type checking proves the shapes line up. It does not prove a request reached the
+API, so the live run is a required step.
+
+## Checklist
+
+**Research**
+
+- [ ] Capability list, limited to endpoints that exist today
+- [ ] Field mapping table, both directions, all four operations
+- [ ] Finality model for realtime transcription, written down before coding
+
+**Build**
+
+- [ ] `config.ts` — environment fallback, `ConfigError` at construction, `createTransport`
+- [ ] `format.ts` — throw `ValidationError` naming the field; never substitute a value
+- [ ] `speak` / `speakStream` — resolve the format first and return it on the result
+- [ ] `transcribe` — use `collectAudio`; leave `words` undefined when not requested
+- [ ] `openTTSSession` — static `open()`, `push` never throws, decode base64 in the provider
+- [ ] `openSTTSession` — map to `Finality`, use `TurnTextTracker`, emit `text` and `delta`
+- [ ] `provider.ts` — delegation only, capability flags matching the implementation
+- [ ] `index.ts` — export the provider class and its config type only
+
+**Conventions**
+
+- [ ] All times in seconds
+- [ ] Base64 decoded before it reaches core
+- [ ] `providerOptions` merged with `withProviderOptions`, mapped format applied after
+- [ ] `raw` set on every result
+- [ ] Fatal errors reject the stream; non-fatal ones become `warning` events
+
+**Verify**
+
+- [ ] `check-types` passes
+- [ ] Contract assertions from `@voice-sdk/test-kit` pass
+- [ ] Composition check through `Voice`
+- [ ] `pnpm build` emits declarations
+- [ ] `pnpm test:live` against a real key

@@ -1,8 +1,11 @@
 # voice-sdk
 
-One interface for voice providers. Synthesis and transcription, batch and
-realtime, with the same types whichever provider is behind them — so switching
-is a constructor change rather than a rewrite.
+One TypeScript interface for text-to-speech and speech-to-text. Write your
+application against `Voice`, and choose a provider when you construct it.
+
+```sh
+pnpm add @swungstudent/voice @swungstudent/deepgram
+```
 
 ```ts
 import { Voice } from "@swungstudent/voice";
@@ -14,102 +17,69 @@ const { audio, format } = await voice.speak({ text: "Hello there." });
 const { text } = await voice.transcribe({ audio });
 ```
 
-Swap `DeepgramProvider` for `CartesiaProvider` or `ElevenLabsProvider` and
-nothing else changes.
+To use a different provider, change the constructor. Method names, input types,
+return types, and errors are the same for all of them.
 
-## Packages
-
-| Package                                            | What it is                                           |
-| -------------------------------------------------- | ---------------------------------------------------- |
-| [`@swungstudent/voice`](packages/core)             | The contract: `Voice`, the types, the shared helpers |
-| [`@swungstudent/cartesia`](providers/cartesia)     | Cartesia — sonic, ink-whisper, ink-2                 |
-| [`@swungstudent/deepgram`](providers/deepgram)     | Deepgram — aura-2, nova-3, flux                      |
-| [`@swungstudent/elevenlabs`](providers/elevenlabs) | ElevenLabs — eleven_multilingual_v2, scribe          |
-
-Install core plus whichever providers you need. Each provider declares core as a
-peer dependency, so an app never ends up with two copies of it.
-
-```sh
-pnpm add @swungstudent/voice @swungstudent/deepgram
-```
+[Documentation](apps/web/content/docs) · [Examples](examples) ·
+[Providers](apps/web/content/docs/providers)
 
 ## Capabilities
 
-Four, deliberately narrow. A provider declares which it has, and calling one it
-lacks raises a `CapabilityError` naming the provider rather than failing deeper
-in.
+| Capability    | Methods                | Description                                              |
+| ------------- | ---------------------- | -------------------------------------------------------- |
+| `tts`         | `speak`, `speakStream` | Convert text to audio, buffered or streamed              |
+| `stt`         | `transcribe`           | Convert a complete recording to a transcript             |
+| `realtimeTTS` | `openTTSSession`       | Stream text into a session and receive audio back        |
+| `realtimeSTT` | `openSTTSession`       | Stream audio into a session and receive transcripts back |
 
-|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` |
-| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: |
-| **Cartesia**   |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
-| **Deepgram**   |  ✅   |  ✅   |      ✅       |      ✅       |      —       |
-| **ElevenLabs** |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
+Each provider declares which capabilities it supports. Calling a method a
+provider does not implement throws a `CapabilityError`.
 
-Deepgram has no voice-listing endpoint because a voice _is_ a model there, so
-the method is absent rather than faked.
+|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` | Timings   |
+| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: | --------- |
+| **Cartesia**   |  Yes  |  Yes  |      Yes      |      Yes      |     Yes      | Word      |
+| **Deepgram**   |  Yes  |  Yes  |      Yes      |      Yes      |      No      | None      |
+| **ElevenLabs** |  Yes  |  Yes  |      Yes      |      Yes      |     Yes      | Character |
 
-`realtimeTTS` means a duplex session you push text **into** incrementally — what
-a spoken LLM response needs. Streaming audio _out_ of a one-shot call is
-`speakStream`, and every provider with `tts` has it.
+## Packages
 
-See [`@swungstudent/voice`](packages/core) for the full surface, and each
-provider's README for what is specific to it.
+| Package                                            | Description                                 |
+| -------------------------------------------------- | ------------------------------------------- |
+| [`@swungstudent/voice`](packages/core)             | Core: the `Voice` class, types, and helpers |
+| [`@swungstudent/cartesia`](providers/cartesia)     | Cartesia provider                           |
+| [`@swungstudent/deepgram`](providers/deepgram)     | Deepgram provider                           |
+| [`@swungstudent/elevenlabs`](providers/elevenlabs) | ElevenLabs provider                         |
 
-## Working on it
+Provider packages declare the core package as a peer dependency, so an
+application resolves a single copy of the types. All four are released together
+and share a version number.
+
+Node.js 18 or later. This is a server-side library; browser and edge runtimes
+are not supported.
+
+## Development
 
 ```sh
 pnpm install
-pnpm test          # offline: fake servers on ephemeral ports, no keys, no cost
+pnpm test        # offline tests against local fake servers
 pnpm check-types
+pnpm lint
 pnpm build
 ```
 
-`pnpm test` is the tier CI runs. It stands real HTTP and WebSocket servers up on
-ephemeral ports and drives each provider against them, so URL building, headers,
-protocol frames and streaming stay covered without touching a real API.
+`pnpm test` is the tier CI runs. It starts HTTP and WebSocket servers on
+ephemeral ports and runs each provider against them, so no API keys are needed.
 
-The second tier does touch the real APIs, and is opt-in because it costs money:
+Live tests call the real APIs and are opt-in:
 
 ```sh
 DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
 ```
 
-Anything without a key is skipped. Run it before a release — the offline fakes
-only encode what we believe each wire format is, and this is what catches one
-changing.
-
-### Adding a provider
-
-Every provider package has the same shape, one file per concern:
-
-```
-src/
-├── config.ts        # api key, defaults, what to use when the caller says nothing
-├── format.ts        # core's AudioFormat  ->  this provider's spelling
-├── tts.ts           # speak() and speakStream()
-├── tts-session.ts   # openTTSSession()
-├── stt.ts           # transcribe()
-├── stt-session.ts   # openSTTSession()
-├── provider.ts      # the class implementing VoiceProvider — mostly delegation
-└── index.ts         # the provider class and its config type
-```
-
-`provider.ts` ending up as almost pure delegation is the sign the split is
-right. [`docs/drafts/building-a-provider.md`](docs/drafts/building-a-provider.md)
-walks through how the first one was built, and `@voice-sdk/test-kit` carries the
-fake servers and the shared contract assertions every provider is held to.
-
-### Releasing
-
-Changes that users would notice get a changeset:
-
-```sh
-pnpm changeset
-```
-
-On merge to `main`, CI opens a release pull request that applies the pending
-changesets. Merging that publishes to npm. The four packages are versioned
-together, so matching versions mean packages built and tested against each other.
+The documentation site is in [`apps/web`](apps/web). Run it with
+`pnpm --filter web dev`. See
+[Contributing](apps/web/content/docs/contributing) for the repository layout,
+how to add a provider, and the release process.
 
 ## Licence
 

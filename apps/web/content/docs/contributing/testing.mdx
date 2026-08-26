@@ -1,0 +1,52 @@
+---
+title: Testing
+description: The offline test tier that CI runs, and the opt-in live tier.
+---
+
+## Offline tests
+
+```sh
+pnpm test
+```
+
+This is the tier CI runs. It starts HTTP and WebSocket servers on ephemeral
+ports and runs each provider against them, covering URL construction, headers,
+protocol frames, and streaming. No API keys are required and no requests leave
+the machine.
+
+`@voice-sdk/test-kit` provides the fake servers and a set of shared assertions
+that every provider must satisfy:
+
+| Export                       | Checks                                                               |
+| ---------------------------- | -------------------------------------------------------------------- |
+| `assertCapabilityInvariants` | Declared capabilities have their methods, and undeclared ones do not |
+| `assertClosesOnAbort`        | Sessions close when their `AbortSignal` fires                        |
+| `assertTTSEvent`             | Emitted TTS events match the declared union                          |
+| `assertSTTEvent`             | Emitted STT events match the declared union                          |
+| `assertTurnSequence`         | Finality transitions are valid, with no `final` after `turn_end`     |
+
+New providers are held to the same assertions as the existing ones.
+
+## Live tests
+
+```sh
+DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
+```
+
+Live tests call the real APIs and use your quota, so they are opt-in. Providers
+without a key are skipped.
+
+Run them before a release. The offline fakes encode the wire format as it is
+currently understood, and the live tier is what detects a change. Its assertions
+check shape and plausibility rather than exact bytes, because synthesis is not
+byte-for-byte reproducible.
+
+## What CI checks
+
+- Formatting, linting, and type checking across the workspace, including
+  `examples/`.
+- Offline tests on Node 20, 22, and 24, and on Windows.
+- Importing the built output on Node 18, which is the minimum supported version.
+- Compiling a consumer project against the packed tarballs, under both module
+  resolution modes. `pnpm test` runs against `src`, so this job is what verifies
+  the published `dist` output and manifest.

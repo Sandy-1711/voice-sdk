@@ -1,0 +1,46 @@
+---
+title: Releasing
+description: How versions are bumped and published with changesets.
+---
+
+Add a changeset for any change that affects users of the packages:
+
+```sh
+pnpm changeset
+```
+
+When the pull request merges to `main`, CI opens a release pull request that
+applies the pending changesets and bumps versions. Merging that pull request
+publishes to npm.
+
+All four packages share a version number, so matching versions indicate packages
+that were built and tested together.
+
+## Entry points
+
+Each published package points `types` and `exports` at source files, and
+overrides both in `publishConfig`:
+
+```json
+{
+  "types": "./src/index.ts",
+  "publishConfig": {
+    "types": "./dist/index.d.ts"
+  }
+}
+```
+
+The source paths let the workspace typecheck without a build step. The
+`publishConfig` override applies at publish time so the tarball points at the
+built output.
+
+<Callout type="warn" title="This depends on pnpm">
+  `publishConfig` overrides for `types` and `exports` are a pnpm feature.
+  Changesets detects the workspace package manager and runs `pnpm publish`, so
+  the override is applied. Publishing with `npm publish` ignores it, and the
+  tarball would point at files excluded by `files: ["dist"]`, leaving the
+  packages with no type declarations.
+</Callout>
+
+The `dist-types` CI job guards this. It packs each package with pnpm, installs
+the tarballs into a temporary project, and compiles a consumer against them.

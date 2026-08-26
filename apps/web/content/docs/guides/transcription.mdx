@@ -1,0 +1,86 @@
+---
+title: Transcription
+description: Convert a complete recording to a transcript with transcribe().
+---
+
+```ts
+const result = await voice.transcribe({
+  audio: { url: "https://example.com/clip.wav" },
+  timestamps: "segment",
+  diarize: true,
+});
+```
+
+## Audio input
+
+The `audio` field accepts several shapes:
+
+```ts
+type AudioSource =
+  | Uint8Array
+  | ArrayBuffer
+  | Blob
+  | ReadableStream<Uint8Array>
+  | AsyncIterable<Uint8Array>
+  | { url: string };
+```
+
+Passing `{ url }` lets providers that support remote fetching download the file
+directly, without routing the bytes through your process.
+
+To read any of these into a single buffer, use the `collectAudio` helper:
+
+```ts
+import { collectAudio } from "@swungstudent/voice";
+
+const bytes = await collectAudio(source);
+```
+
+## Options
+
+| Field          | Type                                          | Description                                             |
+| -------------- | --------------------------------------------- | ------------------------------------------------------- |
+| `audio`        | `AudioSource`                                 | Required                                                |
+| `format`       | `AudioFormat`                                 | Required for headerless PCM                             |
+| `model`        | `string`                                      | Provider model id                                       |
+| `language`     | `string`                                      | Language hint                                           |
+| `timestamps`   | `false \| "word" \| "segment" \| "character"` | Timing granularity                                      |
+| `diarize`      | `boolean`                                     | Attribute words and segments to speakers                |
+| `speakerCount` | `number`                                      | Expected number of speakers, where the provider uses it |
+| `keyterms`     | `string[]`                                    | Terms to bias recognition towards                       |
+| `prompt`       | `string`                                      | Free-text context, where the provider supports it       |
+
+<Callout title="Headerless audio needs a format">
+  Container formats such as WAV and MP3 declare their own encoding and sample
+  rate. Raw PCM does not, and the SDK does not inspect the bytes, so pass
+  `format` explicitly when the input is headerless.
+</Callout>
+
+## Result
+
+```ts
+interface TranscriptResult {
+  text: string;
+  language?: string;
+  languageConfidence?: number;
+  duration?: number;
+  confidence?: number;
+  words?: TranscriptWord[];
+  segments?: TranscriptSegment[];
+  requestId?: string;
+  raw?: unknown;
+}
+```
+
+`text` is always present. `words` and `segments` are populated when
+`timestamps` requests them, and each entry carries `start` and `end` in seconds.
+When `diarize` is enabled, entries also carry a `speaker` label.
+
+```ts
+for (const segment of result.segments ?? []) {
+  console.log(`[${segment.start.toFixed(2)}] ${segment.speaker}: ${segment.text}`);
+}
+```
+
+`words` and `segments` are optional and are omitted when the provider reports
+nothing, so an empty array and a missing array mean different things.

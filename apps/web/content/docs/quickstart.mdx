@@ -1,0 +1,134 @@
+---
+title: Quickstart
+description: Synthesize audio, transcribe a recording, and open a realtime session.
+---
+
+This page walks through the four operations the SDK exposes. Each snippet is
+taken from a runnable file in [Examples](/docs/examples).
+
+## Set up a client
+
+```ts
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
+
+const voice = new Voice({ provider: new DeepgramProvider() });
+```
+
+`Voice` accepts options that apply to every request:
+
+```ts
+const voice = new Voice({
+  provider: new DeepgramProvider(),
+  options: { timeout: 30_000, retries: 2 },
+});
+```
+
+## Synthesize audio
+
+```ts
+import { writeFile } from "node:fs/promises";
+
+const { audio, format } = await voice.speak({
+  text: "Hello there.",
+  format: { container: "wav", sampleRate: 24000 },
+});
+
+await writeFile("hello.wav", audio);
+```
+
+`audio` is a `Uint8Array`. `format` describes the audio that was returned, with
+every field populated. See [Synthesis](/docs/guides/synthesis).
+
+## Transcribe a recording
+
+```ts
+import { readFile } from "node:fs/promises";
+
+const { text, words } = await voice.transcribe({
+  audio: await readFile("hello.wav"),
+  timestamps: "word",
+});
+```
+
+The `audio` field also accepts a `Blob`, a `ReadableStream`, an async iterable,
+or `{ url: "https://..." }`. See [Transcription](/docs/guides/transcription).
+
+## Stream audio as it is generated
+
+`speakStream` returns an `AudioStream` synchronously. The stream exposes its
+format before the first chunk arrives, so you can configure a player up front.
+
+```ts
+const stream = voice.speakStream({ text: "Hello there." });
+
+console.log(stream.format.sampleRate);
+
+for await (const chunk of stream) {
+  speaker.write(chunk.data);
+}
+```
+
+## Open a realtime session
+
+A realtime session keeps one connection open and streams in both directions.
+Use `openTTSSession` when text arrives incrementally, such as tokens from a
+language model:
+
+```ts
+const session = await voice.openTTSSession({
+  format: { container: "raw", sampleRate: 24000 },
+});
+
+for await (const token of llm) session.push(token);
+await session.flush();
+
+for await (const event of session.output) {
+  if (event.type === "audio") speaker.write(event.data);
+  if (event.type === "done") break;
+}
+
+await session.close();
+```
+
+Use `openSTTSession` to transcribe live audio. The `turns` helper filters the
+event stream down to completed turns:
+
+```ts
+import { turns } from "@swungstudent/voice";
+
+const session = await voice.openSTTSession({
+  turnDetection: { mode: "vad", silence: 1 },
+});
+
+microphone.on("data", (frame) => session.push(frame));
+
+for await (const turn of turns(session.output)) {
+  console.log(turn.text);
+}
+```
+
+See [Realtime synthesis](/docs/guides/realtime-tts) and
+[Realtime transcription](/docs/guides/realtime-stt).
+
+## Handle errors
+
+All SDK errors extend `VoiceError`:
+
+```ts
+import { ValidationError, VoiceError } from "@swungstudent/voice";
+
+try {
+  await voice.speak({ text, format });
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`${error.provider} rejected ${error.field}`);
+  } else if (error instanceof VoiceError) {
+    console.error(error.message);
+  } else {
+    throw error;
+  }
+}
+```
+
+See [Errors](/docs/guides/errors).

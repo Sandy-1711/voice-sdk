@@ -1,0 +1,87 @@
+---
+title: ElevenLabs
+description: Configuration, behaviour, and format support for the ElevenLabs provider.
+---
+
+```sh
+pnpm add @swungstudent/voice @swungstudent/elevenlabs
+```
+
+```ts
+import { Voice } from "@swungstudent/voice";
+import { ElevenLabsProvider } from "@swungstudent/elevenlabs";
+
+const voice = new Voice({
+  provider: new ElevenLabsProvider({ defaultVoice: "21m00Tcm4TlvDq8ikWAM" }),
+});
+
+const { audio } = await voice.speak({ text: "Hello there." });
+```
+
+## Configuration
+
+```ts
+new ElevenLabsProvider({
+  apiKey: "...", // defaults to ELEVENLABS_API_KEY
+  baseUrl: "https://api.eu.residency.elevenlabs.io", // residency host
+  defaultVoice: "21m00Tcm4TlvDq8ikWAM",
+  defaultModel: "eleven_multilingual_v2",
+  defaultSTTModel: "scribe_v2",
+  defaultRealtimeSTTModel: "scribe_v2_realtime",
+  defaultFormat: { container: "mp3", sampleRate: 44100, bitrate: 128 },
+
+  retries: 2,
+  timeout: 30_000,
+  logger: console,
+  rateLimit: { concurrency: 4 },
+  middleware: [],
+});
+```
+
+Model defaults are pinned to specific versions instead of `-latest`, so output
+does not change between releases of this package.
+
+## Voice selection
+
+ElevenLabs puts the voice id in the request path, so synthesis requires one. Set
+`defaultVoice` on the provider or pass `voice` on each call. Without either,
+`speak()` throws a `ValidationError`.
+
+`listVoices()` returns the voices available to your account.
+
+## Timings
+
+Timings are character-level only. `timings: true` and `timings: "character"`
+both work and switch `speak()` to the endpoint that returns alignment alongside
+the audio. Requesting `"word"` or `"phoneme"` throws a `ValidationError`.
+
+## Audio formats
+
+ElevenLabs encodes container, sample rate, and bitrate in a single token, such
+as `mp3_44100_128`, `pcm_16000`, or `ulaw_8000`. The provider package builds
+that token from an `AudioFormat` and validates it against the accepted values,
+so an unsupported combination throws a `ValidationError` listing nearby
+supported values.
+
+`wav` cannot be streamed, because its header declares a length that is not known
+until generation finishes. `speakStream()` and `openTTSSession()` throw a
+`ValidationError` for it; use `speak()` instead.
+
+## Transcription input
+
+Realtime transcription accepts 16-bit PCM at any sample rate, or mu-law at
+8 kHz.
+
+Batch transcription has one low-latency headerless path, for 16 kHz mono 16-bit
+PCM. Other headerless inputs are rejected rather than being auto-detected. Use a
+container format for anything else.
+
+## Realtime synthesis behaviour
+
+The TTS WebSocket opens on the first `push()` rather than when the session is
+created. ElevenLabs has no cancel command, so `cancel()` closes the connection
+to stop queued audio, and the next `push()` opens a new one.
+
+Pushed text is given a trailing space if it does not have one. ElevenLabs
+triggers generation on whitespace, so without it the final word is held until
+the next push.

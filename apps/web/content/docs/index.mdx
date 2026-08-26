@@ -1,0 +1,63 @@
+---
+title: Introduction
+description: A TypeScript SDK that provides one interface for text-to-speech and speech-to-text across multiple providers.
+---
+
+voice-sdk provides a single TypeScript interface for text-to-speech and
+speech-to-text. You write your application against the `Voice` class, and choose
+a provider when you construct it.
+
+```ts
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
+
+const voice = new Voice({ provider: new DeepgramProvider() });
+
+const { audio, format } = await voice.speak({ text: "Hello there." });
+const { text } = await voice.transcribe({ audio });
+```
+
+To use a different provider, change the constructor. The method names, input
+types, return types, and errors are the same for all of them.
+
+## Capabilities
+
+The SDK models four capabilities. Each provider declares which ones it supports.
+
+| Capability    | Methods                | Description                                              |
+| ------------- | ---------------------- | -------------------------------------------------------- |
+| `tts`         | `speak`, `speakStream` | Convert text to audio, buffered or streamed              |
+| `stt`         | `transcribe`           | Convert a complete recording to a transcript             |
+| `realtimeTTS` | `openTTSSession`       | Stream text into a session and receive audio back        |
+| `realtimeSTT` | `openSTTSession`       | Stream audio into a session and receive transcripts back |
+
+Calling a method that a provider does not implement throws a `CapabilityError`
+naming the provider and the method.
+
+## Supported providers
+
+- [Cartesia](/docs/providers/cartesia) — sonic, ink-whisper, ink-2
+- [Deepgram](/docs/providers/deepgram) — aura-2, nova-3, flux
+- [ElevenLabs](/docs/providers/elevenlabs) — eleven_multilingual_v2, scribe
+
+All three support the four capabilities. They differ in voice selection, timing
+granularity, and audio format support. See
+[Provider overview](/docs/providers) for a comparison.
+
+## Scope
+
+The SDK targets Node.js 18 and later. It is a server-side library: realtime
+sessions require a WebSocket client, and API keys are read from the environment.
+Browser and edge runtimes are not supported.
+
+Provider-specific features such as voice cloning, dubbing, and agent platforms
+are outside the shared interface. Use
+[`providerOptions`](/docs/guides/provider-options) to pass fields that the SDK
+does not model.
+
+## Next steps
+
+- [Installation](/docs/installation) — install the packages and configure keys
+- [Quickstart](/docs/quickstart) — make your first call
+- [Examples](/docs/examples) — runnable programs you can copy
+- [Core types](/docs/reference/core-types) — the full type reference

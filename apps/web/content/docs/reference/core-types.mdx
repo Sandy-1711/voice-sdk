@@ -1,0 +1,497 @@
+---
+title: Core types
+description: The complete type surface of @swungstudent/voice.
+---
+
+Every type on this page is exported from `@swungstudent/voice`. Source:
+[`packages/core/src`](https://github.com/Sandy-1711/voice-sdk/tree/main/packages/core/src).
+
+## Voice
+
+The entry point. `Voice` is generic over its provider so that provider-specific
+members stay accessible through `voice.provider`.
+
+```ts
+class Voice<TProvider extends VoiceProvider> {
+  constructor(config: VoiceConfig<TProvider>);
+
+  readonly provider: TProvider;
+  readonly options: Readonly<VoiceOptions>;
+
+  speak(input: SpeakInput, context?: RequestContext): Promise<SpeakResult>;
+  speakStream(input: SpeakInput, context?: RequestContext): AudioStream;
+  transcribe(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult>;
+  openTTSSession(input?: RealtimeTTSInput): Promise<TTSSession>;
+  openSTTSession(input?: RealtimeSTTInput): Promise<STTSession>;
+  listVoices(): Promise<VoiceInfo[]>;
+}
+```
+
+### VoiceConfig
+
+```ts
+interface VoiceConfig<TProvider extends VoiceProvider> {
+  provider: TProvider;
+  options?: VoiceOptions;
+  middleware?: VoiceMiddleware[];
+}
+
+interface VoiceOptions {
+  timeout?: number; // milliseconds
+  retries?: number;
+  logger?: Logger; // enables the built-in operation logger
+}
+```
+
+Middleware entries run outermost first. Retry and deadlines are handled by the
+provider's HTTP transport, not here; see [Middleware](/docs/concepts/middleware).
+
+### RequestContext
+
+Per-call overrides. Values set here take precedence over `VoiceOptions`.
+
+```ts
+interface RequestContext {
+  signal?: AbortSignal;
+  timeout?: number; // milliseconds
+  retries?: number;
+}
+```
+
+## Audio
+
+### AudioEncoding and AudioContainer
+
+```ts
+type AudioEncoding =
+  | "pcm_s16le"
+  | "pcm_s32le"
+  | "pcm_f32le"
+  | "mulaw"
+  | "alaw"
+  | "mp3"
+  | "opus"
+  | "aac"
+  | "flac";
+
+type AudioContainer = "raw" | "wav" | "mp3" | "ogg" | "webm" | "flac" | "aac";
+```
+
+Container and encoding are separate because the same encoding appears in several
+containers. `pcm_s16le` can be delivered raw or inside a WAV file, and the
+caller needs to know which.
+
+### AudioFormat and ResolvedAudioFormat
+
+```ts
+interface AudioFormat {
+  container?: AudioContainer;
+  encoding?: AudioEncoding;
+  sampleRate?: number;
+  channels?: number;
+  bitrate?: number; // kbps; applies to mp3, opus, and aac
+}
+
+interface ResolvedAudioFormat extends AudioFormat {
+  container: AudioContainer;
+  encoding: AudioEncoding;
+  sampleRate: number;
+  channels: number;
+}
+```
+
+Requests take `AudioFormat`, where every field is optional and unset fields fall
+back to the provider's default. Results carry `ResolvedAudioFormat`, where the
+four main fields are always set.
+
+### AudioSource
+
+```ts
+type AudioSource =
+  | Uint8Array
+  | ArrayBuffer
+  | Blob
+  | ReadableStream<Uint8Array>
+  | AsyncIterable<Uint8Array>
+  | { url: string };
+```
+
+Accepted wherever the SDK takes audio input. `{ url }` is passed through to
+providers that fetch remote files directly.
+
+### AudioChunk and AudioStream
+
+```ts
+interface AudioChunk {
+  data: Uint8Array;
+  offset?: number; // seconds from the start of the stream
+}
+
+interface AudioStream extends AsyncIterable<AudioChunk> {
+  readonly format: ResolvedAudioFormat;
+}
+```
+
+`AudioStream` exposes its format before iteration begins, which is why
+`speakStream()` returns synchronously instead of returning a promise.
+
+## Timing
+
+### TimingSpan and Alignment
+
+```ts
+interface TimingSpan {
+  text: string;
+  start: number; // seconds
+  end: number; // seconds
+}
+
+interface Alignment {
+  unit: "word" | "character" | "phoneme";
+  spans: TimingSpan[];
+}
+```
+
+`unit` records the granularity the provider returned, which is not always the
+granularity that was requested.
+
+### TranscriptWord and TranscriptSegment
+
+```ts
+interface TranscriptWord {
+  text: string;
+  start: number; // seconds
+  end: number; // seconds
+  confidence?: number;
+  speaker?: string;
+  punctuated?: string;
+  kind?: "word" | "spacing" | "audio_event";
+}
+
+interface TranscriptSegment {
+  text: string;
+  start: number;
+  end: number;
+  speaker?: string;
+  confidence?: number;
+}
+```
+
+`punctuated` holds the punctuated form where a provider returns both. `kind`
+distinguishes real words from spacing tokens and non-speech events.
+
+## Synthesis
+
+### SpeakInput and SpeakResult
+
+```ts
+interface SpeakInput {
+  text: string;
+  model?: string;
+  voice?: string;
+  language?: string;
+  format?: AudioFormat;
+  controls?: VoiceControls;
+  timings?: boolean | Alignment["unit"];
+  providerOptions?: ProviderOptions;
+}
+
+interface SpeakResult {
+  audio: Uint8Array;
+  format: ResolvedAudioFormat;
+  alignment?: Alignment;
+  requestId?: string;
+  raw?: unknown;
+}
+```
+
+`raw` carries the provider's unmodified response for fields the SDK does not
+map. `requestId` is populated where the provider returns one, and is what to
+quote in a support request.
+
+### VoiceControls
+
+```ts
+interface VoiceControls {
+  speed?: number; // rate multiplier, 1 = normal
+  volume?: number; // gain multiplier, 1 = normal
+  stability?: number;
+  similarity?: number;
+  style?: number;
+  emotion?: string;
+  instructions?: string; // free-text style direction
+}
+```
+
+Controls are applied on a best-effort basis. A provider with no equivalent for a
+field ignores it. A provider that supports the field but restricts its range
+validates it and throws a `ValidationError`.
+
+## Transcription
+
+### TranscribeInput and TranscriptResult
+
+```ts
+interface TranscribeInput {
+  audio: AudioSource;
+  model?: string;
+  language?: string;
+  format?: AudioFormat; // required for headerless PCM
+  timestamps?: false | "word" | "segment" | "character";
+  diarize?: boolean;
+  speakerCount?: number;
+  keyterms?: string[];
+  prompt?: string;
+  providerOptions?: ProviderOptions;
+}
+
+interface TranscriptResult {
+  text: string;
+  language?: string;
+  languageConfidence?: number;
+  duration?: number; // seconds
+  confidence?: number;
+  words?: TranscriptWord[];
+  segments?: TranscriptSegment[];
+  requestId?: string;
+  raw?: unknown;
+}
+```
+
+`words` and `segments` are optional rather than defaulting to empty arrays, so
+that "the provider returned nothing" is distinguishable from "no timestamps were
+requested".
+
+## Realtime sessions
+
+### RealtimeSession
+
+```ts
+interface RealtimeSession<TIn, TEvent> {
+  readonly output: AsyncIterable<TEvent>;
+  push(input: TIn): void;
+  flush(): Promise<void>;
+  cancel(): void;
+  close(): Promise<void>;
+  readonly closed: Promise<void>;
+}
+
+interface TTSSession extends RealtimeSession<string, TTSEvent> {
+  readonly format: ResolvedAudioFormat;
+}
+
+type STTSession = RealtimeSession<Uint8Array, STTEvent>;
+```
+
+`push()` returns `void` so that a token loop is not blocked per item. Errors
+surface on `output` and on `closed`.
+
+`flush()` means "synthesize what is buffered" for TTS and "finalize what is
+buffered" for STT. `cancel()` is best-effort: not every provider can drop work
+it has already queued.
+
+### RealtimeTTSInput and TTSEvent
+
+```ts
+interface RealtimeTTSInput {
+  model?: string;
+  voice?: string;
+  language?: string;
+  format?: AudioFormat;
+  controls?: VoiceControls;
+  timings?: boolean | Alignment["unit"];
+  signal?: AbortSignal;
+  providerOptions?: ProviderOptions;
+}
+
+type TTSEvent =
+  | { type: "audio"; data: Uint8Array; offset?: number }
+  | { type: "timing"; alignment: Alignment }
+  | { type: "flushed"; id?: string | number }
+  | { type: "cleared"; id?: string | number }
+  | { type: "done" }
+  | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
+  | { type: "warning"; message: string; code?: string };
+```
+
+`done` marks the end of the current generation. The session stays open and more
+audio follows if you push more text.
+
+### RealtimeSTTInput and STTEvent
+
+```ts
+interface RealtimeSTTInput {
+  model?: string;
+  language?: string;
+  inputFormat?: AudioFormat; // connection-scoped
+  interimResults?: boolean;
+  turnDetection?: TurnDetection;
+  timestamps?: boolean;
+  diarize?: boolean;
+  keyterms?: string[];
+  signal?: AbortSignal;
+  providerOptions?: ProviderOptions;
+}
+
+type STTEvent =
+  | STTTranscriptEvent
+  | { type: "speech_started"; at?: number }
+  | { type: "speech_ended"; at?: number }
+  | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
+  | { type: "warning"; message: string; code?: string };
+```
+
+`inputFormat` applies to the whole connection. No provider negotiates or detects
+it, so every frame pushed must match what was declared at open time.
+
+### Finality and STTTranscriptEvent
+
+```ts
+type Finality = "partial" | "final" | "turn_end";
+
+interface STTTranscriptEvent {
+  type: "transcript";
+  finality: Finality;
+  text: string; // cumulative text of the current turn
+  delta: string; // new text since the previous event of this turn
+  turn: number;
+  start?: number; // seconds from session start
+  end?: number;
+  words?: TranscriptWord[];
+  language?: string;
+  confidence?: number;
+  endOfTurnConfidence?: number;
+  raw?: unknown;
+}
+```
+
+Both `text` and `delta` are always present. Providers send one or the other, and
+the SDK derives the missing value using `TurnTextTracker`. A UI that renders the
+current utterance needs `text`; an append-only log needs `delta`.
+
+### TurnDetection
+
+```ts
+type TurnDetection =
+  | { mode: "manual" }
+  | {
+      mode: "vad";
+      silence?: number; // seconds of silence before a turn closes
+      threshold?: number; // sensitivity, 0 to 1
+      minSpeech?: number; // seconds of speech before a turn opens
+    };
+```
+
+### DEFAULT_REALTIME_INPUT_FORMAT
+
+```ts
+const DEFAULT_REALTIME_INPUT_FORMAT: ResolvedAudioFormat = {
+  container: "raw",
+  encoding: "pcm_s16le",
+  sampleRate: 16000,
+  channels: 1,
+};
+```
+
+The one input format accepted by every supported provider.
+
+## Providers
+
+### Capabilities and VoiceProvider
+
+```ts
+interface Capabilities {
+  tts: boolean;
+  stt: boolean;
+  realtimeTTS: boolean;
+  realtimeSTT: boolean;
+}
+
+interface VoiceProvider {
+  readonly name: string;
+  readonly capabilities: Readonly<Capabilities>;
+
+  speak?(input: SpeakInput, context?: RequestContext): Promise<SpeakResult>;
+  speakStream?(input: SpeakInput, context?: RequestContext): AudioStream;
+  transcribe?(input: TranscribeInput, context?: RequestContext): Promise<TranscriptResult>;
+  openTTSSession?(input?: RealtimeTTSInput): Promise<TTSSession>;
+  openSTTSession?(input?: RealtimeSTTInput): Promise<STTSession>;
+  listVoices?(): Promise<VoiceInfo[]>;
+}
+```
+
+If a capability flag is `true`, the corresponding methods must be present.
+`Voice` checks for the method and throws a `CapabilityError` if it is missing.
+
+Providers hold configuration, not connections, so `VoiceProvider` has no
+`close()` method.
+
+### VoiceInfo
+
+```ts
+interface VoiceInfo {
+  id: string;
+  name?: string;
+  language?: string;
+  labels?: Record<string, string>;
+  previewUrl?: string;
+}
+```
+
+Only `id` is required, because it is the only field every provider returns.
+Provider-specific attributes are placed in `labels`.
+
+## Errors
+
+```ts
+class VoiceError extends Error {}
+
+class CapabilityError extends VoiceError {
+  readonly provider: string;
+  readonly capability: string;
+}
+
+class ConfigError extends VoiceError {
+  readonly provider: string;
+  readonly field: string;
+}
+
+class ValidationError extends VoiceError {
+  readonly provider: string;
+  readonly field: string;
+}
+```
+
+See [Errors](/docs/guides/errors).
+
+## Helpers
+
+| Helper            | Signature                                                                | Description                                       |
+| ----------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| `collectAudio`    | `(source: AudioSource) => Promise<Uint8Array>`                           | Reads any `AudioSource` into one buffer           |
+| `concatAudio`     | `(chunks: Uint8Array[]) => Uint8Array`                                   | Joins chunks into one buffer                      |
+| `audioOnly`       | `(events: AsyncIterable<TTSEvent>) => AsyncIterable<Uint8Array>`         | Yields audio bytes and drops other events         |
+| `turns`           | `(events: AsyncIterable<STTEvent>) => AsyncIterable<STTTranscriptEvent>` | Yields only turn-closing transcripts              |
+| `TurnTextTracker` | class                                                                    | Derives whichever of `text` or `delta` is missing |
+
+## Design rules
+
+Four rules govern how the types above were chosen. They apply to any new
+provider as well.
+
+1. **Model the concept, not the vendor's spelling.** `AudioFormat` has separate
+   `container` and `encoding` fields because that is what audio is, even though
+   ElevenLabs sends `mp3_44100_128` as one token.
+2. **Optional means the provider may not return it.** A field is only required
+   when every supported provider returns it.
+3. **Report what happened, not what was asked for.** Results carry
+   `ResolvedAudioFormat` and `Alignment.unit`, so the caller knows what they
+   actually received.
+4. **Reject what cannot be represented.** A field a provider cannot honour
+   throws a `ValidationError` before the request is sent, unless it is a
+   best-effort control, in which case it is ignored.
+
+Design notes recording how these were arrived at:
+[`docs/type-design.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/type-design.md)
+and
+[`docs/provider-research.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/provider-research.md).

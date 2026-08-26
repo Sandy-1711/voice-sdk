@@ -1,0 +1,102 @@
+---
+title: Realtime synthesis
+description: Stream text into a session and receive audio back.
+---
+
+`openTTSSession()` opens a duplex connection that accepts text incrementally and
+streams audio back. Use it when the text is produced over time, for example
+tokens from a language model.
+
+```ts
+const session = await voice.openTTSSession({
+  format: { container: "raw", encoding: "pcm_s16le", sampleRate: 24000 },
+});
+
+const playing = (async () => {
+  for await (const event of session.output) {
+    if (event.type === "audio") speaker.write(event.data);
+    if (event.type === "done") break;
+  }
+})();
+
+for await (const token of llm) session.push(token);
+await session.flush();
+
+await playing;
+await session.close();
+```
+
+## Session interface
+
+```ts
+interface RealtimeSession<TIn, TEvent> {
+  readonly output: AsyncIterable<TEvent>;
+  push(input: TIn): void;
+  flush(): Promise<void>;
+  cancel(): void;
+  close(): Promise<void>;
+  readonly closed: Promise<void>;
+}
+```
+
+### push
+
+`push()` returns `void`, so a token loop is not blocked waiting on the network.
+Errors are reported through `output` and `closed` instead of being thrown by
+`push()` itself.
+
+### flush
+
+`flush()` asks the provider to synthesize whatever text is buffered. Providers
+trigger generation on sentence boundaries or on whitespace, so a trailing
+fragment can stay buffered until you call it.
+
+### cancel
+
+`cancel()` stops audio that has already been queued, which is what a barge-in
+implementation calls when the user starts speaking. Support is best-effort. On
+ElevenLabs there is no cancel command, so the provider closes the connection and
+opens a new one on the next `push()`.
+
+### close
+
+`close()` ends the session and waits for the provider to acknowledge, giving up
+after five seconds. Always close a session when the call it belongs to ends: an
+open socket keeps the process alive and continues to be billed.
+
+### format
+
+`session.format` is a `ResolvedAudioFormat` and is available as soon as the
+session opens, so you can configure a player before any audio arrives.
+
+## Events
+
+```ts
+type TTSEvent =
+  | { type: "audio"; data: Uint8Array; offset?: number }
+  | { type: "timing"; alignment: Alignment }
+  | { type: "flushed"; id?: string | number }
+  | { type: "cleared"; id?: string | number }
+  | { type: "done" }
+  | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
+  | { type: "warning"; message: string; code?: string };
+```
+
+`done` marks the end of the current generation, not the end of the session. You
+can push more text afterwards and receive more audio.
+
+To iterate over audio only, use the `audioOnly` helper:
+
+```ts
+import { audioOnly } from "@swungstudent/voice";
+
+for await (const bytes of audioOnly(session.output)) {
+  speaker.write(bytes);
+}
+```
+
+## Format support
+
+Realtime synthesis returns headerless audio: raw PCM, mu-law, or A-law.
+Requesting a container such as `wav` throws a `ValidationError`. Use
+[`speak()`](/docs/guides/synthesis) when you need a container format.

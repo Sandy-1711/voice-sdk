@@ -1,0 +1,112 @@
+---
+title: Realtime transcription
+description: Stream audio into a session and receive transcript events back.
+---
+
+`openSTTSession()` opens a duplex connection that accepts audio frames and
+streams transcript events back.
+
+```ts
+import { turns } from "@swungstudent/voice";
+
+const session = await voice.openSTTSession({
+  inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+  turnDetection: { mode: "vad", silence: 1 },
+  interimResults: true,
+});
+
+microphone.on("data", (frame) => session.push(frame));
+
+for await (const turn of turns(session.output)) {
+  console.log(turn.text);
+}
+```
+
+## Input format
+
+```ts
+inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }
+```
+
+The input format applies to the whole connection. It is declared when the
+session opens, and every frame pushed afterwards must match it. Providers do not
+negotiate or detect it.
+
+The following format is accepted by all providers and is exported as a constant:
+
+```ts
+import { DEFAULT_REALTIME_INPUT_FORMAT } from "@swungstudent/voice";
+// { container: "raw", encoding: "pcm_s16le", sampleRate: 16000, channels: 1 }
+```
+
+## Finality
+
+Transcript events carry a `finality` field with one of three values:
+
+| Value      | Meaning                                                     |
+| ---------- | ----------------------------------------------------------- |
+| `partial`  | The text may still change. Display it, but do not act on it |
+| `final`    | A stable segment within a turn that may continue            |
+| `turn_end` | The speaker has stopped                                     |
+
+Set `interimResults: false` to stop receiving `partial` events.
+
+```ts
+for await (const event of session.output) {
+  if (event.type !== "transcript") continue;
+
+  if (event.finality === "partial") ui.draft(event.text);
+  if (event.finality === "turn_end") ui.commit(event.text);
+}
+```
+
+Each transcript event carries both `text`, the cumulative text of the current
+turn, and `delta`, the text added since the previous event. Providers send one
+or the other; the SDK derives the missing one, so both fields are always
+populated.
+
+## Turn detection
+
+```ts
+type TurnDetection =
+  | { mode: "manual" }
+  | { mode: "vad"; silence?: number; threshold?: number; minSpeech?: number };
+```
+
+In `vad` mode the provider decides where turns end. `silence` sets how many
+seconds of silence close a turn, `threshold` sets sensitivity between 0 and 1,
+and `minSpeech` sets how much speech is needed before a turn opens.
+
+In `manual` mode turns end only when you call `flush()`. Use it when your
+application already knows when the speaker stopped, such as with a
+push-to-talk control.
+
+Provider support differs, and some providers route the two modes to different
+endpoints and models. Unsupported combinations throw a `ValidationError` when
+the session opens.
+
+## Events
+
+```ts
+type STTEvent =
+  | STTTranscriptEvent
+  | { type: "speech_started"; at?: number }
+  | { type: "speech_ended"; at?: number }
+  | { type: "metadata"; requestId?: string; model?: string; raw?: unknown }
+  | { type: "warning"; message: string; code?: string };
+```
+
+`speech_started` and `speech_ended` report voice activity. To implement
+barge-in, call `cancel()` on your TTS session when `speech_started` arrives.
+
+## Helpers
+
+`turns()` filters the event stream down to events that close a turn:
+
+```ts
+import { turns } from "@swungstudent/voice";
+
+for await (const turn of turns(session.output)) {
+  console.log(turn.turn, turn.text);
+}
+```

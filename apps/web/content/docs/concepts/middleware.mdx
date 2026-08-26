@@ -1,0 +1,143 @@
+---
+title: Middleware
+description: The two middleware layers, what belongs in each, and the order they run in.
+---
+
+The SDK has two middleware layers. They operate on different units of work, and
+choosing the wrong one produces incorrect behaviour.
+
+|             | Transport                         | Operation                          |
+| ----------- | --------------------------------- | ---------------------------------- |
+| Operates on | One HTTP request and its response | One method call and its result     |
+| Defined in  | `core/src/http/`                  | `core/src/middleware.ts`           |
+| Applied by  | The provider, in its constructor  | The `Voice` wrapper                |
+| Typical use | Retry, timeout, rate limit, auth  | Logging, metrics, tracing, caching |
+
+A provider works with either layer, both, or neither.
+
+## Why the split matters
+
+**Retry belongs in the transport layer.** An operation-level middleware that
+retried `speakStream` could only do so after the caller had already consumed
+audio chunks, and running it again would emit those bytes twice. The transport
+layer decides based on the response status, before any of the body has been
+handed out.
+
+**Semantic logging belongs in the operation layer.** A transport middleware sees
+`POST /v1/text-to-speech/{id}`. It cannot see that the request was 4,000
+characters of text for a specific model, which is the information worth
+recording as a metric.
+
+## Transport layer
+
+```ts
+type HttpHandler = (request: HttpRequest) => Promise<Response>;
+type HttpMiddleware = (next: HttpHandler) => HttpHandler;
+```
+
+`compose([a, b, c])` places `a` outermost, so it sees the request first and the
+response last.
+
+`HttpRequest` carries a `meta` field that is never sent over the network:
+
+```ts
+interface RequestMeta {
+  provider: string; // "elevenlabs"
+  operation: string; // "speak"
+  attempt: number; // 0 on the first try, incremented on retry
+  stream?: boolean; // the body is consumed incrementally
+  retries?: number; // per-call override from RequestContext
+  timeout?: number; // per-call override from RequestContext
+}
+```
+
+`retries` and `timeout` are carried on `meta` so that a per-call
+`RequestContext` overrides the provider's configured defaults. Each middleware
+resolves its setting as `meta` value, then its own option, then the built-in
+default.
+
+### Default chain
+
+```
+logging → retry → rateLimit → timeout → fetch
+```
+
+Each position is chosen for a reason:
+
+- **`logging` is outermost** so one log entry covers the whole logical request,
+  including retries, and reports the total elapsed time.
+- **`retry` sits outside `rateLimit`** so a request that is backing off does not
+  hold a concurrency slot while it waits.
+- **`rateLimit` sits outside `timeout`** so each attempt acquires its own slot.
+- **`timeout` is innermost** so each attempt gets a fresh deadline. A 30-second
+  timeout applies per attempt, not across all attempts.
+
+### Timeout scope
+
+The timeout bounds the time until response headers arrive. Once they do, the
+timer is cleared and the body streams without a deadline.
+
+A `speakStream` response stays open for as long as generation takes, so a
+deadline covering the body would cancel valid requests. To bound the whole
+operation, pass an `AbortSignal` on the `RequestContext`.
+
+### Retry policy
+
+Requests are retried on `408`, `429`, any `5xx`, and on thrown network errors.
+They are not retried when:
+
+- the caller's `AbortSignal` has fired;
+- the request body is a `ReadableStream`, which cannot be re-sent.
+
+The delay is taken from `Retry-After` if present, in seconds or as an HTTP date,
+then from `X-RateLimit-Reset`, and otherwise from exponential backoff with
+jitter, capped at 60 seconds.
+
+A non-retryable failure is returned as a `Response` rather than thrown. Mapping
+it to an error requires knowledge of the provider's error body, which differs
+between APIs, so that step happens in the provider package.
+
+### Redaction
+
+The logging middleware removes query parameters whose names look like
+credentials (`key`, `token`, `secret`, `auth`, `password`) before the URL is
+logged. Headers are never logged, since that is where every supported provider
+sends its API key.
+
+## Operation layer
+
+Operation middleware is a set of optional per-method hooks on the `Voice`
+wrapper:
+
+```ts
+const voice = new Voice({
+  provider,
+  middleware: [
+    {
+      async speak(input, call, next) {
+        const started = performance.now();
+        const result = await next(input);
+        metrics.record(call.provider, input.text.length, performance.now() - started);
+        return result;
+      },
+    },
+  ],
+});
+```
+
+Every hook is optional. A middleware that defines only `speak` leaves the other
+methods untouched. `next` takes the input, so a middleware can modify the
+request on the way through.
+
+`speakStream` is the exception: it returns an `AudioStream` synchronously rather
+than a promise, so its hook is synchronous. Wrapping the iteration for per-chunk
+behaviour is left to the caller.
+
+## Not covered
+
+**WebSocket middleware.** Reconnecting a duplex session means replaying a
+handshake along with any text or audio that was in flight, and the correct
+policy differs by provider. Session code is written per provider.
+
+**A body-level deadline.** Use `context.signal`, as described under
+[Timeout scope](#timeout-scope).

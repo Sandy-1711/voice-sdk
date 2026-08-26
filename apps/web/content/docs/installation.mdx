@@ -1,0 +1,63 @@
+---
+title: Installation
+description: Install the core package and a provider, then configure an API key.
+---
+
+Install the core package together with at least one provider package:
+
+```sh
+pnpm add @swungstudent/voice @swungstudent/deepgram
+```
+
+The core package contains the `Voice` class, the shared types, and helper
+functions. It does not make network requests on its own. Provider packages
+declare the core package as a peer dependency, so your application resolves a
+single copy of the types.
+
+## Packages
+
+| Package                    | Description                                 |
+| -------------------------- | ------------------------------------------- |
+| `@swungstudent/voice`      | Core: the `Voice` class, types, and helpers |
+| `@swungstudent/cartesia`   | Cartesia provider                           |
+| `@swungstudent/deepgram`   | Deepgram provider                           |
+| `@swungstudent/elevenlabs` | ElevenLabs provider                         |
+
+All four packages are released together and share a version number.
+
+## Requirements
+
+Node.js 18 or later. Each release ships ESM and CommonJS builds, and CI verifies
+that the built output imports successfully on Node 18.
+
+## API keys
+
+Each provider reads its API key from an environment variable by default:
+
+| Provider   | Environment variable |
+| ---------- | -------------------- |
+| Cartesia   | `CARTESIA_API_KEY`   |
+| Deepgram   | `DEEPGRAM_API_KEY`   |
+| ElevenLabs | `ELEVENLABS_API_KEY` |
+
+You can also pass the key directly:
+
+```ts
+new DeepgramProvider(); // reads DEEPGRAM_API_KEY
+new DeepgramProvider({ apiKey: process.env.MY_KEY });
+```
+
+If no key is available, the constructor throws a `ConfigError` that names the
+missing option and the environment variable it looks for.
+
+## TypeScript
+
+No configuration is required. The packages ship type declarations, and
+`Voice<TProvider>` is generic over the provider so that provider-specific
+methods stay visible:
+
+```ts
+const voice = new Voice({ provider: new CartesiaProvider({ defaultVoice }) });
+
+voice.provider.name; // "cartesia"
+```

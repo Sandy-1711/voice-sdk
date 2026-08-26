@@ -1,0 +1,95 @@
+---
+title: Cartesia
+description: Configuration, behaviour, and format support for the Cartesia provider.
+---
+
+```sh
+pnpm add @swungstudent/voice @swungstudent/cartesia
+```
+
+```ts
+import { Voice } from "@swungstudent/voice";
+import { CartesiaProvider } from "@swungstudent/cartesia";
+
+const voice = new Voice({
+  provider: new CartesiaProvider({ defaultVoice: "a0e99841-438c-4a64-b679-ae501e7d6091" }),
+});
+
+const { audio } = await voice.speak({ text: "Hello there." });
+```
+
+## Configuration
+
+```ts
+new CartesiaProvider({
+  apiKey: "...", // defaults to CARTESIA_API_KEY
+  baseUrl: "https://...",
+  defaultVoice: "a0e99841-...",
+  defaultModel: "sonic-3.5",
+  defaultSTTModel: "ink-whisper",
+  defaultRealtimeSTTModel: "ink-2",
+  defaultFormat: { container: "wav", sampleRate: 44100 },
+
+  retries: 2,
+  timeout: 30_000,
+  logger: console,
+  rateLimit: { concurrency: 4 },
+  middleware: [],
+});
+```
+
+Model defaults are pinned to specific versions instead of `-latest`, so output
+does not change between releases of this package. A per-call request context
+overrides `retries` and `timeout`.
+
+## Voice selection
+
+Synthesis requires a voice id. Set `defaultVoice` on the provider or pass
+`voice` on each call. Without either, `speak()` throws a `ValidationError`.
+
+`listVoices()` pages through the voice catalogue and returns the full list.
+
+## Realtime transcription
+
+Two endpoints are available, selected by `turnDetection`:
+
+| `turnDetection`             | Endpoint               | Default model | Turn handling                          |
+| --------------------------- | ---------------------- | ------------- | -------------------------------------- |
+| `{ mode: "vad" }` (default) | `/stt/turns/websocket` | `ink-2`       | Provider detects and emits turns       |
+| `{ mode: "manual" }`        | `/stt/websocket`       | `ink-whisper` | No turn detection; `flush()` finalizes |
+
+Both are normalised to the same event stream. Requesting automatic turns with
+`ink-whisper` throws a `ValidationError` when the session opens.
+`defaultRealtimeSTTModel` overrides the default that each mode would otherwise
+select.
+
+## Connection behaviour
+
+`openTTSSession()` and `openSTTSession()` resolve after the WebSocket connection
+is established, so an invalid key or an unreachable host rejects the promise
+instead of failing later during iteration.
+
+## Realtime synthesis
+
+The SSE and WebSocket endpoints accept the `raw` container only. Requesting
+`wav` or `mp3` throws a `ValidationError`. Use `speak()` for container formats.
+
+## Prosody controls
+
+`speed` accepts values between 0.6 and 1.5, and `volume` between 0.5 and 2.
+Values outside those ranges throw a `ValidationError` before the request is
+sent. `stability`, `similarity`, and `instructions` have no Cartesia equivalent
+and are ignored.
+
+## Audio formats
+
+| Container | Encoding                                  | Sample rates                            |
+| --------- | ----------------------------------------- | --------------------------------------- |
+| `raw`     | `pcm_s16le`, `pcm_f32le`, `mulaw`, `alaw` | 8000, 16000, 22050, 24000, 44100, 48000 |
+| `wav`     | As above                                  | As above                                |
+| `mp3`     | —                                         | As above, bitrate 32/64/96/128/192 kbps |
+
+Mono only. Other combinations throw a `ValidationError` naming the field.
+
+Cartesia prefixes codec names on the wire, so `mulaw` is sent as `pcm_mulaw`.
+The provider package handles this; use the core encoding names in your code.

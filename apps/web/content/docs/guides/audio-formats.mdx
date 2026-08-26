@@ -1,0 +1,79 @@
+---
+title: Audio formats
+description: How the SDK describes audio formats and translates them for each provider.
+---
+
+Providers describe audio formats differently. ElevenLabs uses a single token
+such as `mp3_44100_128`. Cartesia prefixes codec names, so `mulaw` becomes
+`pcm_mulaw`. Deepgram splits the parts across query parameters. The SDK defines
+one type and each provider package translates it.
+
+```ts
+interface AudioFormat {
+  container?: AudioContainer; // "raw" | "wav" | "mp3" | "ogg" | "webm" | "flac" | "aac"
+  encoding?: AudioEncoding; // "pcm_s16le" | "mulaw" | "mp3" | "opus" | ...
+  sampleRate?: number;
+  channels?: number;
+  bitrate?: number; // kbps; applies to mp3, opus, and aac
+}
+```
+
+## Requested and resolved formats
+
+Every field on `AudioFormat` is optional. Unset fields fall back to the
+provider's default.
+
+Responses use `ResolvedAudioFormat`, where the four main fields are required:
+
+```ts
+interface ResolvedAudioFormat extends AudioFormat {
+  container: AudioContainer;
+  encoding: AudioEncoding;
+  sampleRate: number;
+  channels: number;
+}
+```
+
+`SpeakResult.format`, `AudioStream.format`, and `TTSSession.format` are all
+resolved, so downstream code always knows how to interpret the bytes.
+
+```ts
+const { format } = await voice.speak({
+  text: "Hello there.",
+  format: { container: "wav" },
+});
+
+format;
+// { container: "wav", encoding: "pcm_s16le", sampleRate: 24000, channels: 1 }
+```
+
+## Validation
+
+Format support is checked locally before the request is sent. An unsupported
+combination throws a `ValidationError` that names the field, and where possible
+lists the values the provider accepts.
+
+All three providers are mono only. For the full tables, see
+[Cartesia](/docs/providers/cartesia), [Deepgram](/docs/providers/deepgram), and
+[ElevenLabs](/docs/providers/elevenlabs).
+
+## Streaming formats
+
+`speakStream()` and `openTTSSession()` accept the `raw` container only.
+Container formats declare a length in their header that is not known until
+generation finishes, so providers do not offer them on streaming endpoints.
+
+To play raw PCM, pass the format to your player:
+
+```sh
+ffplay -f s16le -ar 24000 -ch_layout mono out.raw
+```
+
+## Input formats
+
+`transcribe()` needs a `format` when the input is headerless PCM. Container
+formats carry the information in their header, so `format` can be omitted.
+
+Realtime sessions declare `inputFormat` once when the session opens. Every frame
+pushed afterwards must match it. See
+[Realtime transcription](/docs/guides/realtime-stt).

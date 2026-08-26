@@ -1,0 +1,51 @@
+---
+title: Overview
+description: Compare the supported providers and what differs between them.
+---
+
+Three providers are supported. All of them implement the four capabilities.
+
+|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` | Timings   |
+| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: | --------- |
+| **Cartesia**   |  Yes  |  Yes  |      Yes      |      Yes      |     Yes      | Word      |
+| **Deepgram**   |  Yes  |  Yes  |      Yes      |      Yes      |      No      | None      |
+| **ElevenLabs** |  Yes  |  Yes  |      Yes      |      Yes      |     Yes      | Character |
+
+## Differences that affect your code
+
+**Voice selection.** Cartesia and ElevenLabs require a voice id for synthesis
+and have no default. Set `defaultVoice` on the provider or pass `voice` on each
+call. Deepgram encodes voice and language in the model name, so `aura-2-thalia-en`
+selects both.
+
+**Timings.** Cartesia reports word-level timings and ElevenLabs reports
+character-level timings. Deepgram does not report timings, so passing `timings`
+throws a `ValidationError`.
+
+**Audio formats.** Sample rates and containers differ. Each provider page
+includes its supported combinations. All three are mono only.
+
+**Realtime endpoints.** Cartesia and Deepgram each have two realtime
+transcription endpoints. Cartesia selects between them using `turnDetection`;
+Deepgram selects using the model. Both are normalised to the same event stream.
+
+## Switching providers
+
+Changing provider is a change to the constructor:
+
+```ts
+// Before
+const voice = new Voice({ provider: new DeepgramProvider() });
+
+// After
+const voice = new Voice({ provider: new CartesiaProvider({ defaultVoice }) });
+```
+
+Code that uses [`providerOptions`](/docs/guides/provider-options) is the
+exception, since those fields are specific to one API.
+
+## Adding a provider
+
+The four capabilities are defined as an interface, so you can implement a
+provider for any API. See
+[Writing a provider](/docs/contributing/writing-a-provider).

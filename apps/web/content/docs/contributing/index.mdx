@@ -1,0 +1,56 @@
+---
+title: Overview
+description: Repository layout, commands, and where to find design notes.
+---
+
+```sh
+pnpm install
+pnpm test        # offline tests against local fake servers
+pnpm check-types
+pnpm lint
+pnpm build
+```
+
+## Repository layout
+
+```
+packages/core       @swungstudent/voice — the shared interface
+packages/test-kit   fake servers and shared contract assertions
+packages/internal   helpers shared between providers, not published
+providers/*         one package per provider
+examples/*          runnable programs, typechecked in CI
+apps/web            this site
+docs/               design notes
+```
+
+## Provider package structure
+
+Every provider package uses the same file layout, one file per concern:
+
+```
+src/
+├── config.ts        API key, defaults, and option resolution
+├── format.ts        AudioFormat translation
+├── tts.ts           speak() and speakStream()
+├── tts-session.ts   openTTSSession()
+├── stt.ts           transcribe()
+├── stt-session.ts   openSTTSession()
+├── provider.ts      the VoiceProvider implementation
+└── index.ts         public exports
+```
+
+`provider.ts` should contain little more than delegation to the other modules.
+
+## Design notes
+
+Two documents in the repository record how the core types were designed. They
+describe the reasoning behind decisions rather than how to use the SDK:
+
+- [`docs/type-design.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/type-design.md)
+- [`docs/provider-research.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/provider-research.md)
+
+## Next steps
+
+- [Writing a provider](/docs/contributing/writing-a-provider)
+- [Testing](/docs/contributing/testing)
+- [Releasing](/docs/contributing/releasing)

@@ -1,0 +1,51 @@
+---
+title: Provider options
+description: Pass provider-specific fields that the shared interface does not model.
+---
+
+`providerOptions` is merged into the request body that the provider package
+builds, using the field names that the underlying API expects.
+
+```ts
+await voice.speak({
+  text: "Hello there.",
+  format: { container: "raw", sampleRate: 24000 },
+  providerOptions: { mip_opt_out: true },
+});
+```
+
+It is available on `speak`, `speakStream`, `transcribe`, `openTTSSession`, and
+`openSTTSession`.
+
+## Merge behaviour
+
+Nested plain objects are merged one level deep, so setting one nested field does
+not remove the others the SDK produced. Scalars, arrays, and class instances
+replace the existing value.
+
+```ts
+// The provider package builds:
+// { voice: { id, mode, experimental_controls: { speed } } }
+
+providerOptions: {
+  voice: { experimental_controls: { emotion: ["curiosity"] } };
+}
+
+// Result: id, mode, and speed are all preserved.
+```
+
+## Fields that cannot be overridden
+
+Values that the SDK reports back in its result are applied after the merge and
+take precedence. The audio format is the main case: `SpeakResult.format`
+describes the audio that was returned, so allowing `providerOptions` to change
+the format sent on the wire would make that value incorrect.
+
+Any field that is not reflected in a result can be overridden.
+
+## Trade-off
+
+Code that uses `providerOptions` is specific to one provider and will not work
+unchanged against another. Use it when you need a feature the shared interface
+does not cover, and open an issue if the field looks like something the SDK
+should model.
