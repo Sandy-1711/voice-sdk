@@ -5,3 +5,102 @@
 @source "../app";
 @source "../components";
 @source "../content";
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-instrument), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --color-ember-50: #fff5ec;
+  --color-ember-200: #ffd0a8;
+  --color-ember-400: #ff9a4d;
+  --color-ember-500: #ff7a1a;
+  --color-ember-600: #e05c00;
+  --color-ember-700: #b34700;
+
+  --color-fd-background: #fbfaf8;
+  --color-fd-foreground: #17150f;
+  --color-fd-muted: #f3f0ea;
+  --color-fd-muted-foreground: #6f6a60;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #17150f;
+  --color-fd-card: #ffffff;
+  --color-fd-card-foreground: #17150f;
+  --color-fd-border: #e8e3d9;
+  --color-fd-primary: #17150f;
+  --color-fd-primary-foreground: #fbfaf8;
+  --color-fd-secondary: #f3f0ea;
+  --color-fd-secondary-foreground: #17150f;
+  --color-fd-accent: #f0ece4;
+  --color-fd-accent-foreground: #17150f;
+  --color-fd-ring: #ff7a1a;
+}
+
+.dark {
+  --color-fd-background: #0c0b0a;
+  --color-fd-foreground: #f4f1eb;
+  --color-fd-muted: #171513;
+  --color-fd-muted-foreground: #9b948a;
+  --color-fd-popover: #141210;
+  --color-fd-popover-foreground: #f4f1eb;
+  --color-fd-card: #131110;
+  --color-fd-card-foreground: #f4f1eb;
+  --color-fd-border: #272320;
+  --color-fd-primary: #f4f1eb;
+  --color-fd-primary-foreground: #0c0b0a;
+  --color-fd-secondary: #1a1816;
+  --color-fd-secondary-foreground: #f4f1eb;
+  --color-fd-accent: #1e1b18;
+  --color-fd-accent-foreground: #f4f1eb;
+  --color-fd-ring: #ff9a4d;
+}
+
+/* The accent has to move between themes: the fill reads on both, the text tone does not. */
+:root {
+  --brand-text: var(--color-ember-700);
+}
+.dark {
+  --brand-text: var(--color-ember-400);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  code,
+  pre {
+    font-family: var(--font-mono);
+  }
+}
+
+@utility text-brand {
+  color: var(--brand-text);
+}
+
+/* A hairline grid, so large empty areas still read as a surface. */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--color-fd-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-fd-border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+}
+
+@keyframes level {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
