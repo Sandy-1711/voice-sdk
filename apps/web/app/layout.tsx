@@ -19,7 +19,7 @@ const jetbrains = JetBrains_Mono({
 
 const SITE_URL = "https://voice-ai-sdk.vercel.app";
 
-const TITLE = "voice-sdk — one TypeScript interface for voice providers";
+const TITLE = "voice-sdk: one TypeScript SDK for text-to-speech and speech-to-text";
 const DESCRIPTION =
   "Text-to-speech and speech-to-text, batch and realtime, with one set of types across Cartesia, Deepgram and ElevenLabs.";
 
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   // Without this, relative Open Graph and canonical URLs resolve against
   // localhost in the build output.
   metadataBase: new URL(SITE_URL),
-  title: { default: TITLE, template: "%s · voice-sdk" },
+  title: { default: TITLE, template: "%s | voice-sdk" },
   description: DESCRIPTION,
   openGraph: {
     type: "website",
