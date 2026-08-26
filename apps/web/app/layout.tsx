@@ -17,13 +17,26 @@ const jetbrains = JetBrains_Mono({
   display: "swap",
 });
 
+const SITE_URL = "https://voice-ai-sdk.vercel.app";
+
+const TITLE = "voice-sdk — one TypeScript interface for voice providers";
+const DESCRIPTION =
+  "Text-to-speech and speech-to-text, batch and realtime, with one set of types across Cartesia, Deepgram and ElevenLabs.";
+
 export const metadata: Metadata = {
-  title: {
-    default: "voice-sdk — one TypeScript interface for voice providers",
-    template: "%s · voice-sdk",
+  // Without this, relative Open Graph and canonical URLs resolve against
+  // localhost in the build output.
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: "%s · voice-sdk" },
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "voice-sdk",
+    url: SITE_URL,
+    title: TITLE,
+    description: DESCRIPTION,
   },
-  description:
-    "Text-to-speech and speech-to-text, batch and realtime, with one set of types across Cartesia, Deepgram and ElevenLabs.",
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
