@@ -1,6 +1,6 @@
 ---
 title: Deepgram
-description: aura-2, nova-3, flux — all four capabilities.
+description: Configuration, behaviour, and format support for the Deepgram provider.
 ---
 
 ```sh
@@ -11,9 +11,7 @@ pnpm add @swungstudent/voice @swungstudent/deepgram
 import { Voice } from "@swungstudent/voice";
 import { DeepgramProvider } from "@swungstudent/deepgram";
 
-const voice = new Voice({
-  provider: new DeepgramProvider(), // reads DEEPGRAM_API_KEY
-});
+const voice = new Voice({ provider: new DeepgramProvider() });
 
 const { audio } = await voice.speak({ text: "Hello there." });
 ```
@@ -22,55 +20,68 @@ const { audio } = await voice.speak({ text: "Hello there." });
 
 ```ts
 new DeepgramProvider({
-  apiKey: "...",                  // falls back to DEEPGRAM_API_KEY
-  baseUrl: "https://...",         // self-hosted or a regional host
+  apiKey: "...", // defaults to DEEPGRAM_API_KEY
+  baseUrl: "https://...", // self-hosted or regional host
   defaultVoice: "aura-2-thalia-en",
   defaultModel: "aura-2-thalia-en",
   defaultSTTModel: "nova-3",
   defaultRealtimeSTTModel: "nova-3",
   defaultFormat: { container: "wav", sampleRate: 24000 },
+
+  retries: 2,
+  timeout: 30_000,
+  logger: console,
+  rateLimit: { concurrency: 4 },
+  middleware: [],
 });
 ```
 
-Models are pinned rather than tracking `-latest`, so generated audio does not
-shift under you between releases.
+Model defaults are pinned to specific versions instead of `-latest`, so output
+does not change between releases of this package. A per-call request context
+overrides `retries` and `timeout`.
 
-## What is worth knowing
+## Voice selection
 
-**A voice _is_ a model.** Deepgram has no separate voice or language parameter —
-both are folded into the model name, as in `aura-2-thalia-en`. `voice` and
-`model` are two spellings of the same thing, and `model` wins if you pass both.
+Deepgram does not have a separate voice or language parameter. Both are encoded
+in the model name, as in `aura-2-thalia-en`. The `voice` and `model` fields
+therefore set the same thing, and `model` takes precedence if you pass both.
 
-**`listVoices` is deliberately absent**, for the same reason: there is no
-voice-listing endpoint. Calling it through `Voice` raises a `CapabilityError`
-rather than returning something invented.
+For the same reason, the provider does not implement `listVoices()`. Calling it
+through `Voice` throws a `CapabilityError`.
 
-**No timings.** Deepgram synthesis reports no alignment at any granularity, so
-asking for `timings` raises a `ValidationError` instead of quietly returning
-audio with nothing attached. Use Cartesia or ElevenLabs if you need them.
+## Timings
 
-**Realtime STT has two endpoints, and the model picks between them.**
-`nova-3` and friends use `/v1/listen`, with two levels of finality and a
-mandatory heartbeat this package sends for you. A `flux-*` model uses
-`/v2/listen`, which has its own turn lifecycle. Both are normalised to the same
-event stream, so consumers cannot tell which one they are talking to — with one
-exception: Flux decides turns for itself and has no manual finalize, so
-`turnDetection: { mode: "manual" }` raises a `ValidationError` at open time
-rather than leaving you waiting for turns that never come.
+Deepgram synthesis does not return alignment data at any granularity. Passing
+`timings` throws a `ValidationError`. Use Cartesia or ElevenLabs if you need
+timings.
 
-**Streaming synthesis is headerless.** `openTTSSession` only emits raw PCM,
-mu-law or A-law. Ask for a framed container there and you get a
-`ValidationError` pointing you at `speak()`.
+## Realtime transcription
 
-## Formats
+Two endpoints are available, selected by the model:
+
+| Model                | Endpoint     | Turn handling                                  |
+| -------------------- | ------------ | ---------------------------------------------- |
+| `nova-3` and similar | `/v1/listen` | Two finality levels; heartbeat sent by the SDK |
+| `flux-*`             | `/v2/listen` | Provider-managed turn lifecycle                |
+
+Both are normalised to the same event stream. Flux manages turns itself and has
+no manual finalize, so `turnDetection: { mode: "manual" }` throws a
+`ValidationError` when the session opens.
+
+## Realtime synthesis
+
+`openTTSSession` returns headerless audio: raw PCM, mu-law, or A-law. Requesting
+a container format throws a `ValidationError`. Use `speak()` for container
+formats.
+
+## Audio formats
 
 | Container     | Encoding                     | Sample rates                     |
 | ------------- | ---------------------------- | -------------------------------- |
 | `raw`         | `pcm_s16le`, `mulaw`, `alaw` | 8000, 16000, 24000, 32000, 48000 |
-| `wav`         | `pcm_s16le`, `mulaw`, `alaw` | as above                         |
-| `mp3`         | —                            | as above, with `bitrate`         |
-| `ogg`         | opus                         | as above, with `bitrate`         |
-| `flac`, `aac` | —                            | as above                         |
+| `wav`         | `pcm_s16le`, `mulaw`, `alaw` | As above                         |
+| `mp3`         | —                            | As above, with `bitrate`         |
+| `ogg`         | `opus`                       | As above, with `bitrate`         |
+| `flac`, `aac` | —                            | As above                         |
 
-Mono only. Anything else raises a `ValidationError` naming the field, before a
-request is sent.
+Mono only. Other combinations throw a `ValidationError` naming the field.

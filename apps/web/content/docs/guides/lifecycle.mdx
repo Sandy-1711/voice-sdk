@@ -1,15 +1,16 @@
 ---
 title: Cancellation and lifecycle
-description: Why there is no client close, and how one AbortController ends everything.
+description: Closing sessions, cancelling requests with AbortSignal, and how timeouts are applied.
 ---
 
-## Sessions own their lifecycle
+## Closing a session
 
-Close a session when the call it belongs to ends. An open socket keeps the
-process alive and the provider billing.
+A realtime session owns a network connection. Close it when the work it belongs
+to finishes, otherwise the process stays alive and the provider keeps billing.
 
 ```ts
 const session = await voice.openSTTSession();
+
 try {
   // ...
 } finally {
@@ -17,19 +18,18 @@ try {
 }
 ```
 
-`close()` waits for the provider to acknowledge and gives up after five seconds
-if it never does, so a shutdown cannot hang on an unresponsive server.
+`close()` waits for the provider to acknowledge and returns after five seconds
+if it does not, so shutdown cannot block indefinitely.
 
 ## There is no client-level close
 
-`Voice` and the providers have no `close()`, deliberately. A provider holds
-configuration, not connections — there would be nothing for it to shut. Every
-connection in this SDK belongs to a session that already knows how to end
-itself.
+`Voice` and the provider classes do not have a `close()` method. They hold
+configuration, not connections. Every connection belongs to a session, and each
+session closes itself.
 
-## One signal ends everything
+## Cancelling with a signal
 
-To end several things at once, give them one `AbortController` and abort it:
+Pass an `AbortSignal` to cancel one or more operations:
 
 ```ts
 const call = new AbortController();
@@ -37,32 +37,40 @@ const call = new AbortController();
 const listening = await voice.openSTTSession({ signal: call.signal });
 const speaking = await voice.openTTSSession({ signal: call.signal });
 
-// Hang-up, timeout, SIGTERM — one line ends both, and cancels any in-flight
-// speak() or transcribe() given the same signal.
 call.abort();
 ```
 
-The same signal works on one-shot calls through the request context:
+Aborting the controller closes both sessions. The same signal works on one-shot
+calls through the request context:
 
 ```ts
-await voice.speak({ text: "..." }, { signal: call.signal });
+await voice.speak({ text: "Hello there." }, { signal: call.signal });
 ```
 
-Two rules the SDK holds every provider to:
+Two behaviours are guaranteed across every provider:
 
-- **Every session closes on abort**, whichever provider is behind it.
-- **A signal that has already fired is refused at open time**, the way `fetch`
-  refuses one, rather than connecting and immediately tearing down.
+- Aborting the signal closes the session.
+- Opening a session with a signal that has already aborted rejects immediately,
+  matching how `fetch` behaves.
 
-## Timeouts are not deadlines
+## Timeouts
 
-A `timeout` bounds **time to response headers**, not time to the last byte. Once
-the headers arrive the timer is disarmed and the body streams without one.
+A `timeout` bounds the time until response headers arrive. Once headers are
+received, the timer is cleared and the body streams without a deadline.
 
-That is deliberate: a `speakStream` response stays open for as long as the audio
-takes to generate, and a deadline outliving the headers would abort it mid-body.
-A slow download is not a failed request.
+```ts
+const voice = new Voice({
+  provider: new DeepgramProvider(),
+  options: { timeout: 30_000 },
+});
 
-If you want a budget over the whole operation, body included, that is what
-`signal` is for. See [Middleware](/docs/concepts/middleware) for the layer this
-happens in.
+// A per-call context overrides the client default.
+await voice.speak({ text: "Hello there." }, { timeout: 5_000 });
+```
+
+Streaming responses stay open for as long as generation takes, so a deadline
+that covered the body would cancel valid requests. To bound the total duration
+of an operation, use an `AbortSignal`.
+
+Timeouts and retries are applied in the provider's HTTP transport. See
+[Middleware](/docs/concepts/middleware) for the order the layers run in.

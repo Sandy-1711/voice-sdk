@@ -1,10 +1,7 @@
 # voice-sdk
 
-**Speak. Listen. Switch providers.**
-
-One interface for voice providers. Synthesis and transcription, batch and
-realtime, with the same types whichever provider is behind them — so switching
-is a constructor change rather than a rewrite.
+One TypeScript interface for text-to-speech and speech-to-text. Write your
+application against `Voice`, and choose a provider when you construct it.
 
 ```sh
 pnpm add @swungstudent/voice @swungstudent/deepgram
@@ -20,58 +17,69 @@ const { audio, format } = await voice.speak({ text: "Hello there." });
 const { text } = await voice.transcribe({ audio });
 ```
 
-Swap `DeepgramProvider` for `CartesiaProvider` or `ElevenLabsProvider` and
-nothing below the constructor changes.
+To use a different provider, change the constructor. Method names, input types,
+return types, and errors are the same for all of them.
 
-[Runnable examples](examples) · [Documentation](apps/web/content/docs) —
-the docs site lives in [`apps/web`](apps/web); run it with `pnpm --filter web dev`.
+[Documentation](apps/web/content/docs) · [Examples](examples) ·
+[Providers](apps/web/content/docs/providers)
 
-## Four capabilities
+## Capabilities
 
-A provider declares which it has, and calling one it lacks raises a
-`CapabilityError` naming the provider rather than failing deeper in.
+| Capability    | Methods                | Description                                              |
+| ------------- | ---------------------- | -------------------------------------------------------- |
+| `tts`         | `speak`, `speakStream` | Convert text to audio, buffered or streamed              |
+| `stt`         | `transcribe`           | Convert a complete recording to a transcript             |
+| `realtimeTTS` | `openTTSSession`       | Stream text into a session and receive audio back        |
+| `realtimeSTT` | `openSTTSession`       | Stream audio into a session and receive transcripts back |
 
-|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` |
-| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: |
-| **Cartesia**   |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
-| **Deepgram**   |  ✅   |  ✅   |      ✅       |      ✅       |      —       |
-| **ElevenLabs** |  ✅   |  ✅   |      ✅       |      ✅       |      ✅      |
+Each provider declares which capabilities it supports. Calling a method a
+provider does not implement throws a `CapabilityError`.
 
-`realtimeTTS` means a duplex session you push text **into** incrementally — what
-a spoken LLM response needs. Streaming audio _out_ of a one-shot call is
-`speakStream`, and every provider with `tts` has it.
+|                | `tts` | `stt` | `realtimeTTS` | `realtimeSTT` | `listVoices` | Timings   |
+| -------------- | :---: | :---: | :-----------: | :-----------: | :----------: | --------- |
+| **Cartesia**   |  Yes  |  Yes  |      Yes      |      Yes      |     Yes      | Word      |
+| **Deepgram**   |  Yes  |  Yes  |      Yes      |      Yes      |      No      | None      |
+| **ElevenLabs** |  Yes  |  Yes  |      Yes      |      Yes      |     Yes      | Character |
 
 ## Packages
 
-| Package                                            | What it is                                           |
-| -------------------------------------------------- | ---------------------------------------------------- |
-| [`@swungstudent/voice`](packages/core)             | The contract: `Voice`, the types, the shared helpers |
-| [`@swungstudent/cartesia`](providers/cartesia)     | Cartesia — sonic, ink-whisper, ink-2                 |
-| [`@swungstudent/deepgram`](providers/deepgram)     | Deepgram — aura-2, nova-3, flux                      |
-| [`@swungstudent/elevenlabs`](providers/elevenlabs) | ElevenLabs — eleven_multilingual_v2, scribe          |
+| Package                                            | Description                                 |
+| -------------------------------------------------- | ------------------------------------------- |
+| [`@swungstudent/voice`](packages/core)             | Core: the `Voice` class, types, and helpers |
+| [`@swungstudent/cartesia`](providers/cartesia)     | Cartesia provider                           |
+| [`@swungstudent/deepgram`](providers/deepgram)     | Deepgram provider                           |
+| [`@swungstudent/elevenlabs`](providers/elevenlabs) | ElevenLabs provider                         |
 
-Each provider declares core as a peer dependency, so an app never ends up with
-two copies of it. The four are versioned together.
+Provider packages declare the core package as a peer dependency, so an
+application resolves a single copy of the types. All four are released together
+and share a version number.
 
-## Working on it
+Node.js 18 or later. This is a server-side library; browser and edge runtimes
+are not supported.
+
+## Development
 
 ```sh
 pnpm install
-pnpm test          # offline: fake servers on ephemeral ports, no keys, no cost
+pnpm test        # offline tests against local fake servers
 pnpm check-types
+pnpm lint
 pnpm build
 ```
 
-`pnpm test` is the tier CI runs. The second tier touches the real APIs and is
-opt-in because it costs money:
+`pnpm test` is the tier CI runs. It starts HTTP and WebSocket servers on
+ephemeral ports and runs each provider against them, so no API keys are needed.
+
+Live tests call the real APIs and are opt-in:
 
 ```sh
 DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
 ```
 
-Contributing, adding a provider, the test kit and the release process are all
-documented on the site, under
-[`apps/web/content/docs/contributing`](apps/web/content/docs/contributing).
+The documentation site is in [`apps/web`](apps/web). Run it with
+`pnpm --filter web dev`. See
+[Contributing](apps/web/content/docs/contributing) for the repository layout,
+how to add a provider, and the release process.
 
 ## Licence
 

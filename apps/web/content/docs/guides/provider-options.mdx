@@ -1,47 +1,51 @@
 ---
 title: Provider options
-description: The escape hatch — reaching the underlying API for anything core does not model.
+description: Pass provider-specific fields that the shared interface does not model.
 ---
 
-Core models what providers have in common. `providerOptions` reaches everything
-else, so a missing field is never a reason to drop out of the SDK.
+`providerOptions` is merged into the request body that the provider package
+builds, using the field names that the underlying API expects.
 
 ```ts
 await voice.speak({
-  text: "Hello.",
+  text: "Hello there.",
   format: { container: "raw", sampleRate: 24000 },
   providerOptions: { mip_opt_out: true },
 });
 ```
 
-The object is merged into the request body the provider mapped, with the keys
-that API actually uses. It is available on `speak`, `speakStream`, `transcribe`,
-`openTTSSession` and `openSTTSession`.
+It is available on `speak`, `speakStream`, `transcribe`, `openTTSSession`, and
+`openSTTSession`.
 
-## Merging is one level deep
+## Merge behaviour
 
-Nested plain objects merge rather than replace, so setting one field does not
-silently drop the siblings the SDK mapped for you. Scalars, arrays and class
-instances replace outright.
+Nested plain objects are merged one level deep, so setting one nested field does
+not remove the others the SDK produced. Scalars, arrays, and class instances
+replace the existing value.
 
 ```ts
-// The mapper produced { voice: { id, mode, experimental_controls: { speed } } }.
-providerOptions: { voice: { experimental_controls: { emotion: ["curiosity"] } } }
-// speed survives. mode and id survive.
+// The provider package builds:
+// { voice: { id, mode, experimental_controls: { speed } } }
+
+providerOptions: {
+  voice: { experimental_controls: { emotion: ["curiosity"] } };
+}
+
+// Result: id, mode, and speed are all preserved.
 ```
 
-## What it cannot override
+## Fields that cannot be overridden
 
-**Anything the SDK reports back.** The audio format above all: a `SpeakResult`
-carries the format the bytes are actually in, and letting `providerOptions`
-change what went on the wire while the reported value stayed put would make that
-a lie. Mapped format fields are applied _after_ the merge and win.
+Values that the SDK reports back in its result are applied after the merge and
+take precedence. The audio format is the main case: `SpeakResult.format`
+describes the audio that was returned, so allowing `providerOptions` to change
+the format sent on the wire would make that value incorrect.
 
-Everything a caller cannot observe from the result is fair game.
+Any field that is not reflected in a result can be overridden.
 
-## The cost
+## Trade-off
 
-`providerOptions` is provider-specific by definition. Code that uses it stops
-being portable across providers, which is the thing the rest of this SDK exists
-to give you. Reach for it when you need to; treat a reach as a signal that core
-might be missing something worth modelling.
+Code that uses `providerOptions` is specific to one provider and will not work
+unchanged against another. Use it when you need a feature the shared interface
+does not cover, and open an issue if the field looks like something the SDK
+should model.

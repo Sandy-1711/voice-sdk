@@ -1,0 +1,50 @@
+---
+title: Examples
+description: Runnable programs covering synthesis, transcription, realtime sessions, and provider switching.
+---
+
+The repository contains six single-purpose programs in
+[`examples/basics`](https://github.com/Sandy-1711/voice-sdk/tree/main/examples/basics).
+Each one is a single file that you can copy into your own project. They are
+typechecked in CI, so they stay in sync with the API.
+
+## Running them
+
+Install dependencies at the repository root, then run an example with `tsx`:
+
+```sh
+pnpm install
+cd examples/basics
+DEEPGRAM_API_KEY=… pnpm tsx src/speak-to-file.ts
+```
+
+Each example calls a real API and uses your quota.
+
+## What each one shows
+
+| File                                                                                                           | Description                                              | Environment                                    |
+| -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------- |
+| [`speak-to-file.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/examples/basics/src/speak-to-file.ts)   | `speak()` written to a WAV file                          | `DEEPGRAM_API_KEY`                             |
+| [`speak-stream.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/examples/basics/src/speak-stream.ts)     | `speakStream()` written as chunks arrive                 | `DEEPGRAM_API_KEY`                             |
+| [`transcribe.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/examples/basics/src/transcribe.ts)         | `transcribe()` with word timestamps and diarization      | `DEEPGRAM_API_KEY`                             |
+| [`realtime-stt.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/examples/basics/src/realtime-stt.ts)     | A realtime session fed at playback speed, printing turns | `DEEPGRAM_API_KEY`                             |
+| [`realtime-tts.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/examples/basics/src/realtime-tts.ts)     | A realtime session driven by incremental text            | `DEEPGRAM_API_KEY`                             |
+| [`swap-providers.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/examples/basics/src/swap-providers.ts) | The same calls running on any of the three providers     | `PROVIDER`, plus that provider's key and voice |
+
+## Order
+
+Run `speak-to-file.ts` before `transcribe.ts`. The second reads the WAV file the
+first writes. Output is written to `examples/basics/out/`, which is gitignored.
+
+`realtime-stt.ts` has no microphone available, so it synthesizes audio and then
+pushes it back into the session frame by frame at playback speed. Replace that
+loop with your capture device to use it in an application.
+
+## Playing raw audio
+
+Streaming endpoints return headerless PCM. Pass the format explicitly to your
+player:
+
+```sh
+ffplay -f s16le -ar 24000 -ch_layout mono out/stream.raw
+```

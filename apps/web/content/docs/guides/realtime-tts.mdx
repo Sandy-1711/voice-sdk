@@ -1,11 +1,11 @@
 ---
 title: Realtime synthesis
-description: A duplex session you push text into as it is generated — the shape a spoken LLM response has.
+description: Stream text into a session and receive audio back.
 ---
 
-`openTTSSession` opens a long-lived connection that takes text incrementally and
-streams audio back. It exists because a spoken LLM response cannot wait for the
-last token before it starts speaking.
+`openTTSSession()` opens a duplex connection that accepts text incrementally and
+streams audio back. Use it when the text is produced over time, for example
+tokens from a language model.
 
 ```ts
 const session = await voice.openTTSSession({
@@ -26,7 +26,7 @@ await playing;
 await session.close();
 ```
 
-## The session
+## Session interface
 
 ```ts
 interface RealtimeSession<TIn, TEvent> {
@@ -39,20 +39,35 @@ interface RealtimeSession<TIn, TEvent> {
 }
 ```
 
-**`push` returns nothing.** It is fire-and-forget so a token loop never awaits
-per token — a per-token round trip would defeat the point. Failures surface on
-`output` and on `closed` instead.
+### push
 
-**`flush` means "synthesize what is buffered".** Providers trigger generation on
-sentence boundaries or whitespace, so the last fragment can sit there
-indefinitely without one.
+`push()` returns `void`, so a token loop is not blocked waiting on the network.
+Errors are reported through `output` and `closed` instead of being thrown by
+`push()` itself.
 
-**`cancel` is barge-in.** Best-effort: not every provider can drop work it has
-already queued. ElevenLabs has no cancel command at all, so that provider drops
-the connection and transparently opens a new one on the next `push`.
+### flush
 
-**`format` is on the session, not the event.** `session.format` is resolved
-before the first byte, so a speaker can be opened up front.
+`flush()` asks the provider to synthesize whatever text is buffered. Providers
+trigger generation on sentence boundaries or on whitespace, so a trailing
+fragment can stay buffered until you call it.
+
+### cancel
+
+`cancel()` stops audio that has already been queued, which is what a barge-in
+implementation calls when the user starts speaking. Support is best-effort. On
+ElevenLabs there is no cancel command, so the provider closes the connection and
+opens a new one on the next `push()`.
+
+### close
+
+`close()` ends the session and waits for the provider to acknowledge, giving up
+after five seconds. Always close a session when the call it belongs to ends: an
+open socket keeps the process alive and continues to be billed.
+
+### format
+
+`session.format` is a `ResolvedAudioFormat` and is available as soon as the
+session opens, so you can configure a player before any audio arrives.
 
 ## Events
 
@@ -67,15 +82,21 @@ type TTSEvent =
   | { type: "warning"; message: string; code?: string };
 ```
 
-`done` means _the current generation_ finished, not that the session is over —
-push more text and more audio follows. `warning` is for things the provider
-reports that are not fatal; ignoring them is safe.
+`done` marks the end of the current generation, not the end of the session. You
+can push more text afterwards and receive more audio.
 
-`audioOnly(session.output)` drops everything but the bytes, for callers that
-only want to play audio.
+To iterate over audio only, use the `audioOnly` helper:
 
-## Headerless only
+```ts
+import { audioOnly } from "@swungstudent/voice";
 
-Realtime synthesis emits raw PCM, mu-law or A-law. Ask for a framed container
-and you get a `ValidationError` pointing at `speak()` — a `wav` header has to
-declare a length that is not known until generation ends.
+for await (const bytes of audioOnly(session.output)) {
+  speaker.write(bytes);
+}
+```
+
+## Format support
+
+Realtime synthesis returns headerless audio: raw PCM, mu-law, or A-law.
+Requesting a container such as `wav` throws a `ValidationError`. Use
+[`speak()`](/docs/guides/synthesis) when you need a container format.

@@ -1,57 +1,55 @@
 ---
-title: Working on it
-description: The repository layout, the commands, and where the design records live.
+title: Overview
+description: Repository layout, commands, and where to find design notes.
 ---
 
 ```sh
 pnpm install
-pnpm test          # offline: fake servers on ephemeral ports, no keys, no cost
+pnpm test        # offline tests against local fake servers
 pnpm check-types
 pnpm lint
 pnpm build
 ```
 
-## Layout
+## Repository layout
 
 ```
-packages/core          @swungstudent/voice — the contract
-packages/test-kit      fake servers and the shared contract assertions
-packages/internal      helpers shared by providers, never published
-providers/*            one package per vendor
-examples/*             runnable programs, typechecked in CI
-apps/web               this site
-docs/                  design records
+packages/core       @swungstudent/voice — the shared interface
+packages/test-kit   fake servers and shared contract assertions
+packages/internal   helpers shared between providers, not published
+providers/*         one package per provider
+examples/*          runnable programs, typechecked in CI
+apps/web            this site
+docs/               design notes
 ```
 
-Every provider package has the same shape, one file per concern:
+## Provider package structure
+
+Every provider package uses the same file layout, one file per concern:
 
 ```
 src/
-├── config.ts        # api key, defaults, what to use when the caller says nothing
-├── format.ts        # core's AudioFormat  ->  this provider's spelling
-├── tts.ts           # speak() and speakStream()
-├── tts-session.ts   # openTTSSession()
-├── stt.ts           # transcribe()
-├── stt-session.ts   # openSTTSession()
-├── provider.ts      # the class implementing VoiceProvider — mostly delegation
-└── index.ts         # the provider class and its config type
+├── config.ts        API key, defaults, and option resolution
+├── format.ts        AudioFormat translation
+├── tts.ts           speak() and speakStream()
+├── tts-session.ts   openTTSSession()
+├── stt.ts           transcribe()
+├── stt-session.ts   openSTTSession()
+├── provider.ts      the VoiceProvider implementation
+└── index.ts         public exports
 ```
 
-`provider.ts` ending up as almost pure delegation is the sign the split is
-right.
+`provider.ts` should contain little more than delegation to the other modules.
 
-## Design records
+## Design notes
 
-The reasoning behind the types lives in the repository rather than here, because
-it is a record of how decisions were reached rather than documentation of what
-exists:
+Two documents in the repository record how the core types were designed. They
+describe the reasoning behind decisions rather than how to use the SDK:
 
 - [`docs/type-design.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/type-design.md)
-  — why the core types are shaped the way they are
 - [`docs/provider-research.md`](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/provider-research.md)
-  — the provider-by-provider field mapping that produced them
 
-## Next
+## Next steps
 
 - [Writing a provider](/docs/contributing/writing-a-provider)
 - [Testing](/docs/contributing/testing)

@@ -1,24 +1,25 @@
 ---
 title: Releasing
-description: Changesets in, a release pull request out, npm on merge.
+description: How versions are bumped and published with changesets.
 ---
 
-Changes users would notice get a changeset:
+Add a changeset for any change that affects users of the packages:
 
 ```sh
 pnpm changeset
 ```
 
-On merge to `main`, CI opens a release pull request that applies the pending
-changesets and bumps the versions. Merging **that** publishes to npm.
+When the pull request merges to `main`, CI opens a release pull request that
+applies the pending changesets and bumps versions. Merging that pull request
+publishes to npm.
 
-The four packages are versioned together, so matching versions mean packages
-that were built and tested against each other.
+All four packages share a version number, so matching versions indicate packages
+that were built and tested together.
 
-## The one thing not to "fix"
+## Entry points
 
-Each published package ships `types` and `exports` pointing at **source**, with
-a `publishConfig` block overriding both to `dist` for the real release:
+Each published package points `types` and `exports` at source files, and
+overrides both in `publishConfig`:
 
 ```json
 {
@@ -29,16 +30,17 @@ a `publishConfig` block overriding both to `dist` for the real release:
 }
 ```
 
-The source-pointing fields are deliberate — they are what makes in-repo
-development work with no build step. The `publishConfig` override is what makes
-the published artifact correct.
+The source paths let the workspace typecheck without a build step. The
+`publishConfig` override applies at publish time so the tarball points at the
+built output.
 
-That override only works because **changesets shells out to `pnpm publish`**,
-which it picks from the workspace's package manager. Plain `npm publish` ignores
-`publishConfig` overrides for `types` and `exports` and would ship tarballs whose
-type entry points at a file `files: ["dist"]` excluded — packages with no types
-at all.
+<Callout type="warn" title="This depends on pnpm">
+  `publishConfig` overrides for `types` and `exports` are a pnpm feature.
+  Changesets detects the workspace package manager and runs `pnpm publish`, so
+  the override is applied. Publishing with `npm publish` ignores it, and the
+  tarball would point at files excluded by `files: ["dist"]`, leaving the
+  packages with no type declarations.
+</Callout>
 
-If the package manager ever changes, this breaks silently. The
-`dist-types` CI job exists to catch exactly that: it packs with pnpm, installs
-the tarballs the way a user would, and compiles a consumer against them.
+The `dist-types` CI job guards this. It packs each package with pnpm, installs
+the tarballs into a temporary project, and compiles a consumer against them.

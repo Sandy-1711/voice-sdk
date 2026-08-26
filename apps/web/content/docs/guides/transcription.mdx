@@ -1,6 +1,6 @@
 ---
 title: Transcription
-description: transcribe() — a complete recording in, a transcript out.
+description: Convert a complete recording to a transcript with transcribe().
 ---
 
 ```ts
@@ -11,10 +11,9 @@ const result = await voice.transcribe({
 });
 ```
 
-## The audio
+## Audio input
 
-`AudioSource` is deliberately wide, because callers already have their audio in
-whichever shape their runtime handed them:
+The `audio` field accepts several shapes:
 
 ```ts
 type AudioSource =
@@ -26,29 +25,45 @@ type AudioSource =
   | { url: string };
 ```
 
-Pass `{ url }` and providers that can fetch it themselves will, rather than
-pulling the bytes through your process first.
+Passing `{ url }` lets providers that support remote fetching download the file
+directly, without routing the bytes through your process.
 
-`collectAudio(source)` reads any of these into one buffer if you need that.
+To read any of these into a single buffer, use the `collectAudio` helper:
+
+```ts
+import { collectAudio } from "@swungstudent/voice";
+
+const bytes = await collectAudio(source);
+```
 
 ## Options
 
-| Field          | What it does                                                     |
-| -------------- | ---------------------------------------------------------------- |
-| `format`       | **Required for headerless PCM** — nothing sniffs it              |
-| `timestamps`   | `false`, `"word"`, `"segment"` or `"character"`                  |
-| `diarize`      | Attribute each word or segment to a speaker                      |
-| `speakerCount` | A hint, where the provider takes one                             |
-| `keyterms`     | Words to bias recognition towards — names, jargon, product terms |
-| `prompt`       | Free-text context, where the provider supports it                |
+| Field          | Type                                          | Description                                             |
+| -------------- | --------------------------------------------- | ------------------------------------------------------- |
+| `audio`        | `AudioSource`                                 | Required                                                |
+| `format`       | `AudioFormat`                                 | Required for headerless PCM                             |
+| `model`        | `string`                                      | Provider model id                                       |
+| `language`     | `string`                                      | Language hint                                           |
+| `timestamps`   | `false \| "word" \| "segment" \| "character"` | Timing granularity                                      |
+| `diarize`      | `boolean`                                     | Attribute words and segments to speakers                |
+| `speakerCount` | `number`                                      | Expected number of speakers, where the provider uses it |
+| `keyterms`     | `string[]`                                    | Terms to bias recognition towards                       |
+| `prompt`       | `string`                                      | Free-text context, where the provider supports it       |
 
-## The result
+<Callout title="Headerless audio needs a format">
+  Container formats such as WAV and MP3 declare their own encoding and sample
+  rate. Raw PCM does not, and the SDK does not inspect the bytes, so pass
+  `format` explicitly when the input is headerless.
+</Callout>
+
+## Result
 
 ```ts
 interface TranscriptResult {
   text: string;
   language?: string;
-  duration?: number;      // seconds
+  languageConfidence?: number;
+  duration?: number;
   confidence?: number;
   words?: TranscriptWord[];
   segments?: TranscriptSegment[];
@@ -57,9 +72,9 @@ interface TranscriptResult {
 }
 ```
 
-`text` is always there. `words` and `segments` appear when `timestamps` asked
-for them, each carrying `start` and `end` in seconds, plus `speaker` when
-`diarize` was on.
+`text` is always present. `words` and `segments` are populated when
+`timestamps` requests them, and each entry carries `start` and `end` in seconds.
+When `diarize` is enabled, entries also carry a `speaker` label.
 
 ```ts
 for (const segment of result.segments ?? []) {
@@ -67,6 +82,5 @@ for (const segment of result.segments ?? []) {
 }
 ```
 
-Both arrays stay optional rather than defaulting to empty: an empty array and
-"the provider did not report any" are different facts, and flattening them hides
-a misconfiguration.
+`words` and `segments` are optional and are omitted when the provider reports
+nothing, so an empty array and a missing array mean different things.

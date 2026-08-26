@@ -1,19 +1,33 @@
 ---
 title: Quickstart
-description: A first call, a first stream, and a first realtime session.
+description: Synthesize audio, transcribe a recording, and open a realtime session.
 ---
 
-Everything on this page is a runnable file in
-[`examples/`](https://github.com/Sandy-1711/voice-sdk/tree/main/examples).
+This page walks through the four operations the SDK exposes. Each snippet is
+taken from a runnable file in [Examples](/docs/examples).
 
-## Speak
+## Set up a client
 
 ```ts
-import { writeFile } from "node:fs/promises";
 import { Voice } from "@swungstudent/voice";
 import { DeepgramProvider } from "@swungstudent/deepgram";
 
 const voice = new Voice({ provider: new DeepgramProvider() });
+```
+
+`Voice` accepts options that apply to every request:
+
+```ts
+const voice = new Voice({
+  provider: new DeepgramProvider(),
+  options: { timeout: 30_000, retries: 2 },
+});
+```
+
+## Synthesize audio
+
+```ts
+import { writeFile } from "node:fs/promises";
 
 const { audio, format } = await voice.speak({
   text: "Hello there.",
@@ -23,29 +37,31 @@ const { audio, format } = await voice.speak({
 await writeFile("hello.wav", audio);
 ```
 
-`audio` is a `Uint8Array`. `format` is the format **actually in effect** — not
-the one you asked for — so the caller always knows how to play the bytes.
+`audio` is a `Uint8Array`. `format` describes the audio that was returned, with
+every field populated. See [Synthesis](/docs/guides/synthesis).
 
-## Transcribe
+## Transcribe a recording
 
 ```ts
+import { readFile } from "node:fs/promises";
+
 const { text, words } = await voice.transcribe({
   audio: await readFile("hello.wav"),
   timestamps: "word",
 });
 ```
 
-`audio` also takes a `Blob`, a `ReadableStream`, an async iterable, or
-`{ url: "https://..." }`.
+The `audio` field also accepts a `Blob`, a `ReadableStream`, an async iterable,
+or `{ url: "https://..." }`. See [Transcription](/docs/guides/transcription).
 
-## Stream audio out
+## Stream audio as it is generated
 
-`speakStream` returns as soon as the headers arrive, and the stream knows its
-format before the first chunk — so a speaker or a socket can be set up ahead of
-time.
+`speakStream` returns an `AudioStream` synchronously. The stream exposes its
+format before the first chunk arrives, so you can configure a player up front.
 
 ```ts
 const stream = voice.speakStream({ text: "Hello there." });
+
 console.log(stream.format.sampleRate);
 
 for await (const chunk of stream) {
@@ -53,11 +69,11 @@ for await (const chunk of stream) {
 }
 ```
 
-## Push text in as it is generated
+## Open a realtime session
 
-Streaming audio _out_ of a one-shot call is not the same as a realtime session.
-A session is duplex: you push text **in** incrementally, a token at a time,
-which is what a spoken LLM response needs.
+A realtime session keeps one connection open and streams in both directions.
+Use `openTTSSession` when text arrives incrementally, such as tokens from a
+language model:
 
 ```ts
 const session = await voice.openTTSSession({
@@ -75,13 +91,8 @@ for await (const event of session.output) {
 await session.close();
 ```
 
-`push` is fire-and-forget, so a token loop never awaits per token. Failures
-surface on `output` and on `closed`.
-
-## Listen
-
-Going the other way, transcripts arrive with three levels of finality.
-`turns()` keeps only the events that close a turn:
+Use `openSTTSession` to transcribe live audio. The `turns` helper filters the
+event stream down to completed turns:
 
 ```ts
 import { turns } from "@swungstudent/voice";
@@ -97,8 +108,27 @@ for await (const turn of turns(session.output)) {
 }
 ```
 
-## Next
+See [Realtime synthesis](/docs/guides/realtime-tts) and
+[Realtime transcription](/docs/guides/realtime-stt).
 
-- [Synthesis](/docs/guides/synthesis) and [Transcription](/docs/guides/transcription) in full
-- [Realtime STT](/docs/guides/realtime-stt) — finality, turn detection, and what `flush()` is for
-- [Errors](/docs/guides/errors) — the four of them, and which are thrown before the request goes out
+## Handle errors
+
+All SDK errors extend `VoiceError`:
+
+```ts
+import { ValidationError, VoiceError } from "@swungstudent/voice";
+
+try {
+  await voice.speak({ text, format });
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.error(`${error.provider} rejected ${error.field}`);
+  } else if (error instanceof VoiceError) {
+    console.error(error.message);
+  } else {
+    throw error;
+  }
+}
+```
+
+See [Errors](/docs/guides/errors).

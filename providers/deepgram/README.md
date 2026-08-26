@@ -3,7 +3,7 @@
 Deepgram provider for [`@swungstudent/voice`](https://www.npmjs.com/package/@swungstudent/voice).
 All four capabilities: synthesis and transcription, batch and realtime.
 
-Full documentation lives in [the docs site source](https://github.com/Sandy-1711/voice-sdk/tree/main/apps/web/content/docs) until it is deployed.
+Documentation: [voice-sdk docs](https://github.com/Sandy-1711/voice-sdk/tree/main/apps/web/content/docs).
 
 ```sh
 pnpm add @swungstudent/voice @swungstudent/deepgram

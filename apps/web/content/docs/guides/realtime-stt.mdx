@@ -1,7 +1,10 @@
 ---
 title: Realtime transcription
-description: Pushed audio frames in, transcripts out — finality, turn detection, and what flush is for.
+description: Stream audio into a session and receive transcript events back.
 ---
+
+`openSTTSession()` opens a duplex connection that accepts audio frames and
+streams transcript events back.
 
 ```ts
 import { turns } from "@swungstudent/voice";
@@ -19,30 +22,48 @@ for await (const turn of turns(session.output)) {
 }
 ```
 
+## Input format
+
+```ts
+inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }
+```
+
+The input format applies to the whole connection. It is declared when the
+session opens, and every frame pushed afterwards must match it. Providers do not
+negotiate or detect it.
+
+The following format is accepted by all providers and is exported as a constant:
+
+```ts
+import { DEFAULT_REALTIME_INPUT_FORMAT } from "@swungstudent/voice";
+// { container: "raw", encoding: "pcm_s16le", sampleRate: 16000, channels: 1 }
+```
+
 ## Finality
 
-Transcripts arrive at three levels, and the difference matters:
+Transcript events carry a `finality` field with one of three values:
 
-| Finality   | Means                                                      |
-| ---------- | ---------------------------------------------------------- |
-| `partial`  | Still being revised. Render it, do not act on it           |
-| `final`    | A stable segment **within** a turn that may still continue |
-| `turn_end` | The speaker finished                                       |
+| Value      | Meaning                                                     |
+| ---------- | ----------------------------------------------------------- |
+| `partial`  | The text may still change. Display it, but do not act on it |
+| `final`    | A stable segment within a turn that may continue            |
+| `turn_end` | The speaker has stopped                                     |
 
-Every transcript event carries both forms of the text — `text` is cumulative for
-the current turn, `delta` is what is new since the previous event. Providers
-send one or the other; `TurnTextTracker` derives whichever is missing, so
-consumers never have to care which kind they are talking to.
+Set `interimResults: false` to stop receiving `partial` events.
 
 ```ts
 for await (const event of session.output) {
   if (event.type !== "transcript") continue;
+
   if (event.finality === "partial") ui.draft(event.text);
   if (event.finality === "turn_end") ui.commit(event.text);
 }
 ```
 
-Set `interimResults: false` to suppress `partial` entirely.
+Each transcript event carries both `text`, the cumulative text of the current
+turn, and `delta`, the text added since the previous event. Providers send one
+or the other; the SDK derives the missing one, so both fields are always
+populated.
 
 ## Turn detection
 
@@ -52,33 +73,17 @@ type TurnDetection =
   | { mode: "vad"; silence?: number; threshold?: number; minSpeech?: number };
 ```
 
-`vad` lets the provider decide where turns end — `silence` in seconds,
-`threshold` as sensitivity from 0 to 1, `minSpeech` as the speech needed before
-a turn opens.
+In `vad` mode the provider decides where turns end. `silence` sets how many
+seconds of silence close a turn, `threshold` sets sensitivity between 0 and 1,
+and `minSpeech` sets how much speech is needed before a turn opens.
 
-`manual` puts the boundary under your control: nothing closes a turn until you
-call `flush()`. Use it when the application already knows when the user stopped
-talking — a push-to-talk button, or an explicit end-of-utterance signal.
+In `manual` mode turns end only when you call `flush()`. Use it when your
+application already knows when the speaker stopped, such as with a
+push-to-talk control.
 
-Not every provider supports both, and the ones that do sometimes route them to
-different endpoints with different models. That is checked at open time: asking
-for a combination a provider cannot serve raises a `ValidationError` there,
-rather than leaving you waiting for turns that will never arrive.
-
-## Input format
-
-```ts
-inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 }
-```
-
-**Connection-scoped, and nothing negotiates or sniffs it.** It is declared once
-at open time and every frame pushed afterwards must match. The one format every
-provider accepts is exported for you:
-
-```ts
-import { DEFAULT_REALTIME_INPUT_FORMAT } from "@swungstudent/voice";
-// { container: "raw", encoding: "pcm_s16le", sampleRate: 16000, channels: 1 }
-```
+Provider support differs, and some providers route the two modes to different
+endpoints and models. Unsupported combinations throw a `ValidationError` when
+the session opens.
 
 ## Events
 
@@ -91,6 +96,17 @@ type STTEvent =
   | { type: "warning"; message: string; code?: string };
 ```
 
-`speech_started` and `speech_ended` are what a barge-in implementation listens
-for: the moment the user starts talking is the moment to `cancel()` the TTS
-session that is talking over them.
+`speech_started` and `speech_ended` report voice activity. To implement
+barge-in, call `cancel()` on your TTS session when `speech_started` arrives.
+
+## Helpers
+
+`turns()` filters the event stream down to events that close a turn:
+
+```ts
+import { turns } from "@swungstudent/voice";
+
+for await (const turn of turns(session.output)) {
+  console.log(turn.turn, turn.text);
+}
+```

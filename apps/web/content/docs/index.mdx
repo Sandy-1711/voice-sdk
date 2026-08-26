@@ -1,11 +1,11 @@
 ---
 title: Introduction
-description: One interface for voice providers — synthesis and transcription, batch and realtime.
+description: A TypeScript SDK that provides one interface for text-to-speech and speech-to-text across multiple providers.
 ---
 
-Every voice API does roughly the same four things and spells all of them
-differently. This SDK is one set of types over the top, so switching provider is
-a constructor change rather than a rewrite.
+voice-sdk provides a single TypeScript interface for text-to-speech and
+speech-to-text. You write your application against the `Voice` class, and choose
+a provider when you construct it.
 
 ```ts
 import { Voice } from "@swungstudent/voice";
@@ -17,34 +17,47 @@ const { audio, format } = await voice.speak({ text: "Hello there." });
 const { text } = await voice.transcribe({ audio });
 ```
 
-Swap `DeepgramProvider` for `CartesiaProvider` or `ElevenLabsProvider` and
-nothing below the constructor changes.
+To use a different provider, change the constructor. The method names, input
+types, return types, and errors are the same for all of them.
 
-## What it covers
+## Capabilities
 
-Four capabilities, deliberately narrow. A provider declares which it has, and
-calling one it lacks raises a `CapabilityError` naming the provider rather than
-failing somewhere deeper in.
+The SDK models four capabilities. Each provider declares which ones it supports.
 
-| Capability    | Method                 | What it means                                    |
-| ------------- | ---------------------- | ------------------------------------------------ |
-| `tts`         | `speak`, `speakStream` | Full text in, audio out — buffered or streamed   |
-| `stt`         | `transcribe`           | A complete recording in, a transcript out        |
-| `realtimeTTS` | `openTTSSession`       | Push text as it is generated, audio streams back |
-| `realtimeSTT` | `openSTTSession`       | Push audio frames live, transcripts stream back  |
+| Capability    | Methods                | Description                                              |
+| ------------- | ---------------------- | -------------------------------------------------------- |
+| `tts`         | `speak`, `speakStream` | Convert text to audio, buffered or streamed              |
+| `stt`         | `transcribe`           | Convert a complete recording to a transcript             |
+| `realtimeTTS` | `openTTSSession`       | Stream text into a session and receive audio back        |
+| `realtimeSTT` | `openSTTSession`       | Stream audio into a session and receive transcripts back |
 
-## What it does not cover
+Calling a method that a provider does not implement throws a `CapabilityError`
+naming the provider and the method.
 
-**Browser and edge runtimes.** This is a server-side SDK. It assumes Node, and
-the realtime sessions assume a real WebSocket client.
+## Supported providers
 
-**Voice cloning, dubbing, agents.** Each provider's product surface is its own;
-this models the part they have in common. Anything else is reachable through
-[`providerOptions`](/docs/guides/provider-options).
+- [Cartesia](/docs/providers/cartesia) — sonic, ink-whisper, ink-2
+- [Deepgram](/docs/providers/deepgram) — aura-2, nova-3, flux
+- [ElevenLabs](/docs/providers/elevenlabs) — eleven_multilingual_v2, scribe
 
-## Where to go next
+All three support the four capabilities. They differ in voice selection, timing
+granularity, and audio format support. See
+[Provider overview](/docs/providers) for a comparison.
 
-- [Installation](/docs/installation) — packages and keys
-- [Quickstart](/docs/quickstart) — a first call, and a first session
-- [Providers](/docs/providers) — the capability matrix and what is specific to each
-- [Core types](/docs/reference/core-types) — every type, what it means, and why it is shaped that way
+## Scope
+
+The SDK targets Node.js 18 and later. It is a server-side library: realtime
+sessions require a WebSocket client, and API keys are read from the environment.
+Browser and edge runtimes are not supported.
+
+Provider-specific features such as voice cloning, dubbing, and agent platforms
+are outside the shared interface. Use
+[`providerOptions`](/docs/guides/provider-options) to pass fields that the SDK
+does not model.
+
+## Next steps
+
+- [Installation](/docs/installation) — install the packages and configure keys
+- [Quickstart](/docs/quickstart) — make your first call
+- [Examples](/docs/examples) — runnable programs you can copy
+- [Core types](/docs/reference/core-types) — the full type reference
