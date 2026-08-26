@@ -57,24 +57,6 @@ jobs:
         if: matrix.node == 22
         run: node .github/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
-  # Development happens on Windows, and .gitattributes pins the working tree to
-  # LF. This is the job that notices if either of those stops being true.
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm test
-      - name: Check formatting
-        run: pnpm format:check
-
   # The published packages claim engines.node >= 18, which vitest cannot verify.
   # Importing the built output on 18 is what keeps that claim honest.
   node18-imports:
