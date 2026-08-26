@@ -1,14 +1,15 @@
-# Core types
-
-Everything in `@swungstudent/voice`, what it means, and why it is shaped that way.
+---
+title: Core types
+description: Everything in @swungstudent/voice, what it means, and why it is shaped that way.
+---
 
 Each section is written twice. **In plain words** is the idea with no jargon.
 **In practice** is the type and the evidence behind it. Read one, both, or skip
 to the tables.
 
-Source: [`packages/core/src/`](../packages/core/src/). Design rationale and the
+Source: [`packages/core/src/`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/). Design rationale and the
 provider-by-provider field mapping that produced these types:
-[type-design.md](./type-design.md) and [provider-research.md](./provider-research.md).
+[type-design.md](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/type-design.md) and [provider-research.md](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/provider-research.md).
 
 ---
 
@@ -38,7 +39,7 @@ it lives under `realtimeTTS`. OpenAI can do the first but not the second.
 
 ## Layer 1 — audio
 
-[`packages/core/src/audio.ts`](../packages/core/src/audio.ts)
+[`packages/core/src/audio.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/audio.ts)
 
 ### AudioEncoding and AudioContainer
 
@@ -171,7 +172,7 @@ that AssemblyAI reports milliseconds.
 
 ### TranscriptWord and TranscriptSegment
 
-[`packages/core/src/types.ts`](../packages/core/src/types.ts)
+[`packages/core/src/types.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/types.ts)
 
 ```ts
 interface TranscriptWord {
@@ -289,7 +290,7 @@ spoken"; `undefined` correctly says "nobody asked".
 **In plain words:** a phone line that stays open. You keep talking into it and it
 keeps answering, instead of sending one letter and waiting for one reply.
 
-[`packages/core/src/realtime.ts`](../packages/core/src/realtime.ts)
+[`packages/core/src/realtime.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/realtime.ts)
 
 ```ts
 interface RealtimeSession<TIn, TEvent> {
@@ -406,7 +407,7 @@ care which one you're talking to.
 Providers genuinely split three ways — OpenAI and Cartesia's manual mode send
 deltas, Cartesia's auto mode and AssemblyAI resend the whole turn, Deepgram
 sends per-segment text. `TurnTextTracker` in
-[`turn-text.ts`](../packages/core/src/turn-text.ts) derives whichever one the
+[`turn-text.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/turn-text.ts) derives whichever one the
 provider did not send:
 
 ```ts
@@ -445,7 +446,7 @@ you would get silence back forever.
 
 ## Layer 4 — providers and the facade
 
-[`packages/core/src/provider.ts`](../packages/core/src/provider.ts)
+[`packages/core/src/provider.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/provider.ts)
 
 ```ts
 interface Capabilities {
@@ -474,7 +475,7 @@ interface VoiceProvider {
 flags are a promise, not a wish. A provider that has not implemented `speak` yet
 sets `tts: false`, even if the underlying API supports it.
 
-`Voice` in [`voice.ts`](../packages/core/src/voice.ts) is the entry point users
+`Voice` in [`voice.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/voice.ts) is the entry point users
 touch. It holds a provider, merges constructor defaults into the per-call
 `RequestContext`, and throws `CapabilityError` when you call something the
 provider does not implement:
@@ -490,7 +491,7 @@ const result = await voice.speak({ text: "Hello there" });
 
 ### Errors
 
-[`packages/core/src/errors.ts`](../packages/core/src/errors.ts)
+[`packages/core/src/errors.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/errors.ts)
 
 | Error             | Means                                    | Thrown when                       |
 | ----------------- | ---------------------------------------- | --------------------------------- |
@@ -505,7 +506,7 @@ instead of a bare `400` from an API you have never read the docs for.
 
 ### Helpers
 
-[`packages/core/src/stream.ts`](../packages/core/src/stream.ts)
+[`packages/core/src/stream.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/packages/core/src/stream.ts)
 
 ```ts
 audioOnly(events)  // TTSEvent stream -> just the Uint8Array chunks
@@ -576,5 +577,5 @@ its own users miserable.
 | `audioOnly` / `turns`                          | `stream.ts`    | event stream filters               |
 | `TurnTextTracker`                              | `turn-text.ts` | derives text ⇄ delta               |
 
-Next: [building-a-provider.md](./building-a-provider.md) — how these types were
+Next: [Writing a provider](/docs/contributing/writing-a-provider) — how these types were
 used to implement Cartesia, step by step.

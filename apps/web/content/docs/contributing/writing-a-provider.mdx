@@ -1,9 +1,9 @@
-# Building a provider
+---
+title: Writing a provider
+description: The seven pieces a provider package is made of, using a finished one as the example.
+---
 
-How `@swungstudent/cartesia` was built, in the order it was built, so you can do the
-same for Deepgram, ElevenLabs or OpenAI without rediscovering anything.
-
-Read [core-types.md](./core-types.md) first if you have not — this guide assumes
+Read [Core types](/docs/reference/core-types) first if you have not — this guide assumes
 you know what `SpeakInput`, `TTSEvent` and `Finality` are.
 
 **In plain words:** a provider is a translator between one company's API and the
@@ -43,7 +43,7 @@ never ends up with two copies of core:
 ## Step 0 — research before you write
 
 Before any code, answer four questions and write the answers down (ours are in
-[provider-research.md](../provider-research.md) and [type-design.md](../type-design.md)):
+[provider-research.md](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/provider-research.md) and [type-design.md](https://github.com/Sandy-1711/voice-sdk/blob/main/docs/type-design.md)):
 
 1. **Which of the four capabilities does this provider actually have?** Not
    "could have" — has today, with an endpoint you can call.
@@ -70,7 +70,7 @@ That five-minute check saved roughly two files' worth of work.
 
 ## Step 1 — config
 
-[`providers/cartesia/src/config.ts`](../../providers/cartesia/src/config.ts)
+[`providers/cartesia/src/config.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/config.ts)
 
 **In plain words:** where the password lives, and what to do when the caller
 does not say which voice or model they want.
@@ -123,7 +123,7 @@ accepts. The caller always learns which they got via `ResolvedAudioFormat`.
 
 ## Step 2 — format lowering
 
-[`providers/cartesia/src/format.ts`](../../providers/cartesia/src/format.ts)
+[`providers/cartesia/src/format.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/format.ts)
 
 **In plain words:** everyone spells the same audio settings differently. This
 file is the dictionary, and it shouts instead of guessing when there is no
@@ -210,13 +210,13 @@ export function toGenerationConfig(controls?: VoiceControls) {
 equivalent, so they are dropped without comment. But `speed: 5` **throws** —
 the field is supported, the value is not, and Cartesia would have returned a
 bare 400 anyway. That is the rule from
-[core-types.md](./core-types.md#the-four-rules) applied concretely.
+[Core types](/docs/reference/core-types#the-four-rules) applied concretely.
 
 ---
 
 ## Step 3 — batch TTS
 
-[`providers/cartesia/src/tts.ts`](../../providers/cartesia/src/tts.ts)
+[`providers/cartesia/src/tts.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/tts.ts)
 
 **In plain words:** send all the words, get back all the sound.
 
@@ -300,7 +300,7 @@ literal.
 
 ## Step 4 — batch STT
 
-[`providers/cartesia/src/stt.ts`](../../providers/cartesia/src/stt.ts)
+[`providers/cartesia/src/stt.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/stt.ts)
 
 **In plain words:** send the recording, get back the words.
 
@@ -341,7 +341,7 @@ field core does not model.
 
 ## Step 5 — realtime TTS session
 
-[`providers/cartesia/src/tts-session.ts`](../../providers/cartesia/src/tts-session.ts)
+[`providers/cartesia/src/tts-session.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/tts-session.ts)
 
 **In plain words:** keep a line open. Feed it words as you think of them, and
 sound comes back while you are still typing.
@@ -435,7 +435,7 @@ events.
 
 ## Step 6 — realtime STT session
 
-[`providers/cartesia/src/stt-session.ts`](../../providers/cartesia/src/stt-session.ts)
+[`providers/cartesia/src/stt-session.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/stt-session.ts)
 
 **In plain words:** the hardest one. The computer keeps changing its mind about
 what you said, and different services change their minds in different ways.
@@ -527,7 +527,7 @@ Emit both and let core derive the other.
 
 ## Step 7 — wire it up
 
-[`providers/cartesia/src/provider.ts`](../../providers/cartesia/src/provider.ts)
+[`providers/cartesia/src/provider.ts`](https://github.com/Sandy-1711/voice-sdk/blob/main/providers/cartesia/src/provider.ts)
 
 ```ts
 export class CartesiaProvider implements VoiceProvider {
