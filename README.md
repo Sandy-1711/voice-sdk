@@ -17,6 +17,9 @@ const { text } = await voice.transcribe({ audio });
 Swap `DeepgramProvider` for `CartesiaProvider` or `ElevenLabsProvider` and
 nothing else changes.
 
+Runnable versions of all of this — batch, streaming, realtime, and the provider
+swap — live in [`examples/`](examples).
+
 ## Packages
 
 | Package                                            | What it is                                           |
