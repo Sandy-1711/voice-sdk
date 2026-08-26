@@ -20,8 +20,10 @@ const { text } = await voice.transcribe({ audio });
 To use a different provider, change the constructor. Method names, input types,
 return types, and errors are the same for all of them.
 
-[Documentation](apps/web/content/docs) · [Examples](examples) ·
-[Providers](apps/web/content/docs/providers)
+**[Documentation](https://voice-ai-sdk.vercel.app/docs)** ·
+[Quickstart](https://voice-ai-sdk.vercel.app/docs/quickstart) ·
+[Providers](https://voice-ai-sdk.vercel.app/docs/providers) ·
+[Examples](examples)
 
 ## Capabilities
 
@@ -78,8 +80,8 @@ DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
 
 The documentation site is in [`apps/web`](apps/web). Run it with
 `pnpm --filter web dev`. See
-[Contributing](apps/web/content/docs/contributing) for the repository layout,
-how to add a provider, and the release process.
+[Contributing](https://voice-ai-sdk.vercel.app/docs/contributing) for the
+repository layout, how to add a provider, and the release process.
 
 ## Licence
 

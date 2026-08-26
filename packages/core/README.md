@@ -9,7 +9,7 @@ This package talks to nothing on its own. Install it alongside a provider —
 [`@swungstudent/deepgram`](https://www.npmjs.com/package/@swungstudent/deepgram) or
 [`@swungstudent/elevenlabs`](https://www.npmjs.com/package/@swungstudent/elevenlabs).
 
-Documentation: [voice-sdk docs](https://github.com/Sandy-1711/voice-sdk/tree/main/apps/web/content/docs).
+Documentation: [voice-ai-sdk.vercel.app/docs](https://voice-ai-sdk.vercel.app/docs)
 
 ```sh
 pnpm add @swungstudent/voice @swungstudent/deepgram
