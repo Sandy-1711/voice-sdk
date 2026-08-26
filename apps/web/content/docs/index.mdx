@@ -1,0 +1,50 @@
+---
+title: Introduction
+description: One interface for voice providers — synthesis and transcription, batch and realtime.
+---
+
+Every voice API does roughly the same four things and spells all of them
+differently. This SDK is one set of types over the top, so switching provider is
+a constructor change rather than a rewrite.
+
+```ts
+import { Voice } from "@swungstudent/voice";
+import { DeepgramProvider } from "@swungstudent/deepgram";
+
+const voice = new Voice({ provider: new DeepgramProvider() });
+
+const { audio, format } = await voice.speak({ text: "Hello there." });
+const { text } = await voice.transcribe({ audio });
+```
+
+Swap `DeepgramProvider` for `CartesiaProvider` or `ElevenLabsProvider` and
+nothing below the constructor changes.
+
+## What it covers
+
+Four capabilities, deliberately narrow. A provider declares which it has, and
+calling one it lacks raises a `CapabilityError` naming the provider rather than
+failing somewhere deeper in.
+
+| Capability    | Method                 | What it means                                    |
+| ------------- | ---------------------- | ------------------------------------------------ |
+| `tts`         | `speak`, `speakStream` | Full text in, audio out — buffered or streamed   |
+| `stt`         | `transcribe`           | A complete recording in, a transcript out        |
+| `realtimeTTS` | `openTTSSession`       | Push text as it is generated, audio streams back |
+| `realtimeSTT` | `openSTTSession`       | Push audio frames live, transcripts stream back  |
+
+## What it does not cover
+
+**Browser and edge runtimes.** This is a server-side SDK. It assumes Node, and
+the realtime sessions assume a real WebSocket client.
+
+**Voice cloning, dubbing, agents.** Each provider's product surface is its own;
+this models the part they have in common. Anything else is reachable through
+[`providerOptions`](/docs/guides/provider-options).
+
+## Where to go next
+
+- [Installation](/docs/installation) — packages and keys
+- [Quickstart](/docs/quickstart) — a first call, and a first session
+- [Providers](/docs/providers) — the capability matrix and what is specific to each
+- [Core types](/docs/reference/core-types) — every type, what it means, and why it is shaped that way

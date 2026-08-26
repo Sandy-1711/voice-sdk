@@ -11,18 +11,25 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@voice-sdk/ui": "workspace:*",
+    "fumadocs-core": "^16.15.1",
+    "fumadocs-mdx": "^15.3.1",
+    "fumadocs-ui": "^16.15.1",
+    "lucide-react": "^1.34.0",
     "next": "16.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@voice-sdk/eslint-config": "workspace:*",
-    "@voice-sdk/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/mdx": "^2.0.14",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "@voice-sdk/eslint-config": "workspace:*",
+    "@voice-sdk/typescript-config": "workspace:*",
     "eslint": "^9.39.1",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
     "typescript": "5.9.2"
   }
 }
