@@ -51,6 +51,12 @@ without a key are skipped — which means a run with no keys at all passes havin
 proven nothing. Set `VOICE_LIVE_REQUIRE_KEYS=1` to turn that skip into a
 failure; any unattended run should.
 
+A free ElevenLabs plan cannot use _library_ voices over the API — they fail with
+`402 payment_required`, and on the realtime TTS socket that arrives as a stream
+that simply ends without audio, because the session connects lazily. The default
+is a premade voice for that reason. Override it with `ELEVENLABS_VOICE_ID`, and
+pick something `listVoices()` actually returns for your account.
+
 Run them before a release. The offline fakes encode the wire format as it is
 currently understood, and the live tier is what detects a change. Its assertions
 check shape and plausibility rather than exact bytes, because synthesis is not

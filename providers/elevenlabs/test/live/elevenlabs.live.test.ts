@@ -17,11 +17,13 @@ import { ElevenLabsProvider } from "../../src/index";
  *
  *   ELEVENLABS_API_KEY=... pnpm test:live
  *
- * Set ELEVENLABS_VOICE_ID to use your own voice; the default is Rachel, which
- * every account can reach.
+ * Set ELEVENLABS_VOICE_ID to use your own voice. The default is Sarah, from the
+ * premade set every account gets — a *library* voice 402s on a free plan with
+ * "Free users cannot use library voices via the API", which is what Rachel
+ * (21m00Tcm4TlvDq8ikWAM) does despite being the example in most docs.
  */
 const KEY = requireLiveKey("ELEVENLABS_API_KEY");
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM";
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
 
