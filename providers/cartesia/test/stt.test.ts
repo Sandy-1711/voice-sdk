@@ -63,9 +63,12 @@ describe("transcribe", () => {
         expect(server.last().query).toMatchObject({ encoding: "pcm_mulaw", sample_rate: "8000" });
     });
 
-    // Word is the only granularity Cartesia offers.
+    // Word is the only granularity Cartesia offers. The "[]" is not decoration:
+    // without it Cartesia accepts the field, ignores it, and returns a
+    // transcript with no words — which is what the live tier caught.
     it("asks for word timestamps whenever any were requested", async () => {
         await provider().transcribe({ audio: new Uint8Array([1]), timestamps: "word" });
+        expect(server.last().text()).toContain('name="timestamp_granularities[]"');
         expect(server.last().text()).toContain("word");
 
         await provider().transcribe({ audio: new Uint8Array([1]), timestamps: false });

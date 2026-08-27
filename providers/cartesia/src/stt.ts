@@ -78,8 +78,11 @@ function split(fields: Record<string, unknown>): { query: Record<string, QueryVa
         } else if (key === "file") {
             form.append(key, new Blob([value as BlobPart]), "audio");
         } else if (Array.isArray(value)) {
-            // Arrays repeat the key, which is how timestamp_granularities travels.
-            for (const item of value) form.append(key, String(item));
+            // Cartesia's batch endpoint takes OpenAI's multipart convention, where
+            // a repeated field carries a "[]" suffix. Sent without it the field is
+            // accepted and then ignored, so asking for timestamps silently got you
+            // a transcript with no words in it.
+            for (const item of value) form.append(`${key}[]`, String(item));
         } else if (typeof value === "object") {
             form.append(key, JSON.stringify(value));
         } else {
