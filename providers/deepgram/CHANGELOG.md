@@ -1,5 +1,11 @@
 # @swungstudent/deepgram
 
+## 1.0.1
+
+### Patch Changes
+
+- @swungstudent/voice@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

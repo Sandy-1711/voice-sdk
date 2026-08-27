@@ -1,5 +1,21 @@
 # @swungstudent/cartesia
 
+## 1.0.1
+
+### Patch Changes
+
+- 585000b: Cartesia `transcribe()` now returns word timestamps when asked for them.
+  
+  Repeated multipart fields were sent as a bare repeated key, but Cartesia's
+  batch transcription endpoint follows OpenAI's convention and expects a `[]`
+  suffix. It accepted `timestamp_granularities` and ignored it, so
+  `timestamps: "word"` came back with a correct transcript and `words`
+  undefined — no error, just missing data.
+  
+  Anything passed to this endpoint as an array through `providerOptions` is now
+  sent with the same suffix.
+- @swungstudent/voice@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
