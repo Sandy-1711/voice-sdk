@@ -72,11 +72,15 @@ pnpm build
 `pnpm test` is the tier CI runs. It starts HTTP and WebSocket servers on
 ephemeral ports and runs each provider against them, so no API keys are needed.
 
-Live tests call the real APIs and are opt-in:
+Live tests call the real APIs and are opt-in. Put the keys in a git-ignored
+`.env` at the repository root, or pass them inline:
 
 ```sh
-DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
+pnpm test:live
 ```
+
+Providers without a key are skipped, so a run with no keys passes having proven
+nothing — set `VOICE_LIVE_REQUIRE_KEYS=1` to make that a failure instead.
 
 The documentation site is in [`apps/web`](apps/web). Run it with
 `pnpm --filter web dev`. See

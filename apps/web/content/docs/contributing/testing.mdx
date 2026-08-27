@@ -29,17 +29,49 @@ New providers are held to the same assertions as the existing ones.
 
 ## Live tests
 
+Put the keys in a `.env` at the repository root:
+
 ```sh
-DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
+CARTESIA_API_KEY=…
+DEEPGRAM_API_KEY=…
+ELEVENLABS_API_KEY=…
 ```
 
+```sh
+pnpm test:live
+```
+
+The file is git-ignored and loaded by walking up from the working directory, so
+running from a provider package finds it too. Anything already in the
+environment wins, which is what keeps a local file from shadowing a CI secret.
+Keys can still be passed inline instead.
+
 Live tests call the real APIs and use your quota, so they are opt-in. Providers
-without a key are skipped.
+without a key are skipped — which means a run with no keys at all passes having
+proven nothing. Set `VOICE_LIVE_REQUIRE_KEYS=1` to turn that skip into a
+failure; any unattended run should.
 
 Run them before a release. The offline fakes encode the wire format as it is
 currently understood, and the live tier is what detects a change. Its assertions
 check shape and plausibility rather than exact bytes, because synthesis is not
 byte-for-byte reproducible.
+
+### Keeping the cost down
+
+The tier is billed per character and per second of audio. Two things make
+iterating on it cheap:
+
+- Speech the STT tests need is synthesized once into a git-ignored
+  `test/live/.fixtures/` and reused. A cold run still does the real
+  `speak()` → `transcribe()` round trip; delete the directory to force one.
+- Both configs set `retry: 1`, so a failing test is billed twice. Pass
+  `--retry=0` while debugging.
+
+Narrow a run to one provider and one test rather than paying for the whole tier:
+
+```sh
+pnpm --filter @swungstudent/cartesia test:live --retry=0 -t "walks the paginated"
+```
 
 ## What CI checks
 
