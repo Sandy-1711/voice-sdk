@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
-import { requireLiveKey } from "@voice-sdk/test-kit";
+import { Voice, type AudioFormat, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import { cachedSpeech, requireLiveKey } from "@voice-sdk/test-kit";
 import { CartesiaProvider } from "../../src/index";
 
 /**
@@ -44,9 +44,9 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
     });
 
     it("transcribes what it just synthesized", async () => {
-        const spoken = await voice().speak({ text: SPOKEN, format: { container: "wav", sampleRate: 16000 } });
+        const audio = await spokenAudio({ container: "wav", sampleRate: 16000 }, "spoken-16k.wav");
 
-        const result = await voice().transcribe({ audio: spoken.audio, timestamps: "word" });
+        const result = await voice().transcribe({ audio, timestamps: "word" });
 
         expect(result.text.toLowerCase()).toContain("book a table");
         expect(result.words?.length).toBeGreaterThan(0);
@@ -101,16 +101,28 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
     });
 });
 
+/**
+ * The sentence as this provider speaks it, kept between runs. The STT tests
+ * need *some* speech to push, not a fresh synthesis of it every time, and that
+ * duplicated TTS is most of what iterating on this tier costs.
+ */
+function spokenAudio(format: AudioFormat, file: string): Promise<Uint8Array> {
+    return cachedSpeech(`test/live/.fixtures/${file}`, async () => {
+        const result = await voice().speak({ text: SPOKEN, format });
+        return result.audio;
+    });
+}
+
 /** Speaks a sentence, then feeds that audio back in as if it were a microphone. */
 async function listen(
     input: Parameters<Voice<CartesiaProvider>["openSTTSession"]>[0],
     until: (event: STTEvent) => boolean,
     flush = false,
 ): Promise<string> {
-    const spoken = await voice().speak({
-        text: SPOKEN,
-        format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
-    });
+    const audio = await spokenAudio(
+        { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+        "spoken-16k.raw",
+    );
 
     const session = await voice().openSTTSession({
         ...input,
@@ -127,8 +139,8 @@ async function listen(
     })();
 
     const frame = 3200;
-    for (let at = 0; at < spoken.audio.length; at += frame) {
-        session.push(spoken.audio.subarray(at, at + frame));
+    for (let at = 0; at < audio.length; at += frame) {
+        session.push(audio.subarray(at, at + frame));
         await sleep(100);
     }
     for (let i = 0; i < 10; i += 1) {
