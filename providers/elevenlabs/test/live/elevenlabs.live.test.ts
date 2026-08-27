@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type AudioFormat, type STTEvent, type TTSEvent } from "@swungstudent/voice";
-import { cachedSpeech, requireLiveKey } from "@voice-sdk/test-kit";
+import {
+    assertCapabilityInvariants,
+    assertSTTEvent,
+    assertTTSEvent,
+    assertTurnSequence,
+    cachedSpeech,
+    requireLiveKey,
+} from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../../src/index";
 
 /**
@@ -24,6 +31,12 @@ const voice = () =>
     });
 
 describe.skipIf(!KEY)("elevenlabs (live)", () => {
+    // Free: no request leaves the process. Worth a test of its own so a
+    // capability flag drifting from the methods behind it is caught here too.
+    it("implements every capability it claims", () => {
+        assertCapabilityInvariants(new ElevenLabsProvider({ apiKey: KEY }));
+    });
+
     it("speaks, and the resolved format describes the bytes", async () => {
         const result = await voice().speak({ text: TEXT, format: { container: "mp3", sampleRate: 44100 } });
 
@@ -88,6 +101,7 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         await Promise.race([reading, sleep(20_000)]);
         await session.close();
 
+        for (const event of events) assertTTSEvent(event);
         expect(events.filter((event) => event.type === "audio").length).toBeGreaterThan(0);
     });
 
@@ -124,6 +138,8 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         const heard = await Promise.race([reading, sleep(8000).then(() => "")]);
         await session.close();
 
+        for (const event of events) assertSTTEvent(event);
+        assertTurnSequence(events);
         expect(heard.toLowerCase()).toContain("book a table");
     });
 });

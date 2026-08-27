@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type AudioFormat, type STTEvent, type TTSEvent } from "@swungstudent/voice";
-import { cachedSpeech, requireLiveKey } from "@voice-sdk/test-kit";
+import {
+    assertCapabilityInvariants,
+    assertSTTEvent,
+    assertTTSEvent,
+    assertTurnSequence,
+    cachedSpeech,
+    requireLiveKey,
+} from "@voice-sdk/test-kit";
 import { CartesiaProvider } from "../../src/index";
 
 /**
@@ -24,6 +31,12 @@ const voice = () =>
     });
 
 describe.skipIf(!KEY)("cartesia (live)", () => {
+    // Free: no request leaves the process. Worth a test of its own so a
+    // capability flag drifting from the methods behind it is caught here too.
+    it("implements every capability it claims", () => {
+        assertCapabilityInvariants(new CartesiaProvider({ apiKey: KEY }));
+    });
+
     it("speaks, and the wav header says what the resolved format claimed", async () => {
         const result = await voice().speak({ text: TEXT, format: { container: "wav", sampleRate: 44100 } });
 
@@ -75,6 +88,7 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
         await Promise.race([reading, sleep(20_000)]);
         await session.close();
 
+        for (const event of events) assertTTSEvent(event);
         expect(events.filter((event) => event.type === "audio").length).toBeGreaterThan(0);
     });
 
@@ -130,8 +144,10 @@ async function listen(
     });
 
     let text = "";
+    const events: STTEvent[] = [];
     const reading = (async () => {
         for await (const event of session.output) {
+            events.push(event);
             if (event.type === "transcript" && event.text) text = event.text;
             if (until(event)) return text;
         }
@@ -151,6 +167,9 @@ async function listen(
 
     const heard = await Promise.race([reading, sleep(10_000).then(() => text)]);
     await session.close();
+
+    for (const event of events) assertSTTEvent(event);
+    assertTurnSequence(events);
 
     return heard;
 }

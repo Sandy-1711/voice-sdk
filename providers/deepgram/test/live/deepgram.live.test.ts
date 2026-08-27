@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type AudioFormat, type STTEvent, type TTSEvent } from "@swungstudent/voice";
-import { cachedSpeech, requireLiveKey } from "@voice-sdk/test-kit";
+import {
+    assertCapabilityInvariants,
+    assertSTTEvent,
+    assertTTSEvent,
+    assertTurnSequence,
+    cachedSpeech,
+    requireLiveKey,
+} from "@voice-sdk/test-kit";
 import { DeepgramProvider } from "../../src/index";
 
 /**
@@ -22,6 +29,12 @@ const voice = () =>
     new Voice({ provider: new DeepgramProvider({ apiKey: KEY }), options: { timeout: 30_000 } });
 
 describe.skipIf(!KEY)("deepgram (live)", () => {
+    // Free: no request leaves the process. Worth a test of its own so a
+    // capability flag drifting from the methods behind it is caught here too.
+    it("implements every capability it claims", () => {
+        assertCapabilityInvariants(new DeepgramProvider({ apiKey: KEY }));
+    });
+
     it("speaks, and the wav header says what the resolved format claimed", async () => {
         const result = await voice().speak({ text: TEXT, format: { container: "wav", sampleRate: 24000 } });
 
@@ -75,6 +88,7 @@ describe.skipIf(!KEY)("deepgram (live)", () => {
         await reading;
         await session.close();
 
+        for (const event of events) assertTTSEvent(event);
         const audio = events.filter((event) => event.type === "audio");
         expect(audio.length).toBeGreaterThan(0);
         expect(events.some((event) => event.type === "done")).toBe(true);
@@ -144,6 +158,9 @@ async function listen(input: Parameters<Voice<DeepgramProvider>["openSTTSession"
 
     const heard = await Promise.race([reading, sleep(8000).then(() => "")]);
     await session.close();
+
+    for (const event of events) assertSTTEvent(event);
+    assertTurnSequence(events);
 
     return { heard: heard.toLowerCase(), events };
 }
