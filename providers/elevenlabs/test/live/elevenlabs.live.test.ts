@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { Voice, type AudioFormat, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
 import {
     assertCapabilityInvariants,
     assertSTTEvent,
     assertTTSEvent,
     assertTurnSequence,
-    cachedSpeech,
     requireLiveKey,
+    SPOKEN_SAMPLE_RATE,
+    spokenSample,
+    wav,
 } from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../../src/index";
 
@@ -22,7 +24,6 @@ const KEY = requireLiveKey("ELEVENLABS_API_KEY");
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
-const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
 
 const voice = () =>
     new Voice({
@@ -66,8 +67,8 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         expect(chunks.reduce((total, chunk) => total + chunk.byteLength, 0)).toBeGreaterThan(1000);
     });
 
-    it("transcribes what it just synthesized", async () => {
-        const audio = await spokenAudio({ container: "mp3", sampleRate: 44100 }, "spoken-44k.mp3");
+    it("transcribes the sample", async () => {
+        const audio = wav(spokenSample(), SPOKEN_SAMPLE_RATE);
 
         const result = await voice().transcribe({ audio, timestamps: "word" });
 
@@ -106,13 +107,10 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
     });
 
     it("hears a turn end from pushed audio", async () => {
-        const audio = await spokenAudio(
-            { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
-            "spoken-16k.raw",
-        );
+        const audio = spokenSample();
 
         const session = await voice().openSTTSession({
-            inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+            inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: SPOKEN_SAMPLE_RATE },
             turnDetection: { mode: "vad", silence: 1 },
         });
 
@@ -143,18 +141,6 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         expect(heard.toLowerCase()).toContain("book a table");
     });
 });
-
-/**
- * The sentence as this provider speaks it, kept between runs. The STT tests
- * need *some* speech to push, not a fresh synthesis of it every time, and that
- * duplicated TTS is most of what iterating on this tier costs.
- */
-function spokenAudio(format: AudioFormat, file: string): Promise<Uint8Array> {
-    return cachedSpeech(`test/live/.fixtures/${file}`, async () => {
-        const result = await voice().speak({ text: SPOKEN, format });
-        return result.audio;
-    });
-}
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

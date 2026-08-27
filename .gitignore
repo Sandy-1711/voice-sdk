@@ -15,10 +15,6 @@ node_modules
 # Testing
 coverage
 
-# Speech the live tier synthesized once and reuses, so reruns skip the TTS.
-# Deleting a .fixtures dir forces the real round trip again.
-**/test/live/.fixtures/
-
 # Turbo
 .turbo
 

@@ -1,11 +1,17 @@
 // LIVE_TEST_* are synthetic names this file sets and reads itself; they are not
 // inputs to any turbo task, so declaring them there would be a lie.
 /* eslint-disable turbo/no-undeclared-env-vars */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cachedSpeech, loadLiveEnv, requireLiveKey } from "../src/index";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+    loadLiveEnv,
+    requireLiveKey,
+    SPOKEN_SAMPLE_RATE,
+    SPOKEN_SAMPLE_TEXT,
+    spokenSample,
+} from "../src/index";
 
 const NAMES = ["LIVE_TEST_KEY", "LIVE_TEST_OTHER", "VOICE_LIVE_REQUIRE_KEYS"];
 
@@ -102,22 +108,40 @@ describe("requireLiveKey", () => {
     });
 });
 
-describe("cachedSpeech", () => {
-    it("synthesizes and writes on a cold cache", async () => {
-        const file = join(dir, ".fixtures", "spoken.raw");
-        const synthesize = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
-
-        await expect(cachedSpeech(file, synthesize)).resolves.toEqual(new Uint8Array([1, 2, 3]));
-        expect(synthesize).toHaveBeenCalledTimes(1);
-        expect(new Uint8Array(readFileSync(file))).toEqual(new Uint8Array([1, 2, 3]));
+describe("spokenSample", () => {
+    it("is a whole number of s16le mono samples", () => {
+        expect(spokenSample().byteLength % 2).toBe(0);
     });
 
-    it("reads the file back without synthesizing again", async () => {
-        const file = join(dir, "spoken.raw");
-        writeFileSync(file, new Uint8Array([9, 8, 7]));
-        const synthesize = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
+    // A fixture that decodes to silence would make every STT test pass for the
+    // wrong reason, so check there is actually signal in it.
+    it("carries real signal, not silence", () => {
+        const audio = spokenSample();
+        const view = new DataView(audio.buffer, audio.byteOffset, audio.byteLength);
 
-        await expect(cachedSpeech(file, synthesize)).resolves.toEqual(new Uint8Array([9, 8, 7]));
-        expect(synthesize).not.toHaveBeenCalled();
+        let peak = 0;
+        for (let at = 0; at < audio.byteLength; at += 2) {
+            peak = Math.max(peak, Math.abs(view.getInt16(at, true)));
+        }
+
+        expect(peak).toBeGreaterThan(1000);
+    });
+
+    it("is long enough to be a sentence", () => {
+        const seconds = spokenSample().byteLength / 2 / SPOKEN_SAMPLE_RATE;
+
+        expect(seconds).toBeGreaterThan(1);
+    });
+
+    it("is headerless, so it can be pushed straight at a realtime session", () => {
+        expect(Buffer.from(spokenSample().subarray(0, 4)).toString("ascii")).not.toBe("RIFF");
+    });
+
+    it("reads the same bytes every time", () => {
+        expect(spokenSample()).toBe(spokenSample());
+    });
+
+    it("says what SPOKEN_SAMPLE_TEXT claims it says", () => {
+        expect(SPOKEN_SAMPLE_TEXT.toLowerCase()).toContain("book a table");
     });
 });

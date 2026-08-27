@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { Voice, type AudioFormat, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
 import {
     assertCapabilityInvariants,
     assertSTTEvent,
     assertTTSEvent,
     assertTurnSequence,
-    cachedSpeech,
     requireLiveKey,
+    SPOKEN_SAMPLE_RATE,
+    spokenSample,
+    wav,
 } from "@voice-sdk/test-kit";
 import { CartesiaProvider } from "../../src/index";
 
@@ -22,7 +24,6 @@ const KEY = requireLiveKey("CARTESIA_API_KEY");
 const VOICE_ID = process.env.CARTESIA_VOICE_ID ?? "a0e99841-438c-4a64-b679-ae501e7d6091";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
-const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
 
 const voice = () =>
     new Voice({
@@ -56,8 +57,8 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
         expect(chunks.reduce((total, chunk) => total + chunk.byteLength, 0)).toBeGreaterThan(1000);
     });
 
-    it("transcribes what it just synthesized", async () => {
-        const audio = await spokenAudio({ container: "wav", sampleRate: 16000 }, "spoken-16k.wav");
+    it("transcribes the sample", async () => {
+        const audio = wav(spokenSample(), SPOKEN_SAMPLE_RATE);
 
         const result = await voice().transcribe({ audio, timestamps: "word" });
 
@@ -115,32 +116,17 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
     });
 });
 
-/**
- * The sentence as this provider speaks it, kept between runs. The STT tests
- * need *some* speech to push, not a fresh synthesis of it every time, and that
- * duplicated TTS is most of what iterating on this tier costs.
- */
-function spokenAudio(format: AudioFormat, file: string): Promise<Uint8Array> {
-    return cachedSpeech(`test/live/.fixtures/${file}`, async () => {
-        const result = await voice().speak({ text: SPOKEN, format });
-        return result.audio;
-    });
-}
-
-/** Speaks a sentence, then feeds that audio back in as if it were a microphone. */
+/** Feeds the sample in as if it were arriving from a microphone. */
 async function listen(
     input: Parameters<Voice<CartesiaProvider>["openSTTSession"]>[0],
     until: (event: STTEvent) => boolean,
     flush = false,
 ): Promise<string> {
-    const audio = await spokenAudio(
-        { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
-        "spoken-16k.raw",
-    );
+    const audio = spokenSample();
 
     const session = await voice().openSTTSession({
         ...input,
-        inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+        inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: SPOKEN_SAMPLE_RATE },
     });
 
     let text = "";

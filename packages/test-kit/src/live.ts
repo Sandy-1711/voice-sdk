@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, parse } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Set this to turn a missing key from a skip into a failure. The live tier is
@@ -44,21 +45,30 @@ export function requireLiveKey(name: string): string | undefined {
     return undefined;
 }
 
+/** What {@link spokenSample} says, so a transcript assertion can quote it. */
+export const SPOKEN_SAMPLE_TEXT =
+    "Hello there. I would like to book a table for two people tomorrow evening.";
+
+/** The sample's sample rate; mono, s16le, and headerless. */
+export const SPOKEN_SAMPLE_RATE = 16000;
+
+const SAMPLE_FILE = fileURLToPath(new URL("../fixtures/spoken-16k.pcm", import.meta.url));
+let sample: Uint8Array | undefined;
+
 /**
- * Synthesized speech, reused across runs. Most live tests need *some* audio to
- * transcribe rather than a fresh synthesis of it, and that duplicated TTS is
- * the bulk of what the tier costs to iterate on.
+ * A fixed clip of speech for the STT tests to transcribe.
  *
- * `file` is gitignored, so a cold run still exercises the real round trip.
+ * Checked in rather than synthesized, because an STT test that speaks first is
+ * two tests wearing a trenchcoat: a TTS regression turns every STT test red and
+ * the transcript assertion stops meaning anything. Both halves are covered on
+ * their own elsewhere.
+ *
+ * Raw s16le at {@link SPOKEN_SAMPLE_RATE}, which is what every realtime STT
+ * path takes; wrap it with `wav()` for the batch endpoints.
  */
-export async function cachedSpeech(file: string, synthesize: () => Promise<Uint8Array>): Promise<Uint8Array> {
-    if (existsSync(file)) return new Uint8Array(readFileSync(file));
-
-    const audio = await synthesize();
-    mkdirSync(dirname(file), { recursive: true });
-    writeFileSync(file, audio);
-
-    return audio;
+export function spokenSample(): Uint8Array {
+    sample ??= new Uint8Array(readFileSync(SAMPLE_FILE));
+    return sample;
 }
 
 function findEnvFile(cwd: string): string | undefined {

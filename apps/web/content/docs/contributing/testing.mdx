@@ -61,16 +61,33 @@ byte-for-byte reproducible.
 The tier is billed per character and per second of audio. Two things make
 iterating on it cheap:
 
-- Speech the STT tests need is synthesized once into a git-ignored
-  `test/live/.fixtures/` and reused. A cold run still does the real
-  `speak()` → `transcribe()` round trip; delete the directory to force one.
+- The STT tests transcribe a checked-in clip — `spokenSample()` from
+  `@voice-sdk/test-kit`, raw s16le mono at 16 kHz — rather than synthesizing
+  their own input. Wrap it with `wav()` for the batch endpoints.
 - Both configs set `retry: 1`, so a failing test is billed twice. Pass
   `--retry=0` while debugging.
 
-Narrow a run to one provider and one test rather than paying for the whole tier:
+Deliberately _not_ a `speak()` → `transcribe()` round trip: an STT test that
+speaks first is two tests in one, so a TTS regression turns every STT test red
+and the transcript assertion stops isolating anything. Both halves are covered
+on their own.
+
+Narrow a run to one provider and one test rather than paying for the whole tier.
+Reach vitest directly — going through the `test:live` script has been observed
+dropping the `-t` filter and running everything:
 
 ```sh
-pnpm --filter @swungstudent/cartesia test:live --retry=0 -t "walks the paginated"
+pnpm --filter @swungstudent/cartesia exec \
+  vitest run --config vitest.live.config.ts --retry=0 -t "walks the paginated"
+```
+
+Confirm what a filter selects before paying for it. `vitest list` collects the
+suite without executing a single test, so it costs nothing and also proves the
+keys are being picked up — a suite that would skip lists nothing:
+
+```sh
+pnpm --filter @swungstudent/cartesia exec \
+  vitest list --config vitest.live.config.ts -t "walks the paginated"
 ```
 
 ## What CI checks
