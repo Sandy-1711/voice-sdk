@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import { requireLiveKey } from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../../src/index";
 
 /**
@@ -10,7 +11,7 @@ import { ElevenLabsProvider } from "../../src/index";
  * Set ELEVENLABS_VOICE_ID to use your own voice; the default is Rachel, which
  * every account can reach.
  */
-const KEY = process.env.ELEVENLABS_API_KEY;
+const KEY = requireLiveKey("ELEVENLABS_API_KEY");
 const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";

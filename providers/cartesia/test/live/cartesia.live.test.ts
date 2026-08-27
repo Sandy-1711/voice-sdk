@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import { requireLiveKey } from "@voice-sdk/test-kit";
 import { CartesiaProvider } from "../../src/index";
 
 /**
@@ -10,7 +11,7 @@ import { CartesiaProvider } from "../../src/index";
  * Set CARTESIA_VOICE_ID to use your own voice; the default is one of the
  * public library voices.
  */
-const KEY = process.env.CARTESIA_API_KEY;
+const KEY = requireLiveKey("CARTESIA_API_KEY");
 const VOICE_ID = process.env.CARTESIA_VOICE_ID ?? "a0e99841-438c-4a64-b679-ae501e7d6091";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";

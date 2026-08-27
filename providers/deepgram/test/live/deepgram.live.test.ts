@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import { requireLiveKey } from "@voice-sdk/test-kit";
 import { DeepgramProvider } from "../../src/index";
 
 /**
@@ -12,7 +13,7 @@ import { DeepgramProvider } from "../../src/index";
  * shape and plausibility rather than exact bytes - the same text does not
  * synthesize to identical audio twice.
  */
-const KEY = process.env.DEEPGRAM_API_KEY;
+const KEY = requireLiveKey("DEEPGRAM_API_KEY");
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
 const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
