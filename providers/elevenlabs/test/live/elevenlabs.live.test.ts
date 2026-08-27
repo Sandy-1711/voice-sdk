@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import {
+    assertCapabilityInvariants,
+    assertSTTEvent,
+    assertTTSEvent,
+    assertTurnSequence,
+    requireLiveKey,
+    SPOKEN_SAMPLE_RATE,
+    spokenSample,
+    wav,
+} from "@voice-sdk/test-kit";
 import { ElevenLabsProvider } from "../../src/index";
 
 /**
@@ -7,14 +17,15 @@ import { ElevenLabsProvider } from "../../src/index";
  *
  *   ELEVENLABS_API_KEY=... pnpm test:live
  *
- * Set ELEVENLABS_VOICE_ID to use your own voice; the default is Rachel, which
- * every account can reach.
+ * Set ELEVENLABS_VOICE_ID to use your own voice. The default is Sarah, from the
+ * premade set every account gets — a *library* voice 402s on a free plan with
+ * "Free users cannot use library voices via the API", which is what Rachel
+ * (21m00Tcm4TlvDq8ikWAM) does despite being the example in most docs.
  */
-const KEY = process.env.ELEVENLABS_API_KEY;
-const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "21m00Tcm4TlvDq8ikWAM";
+const KEY = requireLiveKey("ELEVENLABS_API_KEY");
+const VOICE_ID = process.env.ELEVENLABS_VOICE_ID ?? "EXAVITQu4vr4xnSDxMaL";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
-const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
 
 const voice = () =>
     new Voice({
@@ -23,6 +34,12 @@ const voice = () =>
     });
 
 describe.skipIf(!KEY)("elevenlabs (live)", () => {
+    // Free: no request leaves the process. Worth a test of its own so a
+    // capability flag drifting from the methods behind it is caught here too.
+    it("implements every capability it claims", () => {
+        assertCapabilityInvariants(new ElevenLabsProvider({ apiKey: KEY }));
+    });
+
     it("speaks, and the resolved format describes the bytes", async () => {
         const result = await voice().speak({ text: TEXT, format: { container: "mp3", sampleRate: 44100 } });
 
@@ -52,10 +69,10 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         expect(chunks.reduce((total, chunk) => total + chunk.byteLength, 0)).toBeGreaterThan(1000);
     });
 
-    it("transcribes what it just synthesized", async () => {
-        const spoken = await voice().speak({ text: SPOKEN, format: { container: "mp3", sampleRate: 44100 } });
+    it("transcribes the sample", async () => {
+        const audio = wav(spokenSample(), SPOKEN_SAMPLE_RATE);
 
-        const result = await voice().transcribe({ audio: spoken.audio, timestamps: "word" });
+        const result = await voice().transcribe({ audio, timestamps: "word" });
 
         expect(result.text.toLowerCase()).toContain("book a table");
         expect(result.words?.length).toBeGreaterThan(0);
@@ -87,17 +104,15 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         await Promise.race([reading, sleep(20_000)]);
         await session.close();
 
+        for (const event of events) assertTTSEvent(event);
         expect(events.filter((event) => event.type === "audio").length).toBeGreaterThan(0);
     });
 
     it("hears a turn end from pushed audio", async () => {
-        const spoken = await voice().speak({
-            text: SPOKEN,
-            format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
-        });
+        const audio = spokenSample();
 
         const session = await voice().openSTTSession({
-            inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+            inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: SPOKEN_SAMPLE_RATE },
             turnDetection: { mode: "vad", silence: 1 },
         });
 
@@ -111,8 +126,8 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         })();
 
         const frame = 3200;
-        for (let at = 0; at < spoken.audio.length; at += frame) {
-            session.push(spoken.audio.subarray(at, at + frame));
+        for (let at = 0; at < audio.length; at += frame) {
+            session.push(audio.subarray(at, at + frame));
             await sleep(100);
         }
         for (let i = 0; i < 20; i += 1) {
@@ -123,6 +138,8 @@ describe.skipIf(!KEY)("elevenlabs (live)", () => {
         const heard = await Promise.race([reading, sleep(8000).then(() => "")]);
         await session.close();
 
+        for (const event of events) assertSTTEvent(event);
+        assertTurnSequence(events);
         expect(heard.toLowerCase()).toContain("book a table");
     });
 });

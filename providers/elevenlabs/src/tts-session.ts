@@ -19,6 +19,10 @@ interface ServerMessage {
     isFinal?: boolean;
     alignment?: WsAlignment;
     normalizedAlignment?: WsAlignment;
+    /** Sent on its own, immediately before the socket is closed. */
+    error?: string;
+    message?: string;
+    code?: number;
 }
 
 /**
@@ -172,6 +176,15 @@ export class ElevenLabsTTSSession implements TTSSession {
             message = JSON.parse(toText(raw)) as ServerMessage;
         } catch (error) {
             this.#queue.fail(new VoiceError(`ElevenLabs TTS socket sent invalid JSON: ${String(error)}`));
+            return;
+        }
+
+        // Arrives alone, then the socket closes. Without this the stream just
+        // ends: no audio, no error, and nothing saying why.
+        if (message.error) {
+            this.#queue.fail(
+                new VoiceError(`ElevenLabs TTS session: ${message.error}: ${message.message ?? ""}`),
+            );
             return;
         }
 

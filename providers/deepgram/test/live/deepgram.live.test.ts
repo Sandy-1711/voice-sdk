@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import {
+    assertCapabilityInvariants,
+    assertSTTEvent,
+    assertTTSEvent,
+    assertTurnSequence,
+    requireLiveKey,
+    SPOKEN_SAMPLE_RATE,
+    spokenSample,
+    wav,
+} from "@voice-sdk/test-kit";
 import { DeepgramProvider } from "../../src/index";
 
 /**
@@ -12,15 +22,20 @@ import { DeepgramProvider } from "../../src/index";
  * shape and plausibility rather than exact bytes - the same text does not
  * synthesize to identical audio twice.
  */
-const KEY = process.env.DEEPGRAM_API_KEY;
+const KEY = requireLiveKey("DEEPGRAM_API_KEY");
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
-const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
 
 const voice = () =>
     new Voice({ provider: new DeepgramProvider({ apiKey: KEY }), options: { timeout: 30_000 } });
 
 describe.skipIf(!KEY)("deepgram (live)", () => {
+    // Free: no request leaves the process. Worth a test of its own so a
+    // capability flag drifting from the methods behind it is caught here too.
+    it("implements every capability it claims", () => {
+        assertCapabilityInvariants(new DeepgramProvider({ apiKey: KEY }));
+    });
+
     it("speaks, and the wav header says what the resolved format claimed", async () => {
         const result = await voice().speak({ text: TEXT, format: { container: "wav", sampleRate: 24000 } });
 
@@ -41,14 +56,11 @@ describe.skipIf(!KEY)("deepgram (live)", () => {
         expect(chunks.reduce((total, chunk) => total + chunk.byteLength, 0)).toBeGreaterThan(1000);
     });
 
-    it("transcribes what it just synthesized", async () => {
-        const spoken = await voice().speak({
-            text: SPOKEN,
-            format: { container: "wav", sampleRate: 24000 },
-        });
+    it("transcribes the sample", async () => {
+        const audio = wav(spokenSample(), SPOKEN_SAMPLE_RATE);
 
         const result = await voice().transcribe({
-            audio: spoken.audio,
+            audio,
             timestamps: "segment",
             diarize: true,
         });
@@ -77,6 +89,7 @@ describe.skipIf(!KEY)("deepgram (live)", () => {
         await reading;
         await session.close();
 
+        for (const event of events) assertTTSEvent(event);
         const audio = events.filter((event) => event.type === "audio");
         expect(audio.length).toBeGreaterThan(0);
         expect(events.some((event) => event.type === "done")).toBe(true);
@@ -99,16 +112,13 @@ describe.skipIf(!KEY)("deepgram (live)", () => {
     });
 });
 
-/** Speaks a sentence, then feeds that audio back in as if it were a microphone. */
+/** Feeds the sample in as if it were arriving from a microphone. */
 async function listen(input: Parameters<Voice<DeepgramProvider>["openSTTSession"]>[0]) {
-    const spoken = await voice().speak({
-        text: SPOKEN,
-        format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
-    });
+    const audio = spokenSample();
 
     const session = await voice().openSTTSession({
         ...input,
-        inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+        inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: SPOKEN_SAMPLE_RATE },
     });
 
     const events: STTEvent[] = [];
@@ -123,8 +133,8 @@ async function listen(input: Parameters<Voice<DeepgramProvider>["openSTTSession"
     // 16 kHz s16le is 32000 bytes/sec, so 3200 bytes is 100ms; send it in real
     // time, then trail silence so the endpointer has something to detect.
     const frame = 3200;
-    for (let at = 0; at < spoken.audio.length; at += frame) {
-        session.push(spoken.audio.subarray(at, at + frame));
+    for (let at = 0; at < audio.length; at += frame) {
+        session.push(audio.subarray(at, at + frame));
         await sleep(100);
     }
     for (let i = 0; i < 20; i += 1) {
@@ -134,6 +144,9 @@ async function listen(input: Parameters<Voice<DeepgramProvider>["openSTTSession"
 
     const heard = await Promise.race([reading, sleep(8000).then(() => "")]);
     await session.close();
+
+    for (const event of events) assertSTTEvent(event);
+    assertTurnSequence(events);
 
     return { heard: heard.toLowerCase(), events };
 }

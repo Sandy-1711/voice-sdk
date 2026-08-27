@@ -29,17 +29,72 @@ New providers are held to the same assertions as the existing ones.
 
 ## Live tests
 
+Put the keys in a `.env` at the repository root:
+
 ```sh
-DEEPGRAM_API_KEY=… CARTESIA_API_KEY=… ELEVENLABS_API_KEY=… pnpm test:live
+CARTESIA_API_KEY=…
+DEEPGRAM_API_KEY=…
+ELEVENLABS_API_KEY=…
 ```
 
+```sh
+pnpm test:live
+```
+
+The file is git-ignored and loaded by walking up from the working directory, so
+running from a provider package finds it too. Anything already in the
+environment wins, which is what keeps a local file from shadowing a CI secret.
+Keys can still be passed inline instead.
+
 Live tests call the real APIs and use your quota, so they are opt-in. Providers
-without a key are skipped.
+without a key are skipped — which means a run with no keys at all passes having
+proven nothing. Set `VOICE_LIVE_REQUIRE_KEYS=1` to turn that skip into a
+failure; any unattended run should.
+
+A free ElevenLabs plan cannot use _library_ voices over the API — they fail with
+`402 payment_required`, and on the realtime TTS socket that arrives as a stream
+that simply ends without audio, because the session connects lazily. The default
+is a premade voice for that reason. Override it with `ELEVENLABS_VOICE_ID`, and
+pick something `listVoices()` actually returns for your account.
 
 Run them before a release. The offline fakes encode the wire format as it is
 currently understood, and the live tier is what detects a change. Its assertions
 check shape and plausibility rather than exact bytes, because synthesis is not
 byte-for-byte reproducible.
+
+### Keeping the cost down
+
+The tier is billed per character and per second of audio. Two things make
+iterating on it cheap:
+
+- The STT tests transcribe a checked-in clip — `spokenSample()` from
+  `@voice-sdk/test-kit`, raw s16le mono at 16 kHz — rather than synthesizing
+  their own input. Wrap it with `wav()` for the batch endpoints.
+- Both configs set `retry: 1`, so a failing test is billed twice. Pass
+  `--retry=0` while debugging.
+
+Deliberately _not_ a `speak()` → `transcribe()` round trip: an STT test that
+speaks first is two tests in one, so a TTS regression turns every STT test red
+and the transcript assertion stops isolating anything. Both halves are covered
+on their own.
+
+Narrow a run to one provider and one test rather than paying for the whole tier.
+Reach vitest directly — going through the `test:live` script has been observed
+dropping the `-t` filter and running everything:
+
+```sh
+pnpm --filter @swungstudent/cartesia exec \
+  vitest run --config vitest.live.config.ts --retry=0 -t "walks the paginated"
+```
+
+Confirm what a filter selects before paying for it. `vitest list` collects the
+suite without executing a single test, so it costs nothing and also proves the
+keys are being picked up — a suite that would skip lists nothing:
+
+```sh
+pnpm --filter @swungstudent/cartesia exec \
+  vitest list --config vitest.live.config.ts -t "walks the paginated"
+```
 
 ## What CI checks
 

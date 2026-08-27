@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { Voice, type STTEvent, type TTSEvent } from "@swungstudent/voice";
+import {
+    assertCapabilityInvariants,
+    assertSTTEvent,
+    assertTTSEvent,
+    assertTurnSequence,
+    requireLiveKey,
+    SPOKEN_SAMPLE_RATE,
+    spokenSample,
+    wav,
+} from "@voice-sdk/test-kit";
 import { CartesiaProvider } from "../../src/index";
 
 /**
@@ -10,11 +20,10 @@ import { CartesiaProvider } from "../../src/index";
  * Set CARTESIA_VOICE_ID to use your own voice; the default is one of the
  * public library voices.
  */
-const KEY = process.env.CARTESIA_API_KEY;
+const KEY = requireLiveKey("CARTESIA_API_KEY");
 const VOICE_ID = process.env.CARTESIA_VOICE_ID ?? "a0e99841-438c-4a64-b679-ae501e7d6091";
 
 const TEXT = "The quick brown fox jumps over the lazy dog.";
-const SPOKEN = "Hello there. I would like to book a table for two people tomorrow evening.";
 
 const voice = () =>
     new Voice({
@@ -23,6 +32,12 @@ const voice = () =>
     });
 
 describe.skipIf(!KEY)("cartesia (live)", () => {
+    // Free: no request leaves the process. Worth a test of its own so a
+    // capability flag drifting from the methods behind it is caught here too.
+    it("implements every capability it claims", () => {
+        assertCapabilityInvariants(new CartesiaProvider({ apiKey: KEY }));
+    });
+
     it("speaks, and the wav header says what the resolved format claimed", async () => {
         const result = await voice().speak({ text: TEXT, format: { container: "wav", sampleRate: 44100 } });
 
@@ -42,10 +57,10 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
         expect(chunks.reduce((total, chunk) => total + chunk.byteLength, 0)).toBeGreaterThan(1000);
     });
 
-    it("transcribes what it just synthesized", async () => {
-        const spoken = await voice().speak({ text: SPOKEN, format: { container: "wav", sampleRate: 16000 } });
+    it("transcribes the sample", async () => {
+        const audio = wav(spokenSample(), SPOKEN_SAMPLE_RATE);
 
-        const result = await voice().transcribe({ audio: spoken.audio, timestamps: "word" });
+        const result = await voice().transcribe({ audio, timestamps: "word" });
 
         expect(result.text.toLowerCase()).toContain("book a table");
         expect(result.words?.length).toBeGreaterThan(0);
@@ -74,6 +89,7 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
         await Promise.race([reading, sleep(20_000)]);
         await session.close();
 
+        for (const event of events) assertTTSEvent(event);
         expect(events.filter((event) => event.type === "audio").length).toBeGreaterThan(0);
     });
 
@@ -100,25 +116,24 @@ describe.skipIf(!KEY)("cartesia (live)", () => {
     });
 });
 
-/** Speaks a sentence, then feeds that audio back in as if it were a microphone. */
+/** Feeds the sample in as if it were arriving from a microphone. */
 async function listen(
     input: Parameters<Voice<CartesiaProvider>["openSTTSession"]>[0],
     until: (event: STTEvent) => boolean,
     flush = false,
 ): Promise<string> {
-    const spoken = await voice().speak({
-        text: SPOKEN,
-        format: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
-    });
+    const audio = spokenSample();
 
     const session = await voice().openSTTSession({
         ...input,
-        inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: 16000 },
+        inputFormat: { container: "raw", encoding: "pcm_s16le", sampleRate: SPOKEN_SAMPLE_RATE },
     });
 
     let text = "";
+    const events: STTEvent[] = [];
     const reading = (async () => {
         for await (const event of session.output) {
+            events.push(event);
             if (event.type === "transcript" && event.text) text = event.text;
             if (until(event)) return text;
         }
@@ -126,8 +141,8 @@ async function listen(
     })();
 
     const frame = 3200;
-    for (let at = 0; at < spoken.audio.length; at += frame) {
-        session.push(spoken.audio.subarray(at, at + frame));
+    for (let at = 0; at < audio.length; at += frame) {
+        session.push(audio.subarray(at, at + frame));
         await sleep(100);
     }
     for (let i = 0; i < 10; i += 1) {
@@ -138,6 +153,9 @@ async function listen(
 
     const heard = await Promise.race([reading, sleep(10_000).then(() => text)]);
     await session.close();
+
+    for (const event of events) assertSTTEvent(event);
+    assertTurnSequence(events);
 
     return heard;
 }
