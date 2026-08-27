@@ -274,6 +274,23 @@ describe("openTTSSession", () => {
             });
         });
 
+        // Verbatim from a real rejected socket: ElevenLabs sends this alone and
+        // then closes. Ignoring it left the caller with an empty stream and no
+        // reason, which is how a 402 for a library voice used to present.
+        it("fails the stream on a server error frame", async () => {
+            const session = await provider().openTTSSession();
+            session.push("hi");
+            const connection = await server.connection();
+
+            connection.send({
+                message: "Free users cannot use library voices via the API.",
+                error: "payment_required",
+                code: 1008,
+            });
+
+            await expect(collect(session.output)).rejects.toThrow(/payment_required.*library voices/s);
+        });
+
         it("fails the stream on a frame that is not JSON", async () => {
             const session = await provider().openTTSSession();
             session.push("hi");
